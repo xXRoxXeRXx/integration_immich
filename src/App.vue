@@ -19,3 +19,4 @@ import LightboxView from './components/LightboxView.vue'
 	overflow-y: auto;
 }
 </style>
+

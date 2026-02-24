@@ -54,6 +54,7 @@ defineEmits(['click'])
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
+	cursor: pointer;
 }
 
 .photo-grid__video-badge {
