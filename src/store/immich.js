@@ -1,3 +1,7 @@
+/**
+ * SPDX-FileCopyrightText: 2026 Marcel Meyer <gh@grenzallee.eu>
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 import { defineStore } from 'pinia'
 import { getTimeline, getAlbums, getAlbum, getPeople, getMapMarkers, getExplore } from '../services/api.js'
 

@@ -1,3 +1,7 @@
+/**
+ * SPDX-FileCopyrightText: 2026 Marcel Meyer <gh@grenzallee.eu>
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 import { registerFileAction } from '@nextcloud/files'
 import { generateUrl } from '@nextcloud/router'
 import { translate as t } from '@nextcloud/l10n'

@@ -1,3 +1,7 @@
+<!--
+  - SPDX-FileCopyrightText: 2026 Marcel Meyer <gh@grenzallee.eu>
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 <template>
 	<div class="map-view">
 		<NcLoadingIcon v-if="store.loading && store.mapMarkers.length === 0"

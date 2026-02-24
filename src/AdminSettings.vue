@@ -1,3 +1,7 @@
+<!--
+  - SPDX-FileCopyrightText: 2026 Marcel Meyer <gh@grenzallee.eu>
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 <template>
 	<div id="immich-admin-settings">
 		<NcSettingsSection :name="t('integration_immich', 'Immich Integration')"

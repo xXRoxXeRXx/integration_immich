@@ -8,7 +8,7 @@
 Browse your timeline, view albums and upload files directly to Immich from Nextcloud.]]></description>
     <version>1.0.0</version>
     <licence>agpl</licence>
-    <author>xXRoxXeRXx</author>
+    <author mail="gh@grenzallee.eu">Marcel Meyer</author>
     <namespace>IntegrationImmich</namespace>
     <category>multimedia</category>
     <bugs>https://github.com/xXRoxXeRXx/integration_immich/issues</bugs>
