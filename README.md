@@ -1,48 +1,54 @@
 # Immich Integration for Nextcloud
 
-A Nextcloud app that integrates your [Immich](https://immich.app) photo library directly into Nextcloud.
+> Browse your [Immich](https://immich.app) photo library directly inside Nextcloud — timeline, albums, people, map and more.
+
+![Screenshot](screenshots/screenshot.png)
+
+---
 
 ## Features
 
-- **Timeline** — Browse your full photo/video timeline with lazy-loading buckets
-- **Albums** — View all Immich albums with thumbnails
-- **People** — Face recognition — browse photos by person
-- **Map** — View geotagged photos on an interactive map
-- **Explore** — Browse photos by location and category
-- **Lightbox** — Full-screen image/video viewer with keyboard navigation
-- **Upload** — Upload files from Nextcloud Files directly to Immich
-- **Admin settings** — Configure the Immich server URL and API key
+| Feature | Description |
+| --- | --- |
+| **Timeline** | Lazy-loaded photo & video timeline, grouped by date |
+| **Albums** | Browse all your Immich albums with cover thumbnails |
+| **People** | Face recognition — explore photos by person |
+| **Map** | Interactive map of all geotagged photos |
+| **Explore** | Browse by location and category |
+| **Lightbox** | Full-screen viewer with keyboard navigation |
+| **Upload** | Send files from Nextcloud Files directly to Immich |
+| **Admin Settings** | Configure server URL and API key |
+
+---
 
 ## Requirements
 
-- Nextcloud 30+
-- PHP 8.1+
+- **Nextcloud** 30 or newer
+- **PHP** 8.1 or newer
 - A running [Immich](https://immich.app) instance
 
-## Installation
+---
 
-### From source
+## Installation
 
 ```bash
 cd /path/to/nextcloud/custom_apps
 git clone https://github.com/xXRoxXeRXx/integration_immich
 cd integration_immich
-npm ci
-npm run build
-```
-
-Then enable the app in Nextcloud:
-
-```
+npm ci && npm run build
 occ app:enable integration_immich
 ```
 
+---
+
 ## Configuration
 
-1. Go to **Nextcloud Admin Settings → Immich Integration**
-2. Enter your Immich server URL (e.g. `https://photos.example.com`)
-3. Enter your Immich API key (Settings → API Keys in Immich)
-4. Save — the Immich tab will appear in the navigation
+1. Open **Nextcloud → Admin Settings → Immich Integration**
+2. Enter your **Immich server URL** (e.g. `https://photos.example.com`)
+3. Enter your **API key** — found in Immich under *Account Settings → API Keys*
+4. Save — the Immich entry appears in the top navigation
+
+---
 
 ## Development
 
@@ -52,6 +58,8 @@ npm run dev      # development build
 npm run watch    # watch mode
 npm run build    # production build
 ```
+
+---
 
 ## License
 
