@@ -1,0 +1,14 @@
+node_modules/
+js/
+vendor/
+.php-cs-fixer.cache
+
+# Claude Code local config (contains deployment paths)
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.log

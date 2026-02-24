@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>integration_immich</id>
+    <name>Immich Integration</name>
+    <summary>Browse your Immich photo library in Nextcloud</summary>
+    <description><![CDATA[Integrates Immich photo management into Nextcloud.
+Browse your timeline, view albums and upload files directly to Immich from Nextcloud.]]></description>
+    <version>1.0.0</version>
+    <licence>agpl</licence>
+    <author>xXRoxXeRXx</author>
+    <namespace>IntegrationImmich</namespace>
+    <category>multimedia</category>
+    <bugs>https://github.com/xXRoxXeRXx/integration_immich/issues</bugs>
+    <dependencies>
+        <nextcloud min-version="30"/>
+        <php min-version="8.1"/>
+    </dependencies>
+    <navigations>
+        <navigation>
+            <name>Immich</name>
+            <route>integration_immich.page.index</route>
+            <order>5</order>
+            <icon>app.svg</icon>
+        </navigation>
+    </navigations>
+    <settings>
+        <personal>OCA\IntegrationImmich\Settings\PersonalSettings</personal>
+        <personal-section>OCA\IntegrationImmich\Settings\PersonalSection</personal-section>
+    </settings>
+</info>

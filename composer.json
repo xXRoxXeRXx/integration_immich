@@ -1,0 +1,14 @@
+{
+    "name": "nextcloud/integration_immich",
+    "description": "Immich Integration for Nextcloud",
+    "type": "project",
+    "license": "AGPL-3.0-or-later",
+    "autoload": {
+        "psr-4": {
+            "OCA\\IntegrationImmich\\": "lib/"
+        }
+    },
+    "require": {
+        "php": ">=8.1"
+    }
+}

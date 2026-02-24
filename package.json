@@ -1,0 +1,36 @@
+{
+    "name": "integration_immich",
+    "version": "1.0.0",
+    "description": "Immich Integration for Nextcloud",
+    "license": "AGPL-3.0-or-later",
+    "private": true,
+    "scripts": {
+        "build": "webpack --node-env production --progress",
+        "dev": "webpack --node-env development --progress",
+        "watch": "webpack --node-env development --watch --progress",
+        "serve": "webpack --node-env development serve --progress"
+    },
+    "dependencies": {
+        "@nextcloud/axios": "^2.5.0",
+        "@nextcloud/dialogs": "^7.0.0",
+        "@nextcloud/files": "^4.0.0",
+        "@nextcloud/initial-state": "^3.0.0",
+        "@nextcloud/l10n": "^3.1.0",
+        "@nextcloud/router": "^3.0.1",
+        "@nextcloud/vue": "^9.0.0",
+        "leaflet": "^1.9.4",
+        "pinia": "^2.2.0",
+        "vue": "^3.4.0",
+        "vue-material-design-icons": "^5.3.0",
+        "vue-router": "^4.4.0"
+    },
+    "devDependencies": {
+        "@nextcloud/browserslist-config": "^3.0.1",
+        "@nextcloud/eslint-config": "^8.4.1",
+        "@nextcloud/webpack-vue-config": "^7.0.0",
+        "eslint-webpack-plugin": "^4.2.0"
+    },
+    "browserslist": [
+        "extends @nextcloud/browserslist-config"
+    ]
+}
