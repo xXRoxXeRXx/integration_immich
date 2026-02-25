@@ -19,6 +19,10 @@ export function getAlbum(id) {
 	return axios.get(`${baseUrl}/albums/${id}`)
 }
 
+export function getAssetInfo(assetId) {
+	return axios.get(`${baseUrl}/assets/${assetId}`)
+}
+
 export function getThumbnailUrl(assetId) {
 	return generateUrl(`/apps/integration_immich/api/v1/assets/${assetId}/thumbnail`)
 }

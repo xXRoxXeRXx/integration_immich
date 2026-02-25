@@ -18,7 +18,7 @@
 
 		<template v-else-if="store.currentAlbum">
 			<div class="album-detail__header">
-				<NcButton type="tertiary" @click="goBack">
+				<NcButton variant="tertiary" @click="goBack">
 					<template #icon>
 						<ArrowLeftIcon :size="20" />
 					</template>

@@ -6,11 +6,12 @@
 	<NcContent app-name="integration_immich">
 		<Navigation />
 		<NcAppContent>
-			<div class="view-wrapper">
-				<div class="view-header">
-					<h2 class="view-header__title">{{ pageTitle }}</h2>
+			<div class="view-content">
+				<!-- Sticky toolbar — inside scroll container like NC Photos -->
+				<div class="view-toolbar">
+					<h2 class="view-toolbar__title">{{ pageTitle }}</h2>
 				</div>
-				<div class="view-content">
+				<div class="view-page">
 					<router-view />
 				</div>
 			</div>
@@ -44,30 +45,37 @@ const pageTitle = computed(() => pageTitles[route.name] ?? 'Immich')
 </script>
 
 <style scoped>
-/* app-content fills height, no own scroll — wrapper handles it */
+/* Let NC handle app-content layout natively, only prevent outer scroll */
 :deep(.app-content) {
 	overflow: hidden;
-	display: flex;
-	flex-direction: column;
 }
 
-.view-wrapper {
-	display: flex;
-	flex-direction: column;
+/* Single scroll container — full height, scrolls internally */
+.view-content {
 	height: 100%;
-	overflow: hidden;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
 }
 
-.view-header {
+/* Sticky toolbar — same pattern as NC Photos HeaderNavigation */
+.view-toolbar {
+	position: sticky;
+	top: 0;
+	z-index: 20;
 	flex-shrink: 0;
+	min-height: var(--default-clickable-area, 44px);
 	display: flex;
 	align-items: center;
-	/* push title past the nav toggle button (~44px) */
-	padding: 0 20px 0 calc(var(--default-clickable-area, 44px) + 8px);
-	height: var(--default-clickable-area, 44px);
+	/* left: clear the nav toggle button; block: standard nav padding */
+	padding-inline-start: calc(var(--default-clickable-area, 44px) + 2 * var(--app-navigation-padding, 4px));
+	padding-inline-end: var(--app-navigation-padding, 4px);
+	padding-block: var(--app-navigation-padding, 4px);
+	background-color: var(--color-main-background);
+	border-bottom: 1px solid var(--color-border);
 }
 
-.view-header__title {
+.view-toolbar__title {
 	font-size: 20px;
 	font-weight: 700;
 	margin: 0;
@@ -77,8 +85,10 @@ const pageTitle = computed(() => pageTitles[route.name] ?? 'Immich')
 	text-overflow: ellipsis;
 }
 
-.view-content {
+/* View container — fills remaining space below toolbar */
+.view-page {
 	flex: 1;
-	overflow-y: auto;
+	min-height: 0;
+	overflow: hidden;
 }
 </style>

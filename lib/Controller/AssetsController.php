@@ -60,6 +60,27 @@ class AssetsController extends Controller {
 
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    public function show(string $id): JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(
+                ['error' => 'Immich is not configured'],
+                Http::STATUS_PRECONDITION_FAILED
+            );
+        }
+
+        try {
+            $data = $this->immichService->getAsset($id);
+            return new JSONResponse($data);
+        } catch (\Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                Http::STATUS_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function thumbnail(string $id): DataDownloadResponse|JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(

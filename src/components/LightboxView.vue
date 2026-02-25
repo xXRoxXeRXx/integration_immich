@@ -98,11 +98,12 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { useImmichStore } from '../store/immich.js'
-import { getPreviewUrl, getOriginalUrl } from '../services/api.js'
+import { getPreviewUrl, getOriginalUrl, getAssetInfo } from '../services/api.js'
 
 const store = useImmichStore()
 const overlayEl = ref(null)
 const showInfo = ref(false)
+const fetchingInfo = ref(false)
 
 const assets = computed(() => store.lightbox.assets ?? [])
 const currentIndex = computed(() => store.lightbox.currentIndex ?? 0)
@@ -147,6 +148,23 @@ const infoRows = computed(() => {
 	return rows
 })
 
+async function ensureExifInfo() {
+	const asset = currentAsset.value
+	if (!asset || asset.exifInfo || fetchingInfo.value) return
+	fetchingInfo.value = true
+	try {
+		const response = await getAssetInfo(asset.id)
+		const full = response.data
+		if (full && full.exifInfo) {
+			store.lightbox.assets[currentIndex.value] = { ...asset, ...full }
+		}
+	} catch {
+		// silently ignore — info panel just shows "Keine Metadaten"
+	} finally {
+		fetchingInfo.value = false
+	}
+}
+
 function close() {
 	showInfo.value = false
 	store.closeLightbox()
@@ -163,6 +181,11 @@ watch(() => store.lightbox.visible, (visible) => {
 		showInfo.value = false
 		nextTick(() => overlayEl.value?.focus())
 	}
+})
+
+// Fetch full exifInfo lazily when info panel opens or asset changes while open
+watch([showInfo, currentIndex], ([info]) => {
+	if (info) ensureExifInfo()
 })
 </script>
 

@@ -98,6 +98,10 @@ class ImmichService {
         return $assets;
     }
 
+    public function getAsset(string $id): array {
+        return $this->request('GET', '/assets/' . $id);
+    }
+
     public function getAssetThumbnail(string $id, string $size = 'thumbnail'): array {
         return $this->requestBinary('GET', '/assets/' . $id . '/thumbnail?size=' . urlencode($size));
     }
