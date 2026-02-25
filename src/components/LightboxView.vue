@@ -183,9 +183,9 @@ watch(() => store.lightbox.visible, (visible) => {
 	}
 })
 
-// Fetch full exifInfo lazily when info panel opens or asset changes while open
-watch([showInfo, currentIndex], ([info]) => {
-	if (info) ensureExifInfo()
+// Fetch full exifInfo when lightbox opens or asset changes (so info panel is instant)
+watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
+	if (visible) ensureExifInfo()
 })
 </script>
 
