@@ -23,6 +23,7 @@ return [
         ['name' => 'assets#show', 'url' => '/api/v1/assets/{id}', 'verb' => 'GET'],
         ['name' => 'assets#thumbnail', 'url' => '/api/v1/assets/{id}/thumbnail', 'verb' => 'GET'],
         ['name' => 'assets#original', 'url' => '/api/v1/assets/{id}/original', 'verb' => 'GET'],
+        ['name' => 'assets#videoStream', 'url' => '/api/v1/assets/{id}/video', 'verb' => 'GET'],
         ['name' => 'assets#mapMarkers', 'url' => '/api/v1/map/markers', 'verb' => 'GET'],
         ['name' => 'assets#explore', 'url' => '/api/v1/explore', 'verb' => 'GET'],
 

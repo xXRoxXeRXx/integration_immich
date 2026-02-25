@@ -110,6 +110,37 @@ class ImmichService {
         return $this->requestBinary('GET', '/assets/' . $id . '/original');
     }
 
+    public function getVideoStream(string $id, string $rangeHeader = ''): array {
+        $client = $this->clientService->newClient();
+        $url = $this->getServerUrl() . '/api/assets/' . $id . '/video/playback';
+
+        $headers = ['x-api-key' => $this->getApiKey()];
+        if ($rangeHeader !== '') {
+            $headers['Range'] = $rangeHeader;
+        }
+
+        try {
+            $response = $client->get($url, [
+                'headers' => $headers,
+                'http_errors' => false,
+            ]);
+            return [
+                'body'          => $response->getBody(),
+                'statusCode'    => $response->getStatusCode(),
+                'contentType'   => $response->getHeader('Content-Type') ?: 'video/mp4',
+                'contentLength' => $response->getHeader('Content-Length') ?: '',
+                'contentRange'  => $response->getHeader('Content-Range') ?: '',
+                'acceptRanges'  => $response->getHeader('Accept-Ranges') ?: 'bytes',
+            ];
+        } catch (\Exception $e) {
+            $this->logger->error('Immich video stream request failed: ' . $e->getMessage(), [
+                'app'      => Application::APP_ID,
+                'endpoint' => '/assets/' . $id . '/video/playback',
+            ]);
+            throw $e;
+        }
+    }
+
     public function getAlbums(): array {
         return $this->request('GET', '/albums');
     }

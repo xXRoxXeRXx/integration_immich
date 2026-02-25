@@ -50,14 +50,14 @@
 			<!-- Media -->
 			<div class="ic-lb-stage" @click.stop>
 				<img
-					v-if="currentAsset && currentAsset.type !== 'VIDEO'"
+					v-if="currentAsset && currentAsset.isImage !== false"
 					:src="previewSrc"
 					:alt="currentAsset.originalFileName || ''"
 					class="ic-lb-img"
 				/>
 				<video
 					v-else-if="currentAsset"
-					:src="originalSrc"
+					:src="videoSrc"
 					controls
 					class="ic-lb-video"
 				/>
@@ -98,7 +98,7 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { useImmichStore } from '../store/immich.js'
-import { getPreviewUrl, getOriginalUrl, getAssetInfo } from '../services/api.js'
+import { getPreviewUrl, getVideoUrl, getAssetInfo } from '../services/api.js'
 
 const store = useImmichStore()
 const overlayEl = ref(null)
@@ -109,7 +109,7 @@ const assets = computed(() => store.lightbox.assets ?? [])
 const currentIndex = computed(() => store.lightbox.currentIndex ?? 0)
 const currentAsset = computed(() => assets.value[currentIndex.value] ?? null)
 const previewSrc = computed(() => currentAsset.value ? getPreviewUrl(currentAsset.value.id) : '')
-const originalSrc = computed(() => currentAsset.value ? getOriginalUrl(currentAsset.value.id) : '')
+const videoSrc = computed(() => currentAsset.value ? getVideoUrl(currentAsset.value.id) : '')
 
 function formatDate(asset) {
 	const raw = asset?.localDateTime || asset?.fileCreatedAt || asset?.exifInfo?.dateTimeOriginal

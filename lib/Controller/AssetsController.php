@@ -140,6 +140,48 @@ class AssetsController extends Controller {
 
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    public function videoStream(string $id): DataDownloadResponse|JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(
+                ['error' => 'Immich is not configured'],
+                Http::STATUS_PRECONDITION_FAILED
+            );
+        }
+
+        try {
+            $rangeHeader = $this->request->getHeader('Range') ?? '';
+            $result = $this->immichService->getVideoStream($id, $rangeHeader);
+
+            $response = new DataDownloadResponse(
+                $result['body'],
+                $id,
+                $result['contentType']
+            );
+
+            // Override Content-Disposition so the browser plays the video inline
+            $response->addHeader('Content-Disposition', 'inline');
+            $response->addHeader('Accept-Ranges', $result['acceptRanges'] ?: 'bytes');
+
+            if ($result['contentLength'] !== '') {
+                $response->addHeader('Content-Length', $result['contentLength']);
+            }
+            if ($result['contentRange'] !== '') {
+                $response->addHeader('Content-Range', $result['contentRange']);
+            }
+
+            $response->setStatus((int)($result['statusCode'] ?? Http::STATUS_OK));
+
+            return $response;
+        } catch (\Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                Http::STATUS_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function mapMarkers(): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(

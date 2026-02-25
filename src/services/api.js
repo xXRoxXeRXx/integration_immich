@@ -35,6 +35,10 @@ export function getOriginalUrl(assetId) {
 	return generateUrl(`/apps/integration_immich/api/v1/assets/${assetId}/original`)
 }
 
+export function getVideoUrl(assetId) {
+	return generateUrl(`/apps/integration_immich/api/v1/assets/${assetId}/video`)
+}
+
 export function getAlbumThumbnailUrl(albumId) {
 	return generateUrl(`/apps/integration_immich/api/v1/albums/${albumId}/thumbnail`)
 }
