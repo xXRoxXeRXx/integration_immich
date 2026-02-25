@@ -308,7 +308,6 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 44px 64px 60px;
 	box-sizing: border-box;
 }
 

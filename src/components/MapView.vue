@@ -158,7 +158,9 @@ onUnmounted(() => {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	padding-left: 52px;
+	padding-left: 25px;
+	padding-right: 25px;
+    padding-top: 5px;
 }
 
 .map-view__loading {
