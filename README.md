@@ -15,7 +15,8 @@
 | **People** | Face recognition — explore photos by person |
 | **Map** | Interactive map of all geotagged photos |
 | **Explore** | Browse by location and category |
-| **Lightbox** | Full-screen viewer with keyboard navigation |
+| **Lightbox** | Full-screen viewer with keyboard navigation, EXIF metadata panel |
+| **Select & Save** | Select photos and videos across views and save originals directly to your Nextcloud Files |
 | **Upload** | Send files from Nextcloud Files directly to Immich |
 | **Admin Settings** | Configure server URL and API key |
 
