@@ -19,6 +19,7 @@ return [
 
         // Assets / Timeline
         ['name' => 'assets#timeline', 'url' => '/api/v1/timeline', 'verb' => 'GET'],
+        ['name' => 'assets#saveToNextcloud', 'url' => '/api/v1/assets/save', 'verb' => 'POST'],
         ['name' => 'assets#show', 'url' => '/api/v1/assets/{id}', 'verb' => 'GET'],
         ['name' => 'assets#thumbnail', 'url' => '/api/v1/assets/{id}/thumbnail', 'verb' => 'GET'],
         ['name' => 'assets#original', 'url' => '/api/v1/assets/{id}/original', 'verb' => 'GET'],

@@ -68,7 +68,8 @@
 							class="person-detail__bucket-loading" />
 						<PhotoGrid v-else-if="store.personBucketAssets[store.personBuckets[index].timeBucket]"
 							:assets="store.personBucketAssets[store.personBuckets[index].timeBucket]"
-							@click="(_, idx) => openLightboxFromBucket(idx, index)" />
+							:selectable="true"
+						@click="(_, idx) => openLightboxFromBucket(idx, index)" />
 						<div v-else
 							class="person-detail__bucket-placeholder"
 							:style="{ height: (bucketHeights[index] - HEADER_HEIGHT) + 'px' }" />

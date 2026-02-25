@@ -47,7 +47,8 @@
 						class="timeline-view__bucket-loading" />
 					<PhotoGrid v-else-if="store.timelineAssets[store.timelineBuckets[index].timeBucket]"
 						:assets="store.timelineAssets[store.timelineBuckets[index].timeBucket]"
-						@click="(_, idx) => openLightboxFromBucket(idx, index)" />
+						:selectable="true"
+					@click="(_, idx) => openLightboxFromBucket(idx, index)" />
 					<div v-else
 						class="timeline-view__bucket-placeholder"
 						:style="{ height: (bucketHeights[index] - HEADER_HEIGHT) + 'px' }" />

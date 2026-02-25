@@ -7,4 +7,9 @@ webpackConfig.entry = {
     fileAction: path.join(__dirname, 'src', 'fileAction.js'),
 }
 
+// @nextcloud/webpack-vue-config hardcodes publicPath to /apps/{appId}/js/ but this
+// app lives in custom_apps/. Override to 'auto' so webpack determines the public path
+// at runtime from the actual script URL, making lazy-loaded chunks work correctly.
+webpackConfig.output.publicPath = 'auto'
+
 module.exports = webpackConfig

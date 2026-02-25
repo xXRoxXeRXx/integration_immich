@@ -44,7 +44,8 @@
 			<div v-else class="place-detail__scroll">
 				<PhotoGrid
 					:assets="filteredAssets"
-					@click="(_, idx) => store.openLightbox(filteredAssets, idx)" />
+					:selectable="true"
+				@click="(_, idx) => store.openLightbox(filteredAssets, idx)" />
 			</div>
 		</template>
 	</div>

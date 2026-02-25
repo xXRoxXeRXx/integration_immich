@@ -32,6 +32,9 @@ export const useImmichStore = defineStore('immich', {
 			assets: [],
 			currentIndex: 0,
 		},
+		// Selection
+		selectedAssetIds: new Set(),
+		isSelectionMode: false,
 	}),
 
 	actions: {
@@ -197,6 +200,27 @@ export const useImmichStore = defineStore('immich', {
 			if (this.lightbox.currentIndex > 0) {
 				this.lightbox.currentIndex--
 			}
+		},
+
+		// ---- Selection ----
+
+		enterSelectionMode() {
+			this.isSelectionMode = true
+		},
+
+		toggleAssetSelection(id) {
+			const updated = new Set(this.selectedAssetIds)
+			if (updated.has(id)) {
+				updated.delete(id)
+			} else {
+				updated.add(id)
+			}
+			this.selectedAssetIds = updated
+		},
+
+		clearSelection() {
+			this.selectedAssetIds = new Set()
+			this.isSelectionMode = false
 		},
 	},
 })

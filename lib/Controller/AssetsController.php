@@ -18,12 +18,17 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\Files\Folder;
+use OCP\Files\IRootFolder;
+use OCP\Files\NotFoundException;
 use OCP\IRequest;
 
 class AssetsController extends Controller {
     public function __construct(
         IRequest $request,
         private ImmichService $immichService,
+        private IRootFolder $rootFolder,
+        private ?string $userId,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -173,5 +178,86 @@ class AssetsController extends Controller {
                 Http::STATUS_INTERNAL_SERVER_ERROR
             );
         }
+    }
+
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function saveToNextcloud(): JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(
+                ['error' => 'Immich is not configured'],
+                Http::STATUS_PRECONDITION_FAILED
+            );
+        }
+
+        $assetIds = $this->request->getParam('assetIds', []);
+        $path = $this->request->getParam('path', '');
+
+        if (empty($assetIds) || !is_array($assetIds)) {
+            return new JSONResponse(['error' => 'assetIds must be a non-empty array'], Http::STATUS_BAD_REQUEST);
+        }
+
+        if ($path === '' || $path === null) {
+            return new JSONResponse(['error' => 'path is required'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $userFolder = $this->rootFolder->getUserFolder($this->userId);
+        $normalizedPath = ltrim((string)$path, '/');
+
+        try {
+            $targetNode = $userFolder->get($normalizedPath);
+            if (!($targetNode instanceof Folder)) {
+                return new JSONResponse(['error' => 'Path is not a folder'], Http::STATUS_BAD_REQUEST);
+            }
+        } catch (NotFoundException $e) {
+            return new JSONResponse(['error' => 'Folder not found: ' . $normalizedPath], Http::STATUS_NOT_FOUND);
+        }
+
+        $saved = 0;
+        $failed = 0;
+        $errors = [];
+
+        foreach ($assetIds as $assetId) {
+            try {
+                // Fetch metadata to get the original filename
+                $asset = $this->immichService->getAsset((string)$assetId);
+                $fileName = $asset['originalFileName'] ?? ($assetId . '.bin');
+
+                // Ensure unique filename in target folder
+                $fileName = $this->getUniqueFileName($targetNode, (string)$fileName);
+
+                // Fetch the original binary (works for images and videos)
+                $result = $this->immichService->getAssetOriginal((string)$assetId);
+
+                // Write to Nextcloud
+                $file = $targetNode->newFile($fileName);
+                $file->putContent($result['body']);
+
+                $saved++;
+            } catch (\Exception $e) {
+                $failed++;
+                $errors[] = ['id' => $assetId, 'error' => $e->getMessage()];
+            }
+        }
+
+        return new JSONResponse(['saved' => $saved, 'failed' => $failed, 'errors' => $errors]);
+    }
+
+    private function getUniqueFileName(Folder $folder, string $fileName): string {
+        if (!$folder->nodeExists($fileName)) {
+            return $fileName;
+        }
+
+        $info = pathinfo($fileName);
+        $name = $info['filename'];
+        $ext = isset($info['extension']) ? '.' . $info['extension'] : '';
+
+        $i = 1;
+        do {
+            $candidate = $name . ' (' . $i . ')' . $ext;
+            $i++;
+        } while ($folder->nodeExists($candidate));
+
+        return $candidate;
     }
 }

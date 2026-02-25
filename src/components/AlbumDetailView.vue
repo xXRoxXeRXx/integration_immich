@@ -42,6 +42,7 @@
 
 			<PhotoGrid v-else
 				:assets="store.currentAlbum.assets"
+				:selectable="true"
 				@click="(asset, idx) => store.openLightbox(store.currentAlbum.assets, idx)" />
 		</template>
 	</div>
