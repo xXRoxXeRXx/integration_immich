@@ -29,9 +29,11 @@ return [
         ['name' => 'assets#explore', 'url' => '/api/v1/explore', 'verb' => 'GET'],
 
         // Albums
-        ['name' => 'albums#index', 'url' => '/api/v1/albums', 'verb' => 'GET'],
-        ['name' => 'albums#show', 'url' => '/api/v1/albums/{id}', 'verb' => 'GET'],
-        ['name' => 'albums#thumbnail', 'url' => '/api/v1/albums/{id}/thumbnail', 'verb' => 'GET'],
+        ['name' => 'albums#index',     'url' => '/api/v1/albums',                  'verb' => 'GET'],
+        ['name' => 'albums#create',    'url' => '/api/v1/albums/create',            'verb' => 'POST'],
+        ['name' => 'albums#show',      'url' => '/api/v1/albums/{id}',              'verb' => 'GET'],
+        ['name' => 'albums#addAssets', 'url' => '/api/v1/albums/{id}/assets',       'verb' => 'POST'],
+        ['name' => 'albums#thumbnail', 'url' => '/api/v1/albums/{id}/thumbnail',    'verb' => 'GET'],
 
         // People / Personen
         ['name' => 'people#index', 'url' => '/api/v1/people', 'verb' => 'GET'],

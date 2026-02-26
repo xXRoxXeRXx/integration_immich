@@ -47,6 +47,14 @@
 								</template>
 								{{ t('integration_immich', 'Herunterladen') }}
 							</NcButton>
+							<NcButton variant="secondary"
+								:disabled="store.selectedAssetIds.size === 0 || addingToAlbum || showAlbumPicker"
+								@click="showAlbumPicker = true">
+								<template #icon>
+									<FolderPlusIcon :size="20" />
+								</template>
+								{{ t('integration_immich', 'Zu Album hinzufügen') }}
+							</NcButton>
 							<NcButton variant="tertiary" @click="store.clearSelection()">
 								{{ t('integration_immich', 'Abbrechen') }}
 							</NcButton>
@@ -60,26 +68,49 @@
 		</NcAppContent>
 	</NcContent>
 	<LightboxView />
+	<NcDialog v-if="showAlbumPicker"
+		:name="t('integration_immich', 'Album auswählen')"
+		@closing="showAlbumPicker = false">
+		<div class="album-picker">
+			<NcLoadingIcon v-if="loadingAlbums" :size="32" class="album-picker__loading" />
+			<template v-else>
+				<div v-if="albums.length === 0" class="album-picker__empty">
+					{{ t('integration_immich', 'Keine Alben vorhanden') }}
+				</div>
+				<div v-for="album in albums"
+					:key="album.id"
+					class="album-picker__item"
+					@click="addToAlbum(album.id)">
+					{{ album.albumName }}
+				</div>
+			</template>
+		</div>
+	</NcDialog>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { NcContent, NcAppContent, NcButton, NcLoadingIcon } from '@nextcloud/vue'
+import { NcContent, NcAppContent, NcButton, NcLoadingIcon, NcDialog } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { useImmichStore } from './store/immich.js'
-import { saveAssetsToNextcloud, downloadAssets } from './services/api.js'
+import { saveAssetsToNextcloud, downloadAssets, addAssetsToAlbum, getAlbums } from './services/api.js'
 import Navigation from './components/Navigation.vue'
 import LightboxView from './components/LightboxView.vue'
 import CheckboxMultipleOutlineIcon from 'vue-material-design-icons/CheckboxMultipleOutline.vue'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import DownloadIcon from 'vue-material-design-icons/Download.vue'
+import FolderPlusIcon from 'vue-material-design-icons/FolderPlus.vue'
 
 const route = useRoute()
 const store = useImmichStore()
 const saving = ref(false)
 const downloading = ref(false)
+const addingToAlbum = ref(false)
+const showAlbumPicker = ref(false)
+const albums = ref([])
+const loadingAlbums = ref(false)
 
 const pageTitles = {
 	'timeline': t('integration_immich', 'Alle Medien'),
@@ -184,6 +215,46 @@ async function downloadSelected() {
 		downloading.value = false
 	}
 }
+
+watch(showAlbumPicker, async (val) => {
+	if (val) {
+		loadingAlbums.value = true
+		try {
+			const response = await getAlbums()
+			albums.value = response.data ?? []
+		} catch (e) {
+			showError(t('integration_immich', 'Alben konnten nicht geladen werden'))
+			showAlbumPicker.value = false
+		} finally {
+			loadingAlbums.value = false
+		}
+	}
+})
+
+async function addToAlbum(albumId) {
+	addingToAlbum.value = true
+	showAlbumPicker.value = false
+	try {
+		const assetIds = [...store.selectedAssetIds]
+		const response = await addAssetsToAlbum(albumId, assetIds)
+		const results = response.data ?? []
+		const succeeded = results.filter(r => r.success).length
+		const failed = results.filter(r => !r.success).length
+
+		if (failed === 0) {
+			showSuccess(t('integration_immich', '{count} Asset(s) zum Album hinzugefügt', { count: succeeded }))
+		} else if (succeeded > 0) {
+			showError(t('integration_immich', '{succeeded} hinzugefügt, {failed} fehlgeschlagen', { succeeded, failed }))
+		} else {
+			showError(t('integration_immich', 'Fehler beim Hinzufügen zum Album'))
+		}
+		store.clearSelection()
+	} catch (e) {
+		showError(t('integration_immich', 'Fehler beim Hinzufügen: {msg}', { msg: e.message }))
+	} finally {
+		addingToAlbum.value = false
+	}
+}
 </script>
 
 <style scoped>
@@ -254,5 +325,37 @@ async function downloadSelected() {
 	flex: 1;
 	min-height: 0;
 	overflow: hidden;
+}
+
+/* Album picker dialog */
+.album-picker {
+	min-width: 300px;
+	min-height: 80px;
+	max-height: 400px;
+	overflow-y: auto;
+	padding: 4px 0;
+}
+
+.album-picker__loading {
+	display: flex;
+	justify-content: center;
+	padding: 24px 0;
+}
+
+.album-picker__empty {
+	padding: 16px;
+	text-align: center;
+	color: var(--color-text-maxcontrast);
+}
+
+.album-picker__item {
+	padding: 12px 16px;
+	cursor: pointer;
+	border-radius: var(--border-radius);
+	font-size: 14px;
+}
+
+.album-picker__item:hover {
+	background-color: var(--color-background-hover);
 }
 </style>

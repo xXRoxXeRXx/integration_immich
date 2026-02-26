@@ -159,6 +159,18 @@ class ImmichService {
         return $this->request('GET', '/albums/' . $id);
     }
 
+    public function createAlbum(string $albumName, array $assetIds = []): array {
+        $body = ['albumName' => $albumName];
+        if (!empty($assetIds)) {
+            $body['assetIds'] = $assetIds;
+        }
+        return $this->request('POST', '/albums', ['body' => $body]);
+    }
+
+    public function addAssetsToAlbum(string $albumId, array $assetIds): array {
+        return $this->request('PUT', '/albums/' . $albumId . '/assets', ['body' => ['ids' => $assetIds]]);
+    }
+
     // ---- People ----
 
     public function getPeople(): array {

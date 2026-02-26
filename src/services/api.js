@@ -19,6 +19,14 @@ export function getAlbum(id) {
 	return axios.get(`${baseUrl}/albums/${id}`)
 }
 
+export function createAlbum(albumName, assetIds = []) {
+	return axios.post(`${baseUrl}/albums/create`, { albumName, assetIds })
+}
+
+export function addAssetsToAlbum(albumId, assetIds) {
+	return axios.post(`${baseUrl}/albums/${albumId}/assets`, { assetIds })
+}
+
 export function getAssetInfo(assetId) {
 	return axios.get(`${baseUrl}/assets/${assetId}`)
 }
