@@ -118,6 +118,12 @@ function formatDate(asset) {
 	padding: 0;
 }
 
+@media (max-width: 480px) {
+	.photo-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
 /* ---- Item ---- */
 .photo-grid__item {
 	position: relative;
