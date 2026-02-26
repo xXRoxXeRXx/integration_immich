@@ -84,7 +84,12 @@ export const useImmichStore = defineStore('immich', {
 					const response = await getTimeline()
 					this.timelineBuckets = Array.isArray(response.data) ? response.data : []
 				}
-				this.filteredBuckets[assetType] = this.timelineBuckets.map(b => ({ ...b }))
+				this.filteredBuckets[assetType] = this.timelineBuckets.map(b => {
+					const copy = { ...b }
+					const loaded = this.filteredAssets[assetType][b.timeBucket]
+					if (loaded) copy.count = loaded.length
+					return copy
+				})
 			} catch (e) {
 				this.error = e.response?.data?.error || e.message
 			} finally {
