@@ -29,11 +29,22 @@
 			ref="scrollContainer"
 			class="timeline-view__scroll"
 			@scroll="onScroll">
-			<!-- Sticky date overlay (works correctly as direct child of the scroll container) -->
+			<!-- Sticky date overlay -->
 			<div class="timeline-view__sticky-date">
-				{{ currentBucketLabel }}
-				<span class="timeline-view__sticky-count">({{ currentBucketCount }})</span>
+				<span class="timeline-view__sticky-label">{{ currentBucketLabel }}</span>
+				<span class="timeline-view__sticky-count">{{ currentBucketCount }}</span>
 			</div>
+			<!-- Scroll-to-top button -->
+			<Transition name="timeline-fab">
+				<button v-if="scrollTop > 600"
+					class="timeline-view__fab"
+					title="Nach oben"
+					@click="scrollToTop">
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
+					</svg>
+				</button>
+			</Transition>
 			<!-- Spacer to create full scrollable height -->
 			<div class="timeline-view__runway" :style="{ height: totalHeight + 'px' }">
 				<!-- Only render buckets in the sliding window -->
@@ -325,6 +336,10 @@ onBeforeUnmount(() => {
 		cancelAnimationFrame(scrollRaf)
 	}
 })
+
+function scrollToTop() {
+	scrollContainer.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
 </script>
 
 <style scoped>
@@ -359,25 +374,81 @@ onBeforeUnmount(() => {
 	padding: 0 16px 0 52px;
 }
 
+/* ---- Sticky date — slim & elegant ---- */
 .timeline-view__sticky-date {
 	position: sticky;
 	top: 0;
 	z-index: 10;
-	padding: 6px 16px 6px 52px;
-	font-size: 18px;
-	font-weight: bold;
-	color: var(--color-main-text);
+	padding: 7px 16px 7px 52px;
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
 	background: var(--color-main-background);
 	pointer-events: none;
+	border-bottom: 1px solid var(--color-border-dark);
+}
+
+.timeline-view__sticky-label {
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	color: var(--color-main-text);
 }
 
 .timeline-view__sticky-count {
-	font-size: 13px;
-	font-weight: normal;
+	font-size: 11px;
+	font-weight: 400;
 	color: var(--color-text-maxcontrast);
-	margin-left: 6px;
+	background: var(--color-background-dark);
+	border-radius: 20px;
+	padding: 1px 7px;
 }
 
+/* ---- Scroll-to-top FAB ---- */
+.timeline-view__fab {
+	all: unset;
+	box-sizing: border-box;
+	position: fixed;
+	bottom: 28px;
+	right: 28px;
+	z-index: 50;
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	background: var(--color-main-background);
+	border: 1px solid var(--color-border);
+	box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	color: var(--color-main-text);
+	transition: box-shadow 0.2s ease, transform 0.2s ease, background 0.15s;
+}
+
+.timeline-view__fab svg {
+	width: 22px;
+	height: 22px;
+	fill: currentColor;
+	display: block;
+}
+
+.timeline-view__fab:hover {
+	box-shadow: 0 6px 24px rgba(0,0,0,0.26);
+	transform: translateY(-2px);
+	background: var(--color-background-hover);
+}
+
+/* FAB enter/leave transition */
+.timeline-fab-enter-active,
+.timeline-fab-leave-active {
+	transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.timeline-fab-enter-from,
+.timeline-fab-leave-to {
+	opacity: 0;
+	transform: translateY(12px);
+}
 
 .timeline-view__bucket-loading {
 	display: flex;

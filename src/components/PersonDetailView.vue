@@ -52,17 +52,18 @@
 				ref="scrollContainer"
 				class="person-detail__scroll"
 				@scroll="onScroll">
+
+				<!-- Sticky date bar — direct child of scroll container so position:sticky works -->
+				<div class="person-detail__sticky-date">
+					<span class="person-detail__sticky-label">{{ currentBucketLabel }}</span>
+					<span v-if="currentBucketCount" class="person-detail__sticky-count">{{ currentBucketCount }}</span>
+				</div>
+
 				<div class="person-detail__runway" :style="{ height: totalHeight + 'px' }">
 					<div v-for="index in windowIndices"
 						:key="store.personBuckets[index].timeBucket"
 						class="person-detail__bucket"
 						:style="{ transform: `translateY(${bucketOffsets[index]}px)` }">
-						<h3 class="person-detail__bucket-header">
-							{{ formatBucketDate(store.personBuckets[index].timeBucket) }}
-							<span class="person-detail__bucket-count">
-								({{ store.personBuckets[index].count }})
-							</span>
-						</h3>
 						<NcLoadingIcon v-if="loadingSet.has(store.personBuckets[index].timeBucket)"
 							:size="32"
 							class="person-detail__bucket-loading" />
@@ -177,6 +178,25 @@ function onScroll() {
 		scrollRaf = null
 	})
 }
+
+// --- Sticky date label (which bucket is at top of viewport) ---
+const currentBucket = computed(() => {
+	if (store.personBuckets.length === 0) return null
+	let idx = 0
+	for (let i = 0; i < bucketOffsets.value.length; i++) {
+		if (bucketOffsets.value[i] <= scrollTop.value) idx = i
+		else break
+	}
+	return store.personBuckets[idx]
+})
+
+const currentBucketLabel = computed(() =>
+	currentBucket.value ? formatBucketDate(currentBucket.value.timeBucket) : ''
+)
+
+const currentBucketCount = computed(() =>
+	currentBucket.value?.count ?? 0
+)
 
 // --- Lazy bucket loading ---
 async function loadBucket(timeBucket) {
@@ -308,6 +328,35 @@ onBeforeUnmount(() => {
 	position: relative;
 }
 
+.person-detail__sticky-date {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	padding: 7px 16px 7px 52px;
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	background: var(--color-main-background);
+	pointer-events: none;
+	border-bottom: 1px solid var(--color-border-dark);
+}
+
+.person-detail__sticky-label {
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	color: var(--color-main-text);
+}
+
+.person-detail__sticky-count {
+	font-size: 11px;
+	font-weight: 400;
+	color: var(--color-text-maxcontrast);
+	background: var(--color-background-dark);
+	border-radius: 20px;
+	padding: 1px 7px;
+}
+
 .person-detail__runway {
 	position: relative;
 	width: 100%;
@@ -319,23 +368,6 @@ onBeforeUnmount(() => {
 	left: 0;
 	right: 0;
 	padding: 0 16px 0 52px;
-}
-
-.person-detail__bucket-header {
-	font-size: 16px;
-	font-weight: bold;
-	margin: 8px 0 4px;
-	color: var(--color-main-text);
-	position: sticky;
-	top: 0;
-	background: var(--color-main-background);
-	z-index: 1;
-}
-
-.person-detail__bucket-count {
-	font-size: 13px;
-	font-weight: normal;
-	color: var(--color-text-maxcontrast);
 }
 
 .person-detail__bucket-loading {
