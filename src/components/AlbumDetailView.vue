@@ -30,6 +30,17 @@
 						{{ t('integration_immich', '{count} Bilder', { count: store.currentAlbum.assets?.length || 0 }) }}
 					</span>
 				</div>
+				<div class="album-detail__actions" v-if="store.isSelectionMode && store.selectedAssetIds.size > 0">
+					<NcButton variant="error"
+						:disabled="removing"
+						@click="removeSelectedFromAlbum">
+						<template #icon>
+							<NcLoadingIcon v-if="removing" :size="20" />
+							<TrashIcon v-else :size="20" />
+						</template>
+						{{ t('integration_immich', '{count} entfernen', { count: store.selectedAssetIds.size }) }}
+					</NcButton>
+				</div>
 			</div>
 
 			<NcEmptyContent v-if="!store.currentAlbum.assets || store.currentAlbum.assets.length === 0"
@@ -49,15 +60,18 @@
 </template>
 
 <script setup>
-import { onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NcButton, NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
+import { showSuccess, showError } from '@nextcloud/dialogs'
 import { useImmichStore } from '../store/immich.js'
+import { removeAssetsFromAlbum } from '../services/api.js'
 import PhotoGrid from './PhotoGrid.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import ArrowLeftIcon from 'vue-material-design-icons/ArrowLeft.vue'
 import ImageIcon from 'vue-material-design-icons/Image.vue'
+import TrashIcon from 'vue-material-design-icons/Delete.vue'
 
 const props = defineProps({
 	id: {
@@ -68,6 +82,7 @@ const props = defineProps({
 
 const store = useImmichStore()
 const router = useRouter()
+const removing = ref(false)
 
 function goBack() {
 	router.push({ name: 'albums' })
@@ -75,6 +90,22 @@ function goBack() {
 
 function loadAlbum() {
 	store.fetchAlbum(props.id)
+}
+
+async function removeSelectedFromAlbum() {
+	if (removing.value || store.selectedAssetIds.size === 0) return
+	removing.value = true
+	try {
+		const assetIds = [...store.selectedAssetIds]
+		await removeAssetsFromAlbum(props.id, assetIds)
+		showSuccess(t('integration_immich', '{count} Asset(s) aus Album entfernt', { count: assetIds.length }))
+		store.clearSelection()
+		await store.fetchAlbum(props.id)
+	} catch (e) {
+		showError(t('integration_immich', 'Fehler beim Entfernen: {msg}', { msg: e.message }))
+	} finally {
+		removing.value = false
+	}
 }
 
 onMounted(() => {
@@ -88,6 +119,9 @@ watch(() => props.id, () => {
 
 <style scoped>
 .album-detail {
+	height: 100%;
+	overflow-y: auto;
+	box-sizing: border-box;
 	padding: 16px 16px 16px 52px;
 }
 
@@ -103,6 +137,10 @@ watch(() => props.id, () => {
 	gap: 16px;
 	margin-bottom: 16px;
 	padding: 0 8px;
+}
+
+.album-detail__title {
+	flex: 1;
 }
 
 .album-detail__title h2 {

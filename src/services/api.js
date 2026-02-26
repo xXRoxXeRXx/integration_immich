@@ -16,7 +16,7 @@ export function getAlbums() {
 }
 
 export function getAlbum(id) {
-	return axios.get(`${baseUrl}/albums/${id}`)
+	return axios.get(`${baseUrl}/albums/${id}/show`)
 }
 
 export function createAlbum(albumName, assetIds = []) {
@@ -24,11 +24,23 @@ export function createAlbum(albumName, assetIds = []) {
 }
 
 export function addAssetsToAlbum(albumId, assetIds) {
-	return axios.post(`${baseUrl}/albums/${albumId}/assets`, { assetIds })
+	return axios.post(`${baseUrl}/albums/${albumId}/assets/add`, { assetIds })
+}
+
+export function deleteAlbum(albumId) {
+	return axios.post(`${baseUrl}/albums/${albumId}/delete`)
+}
+
+export function removeAssetsFromAlbum(albumId, assetIds) {
+	return axios.post(`${baseUrl}/albums/${albumId}/assets/remove`, { assetIds })
 }
 
 export function getAssetInfo(assetId) {
-	return axios.get(`${baseUrl}/assets/${assetId}`)
+	return axios.get(`${baseUrl}/assets/${assetId}/info`)
+}
+
+export function updateAsset(assetId, data) {
+	return axios.post(`${baseUrl}/assets/${assetId}/update`, data)
 }
 
 export function getThumbnailUrl(assetId) {

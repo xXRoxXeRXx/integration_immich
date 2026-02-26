@@ -58,6 +58,9 @@ class AlbumsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return new JSONResponse(['error' => 'Invalid album ID format'], Http::STATUS_BAD_REQUEST);
+        }
 
         try {
             $album = $this->immichService->getAlbum($id);
@@ -94,6 +97,49 @@ class AlbumsController extends Controller {
         try {
             $album = $this->immichService->createAlbum($albumName, $assetIds);
             return new JSONResponse($album, Http::STATUS_CREATED);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function delete(string $id): JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
+        }
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return new JSONResponse(['error' => 'Invalid album ID format'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $this->immichService->deleteAlbum($id);
+            return new JSONResponse(['success' => true]);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function removeAssets(string $id): JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
+        }
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return new JSONResponse(['error' => 'Invalid album ID format'], Http::STATUS_BAD_REQUEST);
+        }
+        $assetIds = $this->request->getParam('assetIds', []);
+        if (!is_array($assetIds) || empty($assetIds)) {
+            return new JSONResponse(['error' => 'assetIds must be a non-empty array'], Http::STATUS_BAD_REQUEST);
+        }
+        foreach ($assetIds as $assetId) {
+            if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', (string)$assetId)) {
+                return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
+            }
+        }
+        try {
+            $result = $this->immichService->removeAssetsFromAlbum($id, $assetIds);
+            return new JSONResponse($result);
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }

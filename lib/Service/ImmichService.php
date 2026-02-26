@@ -64,7 +64,7 @@ class ImmichService {
         }
     }
 
-    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null, ?string $assetType = null): array {
+    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null, ?string $assetType = null, bool $isFavorite = false): array {
         $query = ['size' => $size];
         if ($personId !== null && $personId !== '') {
             $query['personId'] = $personId;
@@ -72,16 +72,22 @@ class ImmichService {
         if ($assetType !== null && $assetType !== '') {
             $query['assetType'] = $assetType;
         }
+        if ($isFavorite) {
+            $query['isFavorite'] = 'true';
+        }
         return $this->request('GET', '/timeline/buckets', ['query' => $query]);
     }
 
-    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null, ?string $assetType = null): array {
+    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null, ?string $assetType = null, bool $isFavorite = false): array {
         $query = ['timeBucket' => $timeBucket, 'size' => $size];
         if ($personId !== null && $personId !== '') {
             $query['personId'] = $personId;
         }
         if ($assetType !== null && $assetType !== '') {
             $query['assetType'] = $assetType;
+        }
+        if ($isFavorite) {
+            $query['isFavorite'] = 'true';
         }
         $raw = $this->request('GET', '/timeline/bucket', ['query' => $query]);
         return $this->transformBucketAssets($raw);
@@ -169,6 +175,18 @@ class ImmichService {
 
     public function addAssetsToAlbum(string $albumId, array $assetIds): array {
         return $this->request('PUT', '/albums/' . $albumId . '/assets', ['body' => ['ids' => $assetIds]]);
+    }
+
+    public function removeAssetsFromAlbum(string $albumId, array $assetIds): array {
+        return $this->request('DELETE', '/albums/' . $albumId . '/assets', ['body' => ['ids' => $assetIds]]);
+    }
+
+    public function deleteAlbum(string $albumId): void {
+        $this->request('DELETE', '/albums/' . $albumId);
+    }
+
+    public function updateAsset(string $id, array $data): array {
+        return $this->request('PUT', '/assets/' . $id, ['body' => $data]);
     }
 
     // ---- People ----

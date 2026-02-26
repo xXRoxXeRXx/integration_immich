@@ -26,6 +26,13 @@
 					<VideoIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
+			<NcAppNavigationItem :name="t('integration_immich', 'Favoriten')"
+				:to="{ name: 'favorites' }"
+				:active="$route.name === 'favorites'">
+				<template #icon>
+					<HeartIcon :size="20" />
+				</template>
+			</NcAppNavigationItem>
 			<NcAppNavigationItem :name="t('integration_immich', 'Alben')"
 				:to="{ name: 'albums' }"
 				:active="$route.name === 'albums' || $route.name === 'album-detail'">
@@ -65,6 +72,7 @@ import { translate as t } from '@nextcloud/l10n'
 import ImageIcon from 'vue-material-design-icons/ImageFrame.vue'
 import PhotosIcon from 'vue-material-design-icons/ImageOutline.vue'
 import VideoIcon from 'vue-material-design-icons/PlayCircleOutline.vue'
+import HeartIcon from 'vue-material-design-icons/HeartOutline.vue'
 import FolderIcon from 'vue-material-design-icons/ViewGalleryOutline.vue'
 import AccountGroupIcon from 'vue-material-design-icons/FaceWomanShimmerOutline.vue'
 import MapIcon from 'vue-material-design-icons/MapOutline.vue'

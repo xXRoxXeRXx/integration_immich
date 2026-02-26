@@ -19,6 +19,10 @@
 			<div v-if="asset.isImage === false" class="photo-grid__video-badge">
 				<VideoIcon :size="16" />
 			</div>
+			<!-- Favorite heart overlay — bottom-left corner -->
+			<div v-if="asset.isFavorite" class="photo-grid__favorite-badge">
+				<HeartIcon :size="14" />
+			</div>
 			<!-- Selection checkbox overlay — visible when in selection mode -->
 			<div v-if="selectable && store.isSelectionMode"
 				class="photo-grid__checkbox"
@@ -34,6 +38,7 @@ import { getThumbnailUrl } from '../services/api.js'
 import { useImmichStore } from '../store/immich.js'
 import VideoIcon from 'vue-material-design-icons/Play.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
+import HeartIcon from 'vue-material-design-icons/Heart.vue'
 
 const props = defineProps({
 	assets: {
@@ -105,6 +110,16 @@ function handleClick(asset, index) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.photo-grid__favorite-badge {
+	position: absolute;
+	bottom: 8px;
+	left: 8px;
+	color: #ff4d6d;
+	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+	pointer-events: none;
+	line-height: 0;
 }
 
 /* Circular checkbox overlay — top-left corner */

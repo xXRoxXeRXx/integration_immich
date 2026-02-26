@@ -13,6 +13,9 @@ export const useImmichStore = defineStore('immich', {
 		// Filtered timelines (keyed by assetType: 'IMAGE' | 'VIDEO')
 		filteredBuckets: { IMAGE: [], VIDEO: [] },
 		filteredAssets: { IMAGE: {}, VIDEO: {} },
+		// Favorites
+		favoriteBuckets: [],
+		favoriteAssets: {},
 		// Albums
 		albums: [],
 		currentAlbum: null,
@@ -116,6 +119,35 @@ export const useImmichStore = defineStore('immich', {
 
 		unloadFilteredBucket(assetType, timeBucket) {
 			delete this.filteredAssets[assetType][timeBucket]
+		},
+
+		// ---- Favorites ----
+
+		async fetchFavoriteBuckets() {
+			this.loading = true
+			this.error = null
+			try {
+				const response = await getTimeline({ isFavorite: true })
+				this.favoriteBuckets = Array.isArray(response.data) ? response.data : []
+			} catch (e) {
+				this.error = e.response?.data?.error || e.message
+			} finally {
+				this.loading = false
+			}
+		},
+
+		async fetchFavoriteBucket(timeBucket) {
+			if (this.favoriteAssets[timeBucket]) return
+			try {
+				const response = await getTimeline({ isFavorite: true, timeBucket })
+				this.favoriteAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
+			} catch (e) {
+				this.error = e.response?.data?.error || e.message
+			}
+		},
+
+		unloadFavoriteBucket(timeBucket) {
+			delete this.favoriteAssets[timeBucket]
 		},
 
 		// ---- Albums ----
@@ -270,6 +302,78 @@ export const useImmichStore = defineStore('immich', {
 		clearSelection() {
 			this.selectedAssetIds = new Set()
 			this.isSelectionMode = false
+		},
+
+		// ---- Asset patching ----
+
+		// Update isFavorite in-place across ALL loaded caches so the UI reflects
+		// the change immediately without a full reload.
+		patchAssetFavorite(ids, isFavorite) {
+			const idSet = new Set(ids)
+
+			const patchList = (list) => {
+				for (let i = 0; i < list.length; i++) {
+					if (idSet.has(list[i].id)) {
+						list[i] = { ...list[i], isFavorite }
+					}
+				}
+			}
+
+			// Timeline
+			for (const key of Object.keys(this.timelineAssets)) {
+				patchList(this.timelineAssets[key])
+			}
+			// Filtered (Fotos / Videos)
+			for (const cache of Object.values(this.filteredAssets)) {
+				for (const key of Object.keys(cache)) {
+					patchList(cache[key])
+				}
+			}
+			// Favorites
+			for (const key of Object.keys(this.favoriteAssets)) {
+				patchList(this.favoriteAssets[key])
+			}
+			// Person detail
+			for (const key of Object.keys(this.personBucketAssets)) {
+				patchList(this.personBucketAssets[key])
+			}
+			// Album detail
+			if (this.currentAlbum?.assets) {
+				patchList(this.currentAlbum.assets)
+			}
+			// Lightbox assets
+			patchList(this.lightbox.assets)
+		},
+	},
+
+	getters: {
+		// Flat map of all currently loaded assets (id → asset object) across all caches.
+		// Used to check isFavorite status of selected assets without extra API calls.
+		allLoadedAssetsMap(state) {
+			const map = {}
+			// Timeline
+			for (const assets of Object.values(state.timelineAssets)) {
+				for (const a of assets) map[a.id] = a
+			}
+			// Filtered (photos / videos)
+			for (const cache of Object.values(state.filteredAssets)) {
+				for (const assets of Object.values(cache)) {
+					for (const a of assets) map[a.id] = a
+				}
+			}
+			// Favorites
+			for (const assets of Object.values(state.favoriteAssets)) {
+				for (const a of assets) map[a.id] = a
+			}
+			// Person detail
+			for (const assets of Object.values(state.personBucketAssets)) {
+				for (const a of assets) map[a.id] = a
+			}
+			// Album detail
+			if (state.currentAlbum?.assets) {
+				for (const a of state.currentAlbum.assets) map[a.id] = a
+			}
+			return map
 		},
 	},
 })

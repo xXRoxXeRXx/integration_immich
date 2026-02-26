@@ -58,6 +58,11 @@
 							{{ t('integration_immich', '{count} Bilder', { count: album.assetCount || 0 }) }}
 						</span>
 					</div>
+					<button class="albums-view__delete-btn"
+						:title="t('integration_immich', 'Album löschen')"
+						@click.stop="confirmDelete(album)">
+						<TrashIcon :size="18" />
+					</button>
 				</div>
 			</div>
 		</template>
@@ -87,6 +92,29 @@
 				</NcButton>
 			</template>
 		</NcDialog>
+
+		<!-- Delete Confirmation Dialog -->
+		<NcDialog v-if="albumToDelete"
+			:name="t('integration_immich', 'Album löschen')"
+			@closing="albumToDelete = null">
+			<p style="padding: 8px 0">
+				{{ t('integration_immich', 'Album „{name}" wirklich löschen?', { name: albumToDelete.albumName }) }}
+			</p>
+			<template #actions>
+				<NcButton variant="tertiary" @click="albumToDelete = null">
+					{{ t('integration_immich', 'Abbrechen') }}
+				</NcButton>
+				<NcButton variant="error"
+					:disabled="deleting"
+					@click="deleteAlbumConfirmed">
+					<template #icon>
+						<NcLoadingIcon v-if="deleting" :size="20" />
+						<TrashIcon v-else :size="20" />
+					</template>
+					{{ t('integration_immich', 'Löschen') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
@@ -97,10 +125,11 @@ import { NcEmptyContent, NcLoadingIcon, NcButton, NcDialog, NcTextField } from '
 import { translate as t } from '@nextcloud/l10n'
 import { showSuccess, showError } from '@nextcloud/dialogs'
 import { useImmichStore } from '../store/immich.js'
-import { getAlbumThumbnailUrl, createAlbum as apiCreateAlbum } from '../services/api.js'
+import { getAlbumThumbnailUrl, createAlbum as apiCreateAlbum, deleteAlbum as apiDeleteAlbum } from '../services/api.js'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import FolderIcon from 'vue-material-design-icons/FolderMultipleImage.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
+import TrashIcon from 'vue-material-design-icons/Delete.vue'
 
 const store = useImmichStore()
 const router = useRouter()
@@ -108,6 +137,8 @@ const router = useRouter()
 const showCreateDialog = ref(false)
 const newAlbumName = ref('')
 const creating = ref(false)
+const albumToDelete = ref(null)
+const deleting = ref(false)
 
 function openAlbum(id) {
 	router.push({ name: 'album-detail', params: { id } })
@@ -129,6 +160,25 @@ async function createAlbum() {
 	}
 }
 
+function confirmDelete(album) {
+	albumToDelete.value = album
+}
+
+async function deleteAlbumConfirmed() {
+	if (!albumToDelete.value || deleting.value) return
+	deleting.value = true
+	try {
+		await apiDeleteAlbum(albumToDelete.value.id)
+		showSuccess(t('integration_immich', 'Album gelöscht'))
+		albumToDelete.value = null
+		await store.fetchAlbums()
+	} catch (e) {
+		showError(t('integration_immich', 'Fehler beim Löschen: {msg}', { msg: e.message }))
+	} finally {
+		deleting.value = false
+	}
+}
+
 onMounted(() => {
 	store.fetchAlbums()
 })
@@ -139,6 +189,7 @@ onMounted(() => {
 	height: 100%;
 	overflow-y: auto;
 	padding: 16px 16px 16px 52px;
+	box-sizing: border-box;
 }
 
 .albums-view__loading {
@@ -166,10 +217,39 @@ onMounted(() => {
 	overflow: hidden;
 	background-color: var(--color-background-dark);
 	transition: box-shadow 0.2s ease;
+	position: relative;
 }
 
 .albums-view__item:hover {
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.albums-view__item:hover .albums-view__delete-btn {
+	opacity: 1;
+}
+
+.albums-view__delete-btn {
+	all: unset;
+	box-sizing: border-box;
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	width: 32px;
+	height: 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: rgba(0, 0, 0, 0.55);
+	color: #fff;
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 0.15s, background 0.15s;
+	z-index: 2;
+}
+
+.albums-view__delete-btn:hover {
+	background: rgba(var(--color-error-rgb, 211, 47, 47), 0.85);
 }
 
 .albums-view__cover {

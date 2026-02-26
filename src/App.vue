@@ -55,6 +55,18 @@
 								</template>
 								{{ t('integration_immich', 'Zu Album hinzufügen') }}
 							</NcButton>
+							<NcButton variant="secondary"
+								:disabled="store.selectedAssetIds.size === 0 || togglingFavorite"
+								@click="toggleFavoritesSelection">
+								<template #icon>
+									<NcLoadingIcon v-if="togglingFavorite" :size="20" />
+									<HeartIcon v-else-if="selectedAllFavorited" :size="20" />
+									<HeartOutlineIcon v-else :size="20" />
+								</template>
+								{{ selectedAllFavorited
+									? t('integration_immich', 'Aus Favoriten entfernen')
+									: t('integration_immich', 'Zu Favoriten') }}
+							</NcButton>
 							<NcButton variant="tertiary" @click="store.clearSelection()">
 								{{ t('integration_immich', 'Abbrechen') }}
 							</NcButton>
@@ -95,27 +107,42 @@ import { NcContent, NcAppContent, NcButton, NcLoadingIcon, NcDialog } from '@nex
 import { translate as t } from '@nextcloud/l10n'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { useImmichStore } from './store/immich.js'
-import { saveAssetsToNextcloud, downloadAssets, addAssetsToAlbum, getAlbums } from './services/api.js'
+import { saveAssetsToNextcloud, downloadAssets, addAssetsToAlbum, getAlbums, updateAsset } from './services/api.js'
 import Navigation from './components/Navigation.vue'
 import LightboxView from './components/LightboxView.vue'
 import CheckboxMultipleOutlineIcon from 'vue-material-design-icons/CheckboxMultipleOutline.vue'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import DownloadIcon from 'vue-material-design-icons/Download.vue'
 import FolderPlusIcon from 'vue-material-design-icons/FolderPlus.vue'
+import HeartOutlineIcon from 'vue-material-design-icons/HeartOutline.vue'
+import HeartIcon from 'vue-material-design-icons/Heart.vue'
 
 const route = useRoute()
 const store = useImmichStore()
 const saving = ref(false)
 const downloading = ref(false)
 const addingToAlbum = ref(false)
+const togglingFavorite = ref(false)
 const showAlbumPicker = ref(false)
 const albums = ref([])
 const loadingAlbums = ref(false)
+
+// True when ALL selected assets are already favorited → show "remove" action
+const selectedAllFavorited = computed(() => {
+	if (store.selectedAssetIds.size === 0) return false
+	const map = store.allLoadedAssetsMap
+	for (const id of store.selectedAssetIds) {
+		const asset = map[id]
+		if (!asset || !asset.isFavorite) return false
+	}
+	return true
+})
 
 const pageTitles = {
 	'timeline': t('integration_immich', 'Alle Medien'),
 	'photos': t('integration_immich', 'Fotos'),
 	'videos': t('integration_immich', 'Videos'),
+	'favorites': t('integration_immich', 'Favoriten'),
 	'albums': t('integration_immich', 'Alben'),
 	'album-detail': t('integration_immich', 'Alben'),
 	'people': t('integration_immich', 'Personen'),
@@ -126,7 +153,7 @@ const pageTitles = {
 }
 
 // Views that contain individual selectable assets (photos/videos)
-const photoViews = new Set(['timeline', 'photos', 'videos', 'album-detail', 'person-detail', 'place-detail'])
+const photoViews = new Set(['timeline', 'photos', 'videos', 'favorites', 'album-detail', 'person-detail', 'place-detail'])
 
 const pageTitle = computed(() => pageTitles[route.name] ?? 'Immich')
 const isPhotoView = computed(() => photoViews.has(route.name))
@@ -255,6 +282,38 @@ async function addToAlbum(albumId) {
 		addingToAlbum.value = false
 	}
 }
+
+async function toggleFavoritesSelection() {
+	if (store.selectedAssetIds.size === 0) return
+	const removing = selectedAllFavorited.value
+	togglingFavorite.value = true
+	try {
+		const assetIds = [...store.selectedAssetIds]
+		await Promise.all(assetIds.map(id => updateAsset(id, { isFavorite: !removing })))
+		// Patch isFavorite in all loaded caches immediately so the UI updates
+		store.patchAssetFavorite(assetIds, !removing)
+		if (removing) {
+			showSuccess(
+				t('integration_immich', '{count} Asset(s) aus Favoriten entfernt', { count: assetIds.length }),
+			)
+		} else {
+			showSuccess(
+				t('integration_immich', '{count} Asset(s) zu Favoriten hinzugefügt', { count: assetIds.length }),
+			)
+		}
+		// Invalidate favorites cache and immediately reload if currently on favorites view
+		store.favoriteBuckets = []
+		store.favoriteAssets = {}
+		if (route.name === 'favorites') {
+			await store.fetchFavoriteBuckets()
+		}
+		store.clearSelection()
+	} catch (e) {
+		showError(t('integration_immich', 'Fehler beim Ändern der Favoriten: {msg}', { msg: e.message }))
+	} finally {
+		togglingFavorite.value = false
+	}
+}
 </script>
 
 <style scoped>
@@ -325,6 +384,14 @@ async function addToAlbum(albumId) {
 	flex: 1;
 	min-height: 0;
 	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+/* Make router-view children fill the view-page */
+.view-page > :deep(*) {
+	flex: 1;
+	min-height: 0;
 }
 
 /* Album picker dialog */

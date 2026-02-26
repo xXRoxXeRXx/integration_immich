@@ -68,17 +68,22 @@ import ImageIcon from 'vue-material-design-icons/Image.vue'
 
 const props = defineProps({
 	assetType: { type: String, default: null },
+	isFavorite: { type: Boolean, default: false },
 })
 
 const store = useImmichStore()
 
-// Point to the right store state based on assetType prop
-const buckets = computed(() =>
-	props.assetType ? store.filteredBuckets[props.assetType] : store.timelineBuckets,
-)
-const assetsCache = computed(() =>
-	props.assetType ? store.filteredAssets[props.assetType] : store.timelineAssets,
-)
+// Point to the right store state based on assetType / isFavorite prop
+const buckets = computed(() => {
+	if (props.isFavorite) return store.favoriteBuckets
+	if (props.assetType) return store.filteredBuckets[props.assetType]
+	return store.timelineBuckets
+})
+const assetsCache = computed(() => {
+	if (props.isFavorite) return store.favoriteAssets
+	if (props.assetType) return store.filteredAssets[props.assetType]
+	return store.timelineAssets
+})
 
 // --- Constants ---
 const HEADER_HEIGHT = 0
@@ -161,9 +166,11 @@ function onScroll() {
 	})
 }
 
-// --- Fetch/unload helpers depending on assetType ---
+// --- Fetch/unload helpers depending on assetType / isFavorite ---
 async function fetchBuckets() {
-	if (props.assetType) {
+	if (props.isFavorite) {
+		await store.fetchFavoriteBuckets()
+	} else if (props.assetType) {
 		await store.fetchFilteredBuckets(props.assetType)
 	} else {
 		await store.fetchTimelineBuckets()
@@ -171,7 +178,9 @@ async function fetchBuckets() {
 }
 
 async function fetchBucket(timeBucket) {
-	if (props.assetType) {
+	if (props.isFavorite) {
+		await store.fetchFavoriteBucket(timeBucket)
+	} else if (props.assetType) {
 		await store.fetchFilteredBucket(props.assetType, timeBucket)
 	} else {
 		await store.fetchTimelineBucket(timeBucket)
@@ -179,7 +188,9 @@ async function fetchBucket(timeBucket) {
 }
 
 function unloadBucket(timeBucket) {
-	if (props.assetType) {
+	if (props.isFavorite) {
+		store.unloadFavoriteBucket(timeBucket)
+	} else if (props.assetType) {
 		store.unloadFilteredBucket(props.assetType, timeBucket)
 	} else {
 		store.unloadTimelineBucket(timeBucket)
@@ -288,9 +299,9 @@ onMounted(async () => {
 	await fetchBuckets()
 })
 
-// When navigating between timeline / photos / videos, Vue Router reuses this
-// component instance — onMounted does NOT fire again. Watch the prop instead.
-watch(() => props.assetType, async () => {
+// When navigating between timeline / photos / videos / favorites, Vue Router reuses this
+// component instance — onMounted does NOT fire again. Watch the props instead.
+watch([() => props.assetType, () => props.isFavorite], async () => {
 	scrollTop.value = 0
 	loadingSet.value = new Set()
 	pendingQueue.length = 0
@@ -299,6 +310,14 @@ watch(() => props.assetType, async () => {
 		scrollContainer.value.scrollTop = 0
 	}
 	await fetchBuckets()
+})
+
+// When favorites are mutated externally (e.g. removed via toolbar), re-trigger
+// the window watcher by resetting scroll — buckets ref already changed reactively.
+watch(() => props.isFavorite && store.favoriteBuckets.length, (newLen, oldLen) => {
+	if (props.isFavorite && newLen !== oldLen) {
+		loadingSet.value = new Set()
+	}
 })
 
 onBeforeUnmount(() => {

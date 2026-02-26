@@ -48,9 +48,11 @@ class AssetsController extends Controller {
             $size = $this->request->getParam('size', 'MONTH');
             $personId = $this->request->getParam('personId');
             $assetType = $this->request->getParam('assetType');
+            $isFavoriteParam = $this->request->getParam('isFavorite');
+            $isFavorite = $isFavoriteParam === 'true';
 
             if ($timeBucket) {
-                $data = $this->immichService->getTimelineBucket($timeBucket, $size, $personId);
+                $data = $this->immichService->getTimelineBucket($timeBucket, $size, $personId, null, $isFavorite);
                 // Immich timeline/bucket does not support assetType filtering.
                 // Immich returns isImage (bool) instead of a type field — filter in PHP.
                 if ($assetType === 'IMAGE') {
@@ -65,7 +67,7 @@ class AssetsController extends Controller {
                     ));
                 }
             } else {
-                $data = $this->immichService->getTimelineBuckets($size, $personId);
+                $data = $this->immichService->getTimelineBuckets($size, $personId, null, $isFavorite);
             }
 
             return new JSONResponse($data);
@@ -95,6 +97,28 @@ class AssetsController extends Controller {
                 ['error' => $e->getMessage()],
                 Http::STATUS_INTERNAL_SERVER_ERROR
             );
+        }
+    }
+
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function update(string $id): JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
+        }
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
+        }
+        $allowed = ['isFavorite', 'isArchived', 'description'];
+        $data = array_intersect_key($this->request->getParams(), array_flip($allowed));
+        if (empty($data)) {
+            return new JSONResponse(['error' => 'No valid fields provided'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $result = $this->immichService->updateAsset($id, $data);
+            return new JSONResponse($result);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
