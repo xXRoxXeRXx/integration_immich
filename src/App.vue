@@ -47,7 +47,18 @@
 								</template>
 								{{ t('integration_immich', 'Herunterladen') }}
 							</NcButton>
-							<NcButton variant="secondary"
+							<NcButton v-if="isAlbumDetailView"
+								variant="error"
+								:disabled="store.selectedAssetIds.size === 0 || removingFromAlbum"
+								@click="removeFromCurrentAlbum">
+								<template #icon>
+									<NcLoadingIcon v-if="removingFromAlbum" :size="20" />
+									<FolderRemoveIcon v-else :size="20" />
+								</template>
+								{{ t('integration_immich', 'Aus Album entfernen') }}
+							</NcButton>
+							<NcButton v-else
+								variant="secondary"
 								:disabled="store.selectedAssetIds.size === 0 || addingToAlbum || showAlbumPicker"
 								@click="showAlbumPicker = true">
 								<template #icon>
@@ -107,13 +118,14 @@ import { NcContent, NcAppContent, NcButton, NcLoadingIcon, NcDialog } from '@nex
 import { translate as t } from '@nextcloud/l10n'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { useImmichStore } from './store/immich.js'
-import { saveAssetsToNextcloud, downloadAssets, addAssetsToAlbum, getAlbums, updateAsset } from './services/api.js'
+import { saveAssetsToNextcloud, downloadAssets, addAssetsToAlbum, removeAssetsFromAlbum, getAlbums, updateAsset } from './services/api.js'
 import Navigation from './components/Navigation.vue'
 import LightboxView from './components/LightboxView.vue'
 import CheckboxMultipleOutlineIcon from 'vue-material-design-icons/CheckboxMultipleOutline.vue'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import DownloadIcon from 'vue-material-design-icons/Download.vue'
 import FolderPlusIcon from 'vue-material-design-icons/FolderPlus.vue'
+import FolderRemoveIcon from 'vue-material-design-icons/FolderMinus.vue'
 import HeartOutlineIcon from 'vue-material-design-icons/HeartOutline.vue'
 import HeartIcon from 'vue-material-design-icons/Heart.vue'
 
@@ -122,6 +134,7 @@ const store = useImmichStore()
 const saving = ref(false)
 const downloading = ref(false)
 const addingToAlbum = ref(false)
+const removingFromAlbum = ref(false)
 const togglingFavorite = ref(false)
 const showAlbumPicker = ref(false)
 const albums = ref([])
@@ -137,6 +150,9 @@ const selectedAllFavorited = computed(() => {
 	}
 	return true
 })
+
+// True when we are inside an album detail view → album button becomes "remove"
+const isAlbumDetailView = computed(() => route.name === 'album-detail')
 
 const pageTitles = {
 	'timeline': t('integration_immich', 'Alle Medien'),
@@ -280,6 +296,33 @@ async function addToAlbum(albumId) {
 		showError(t('integration_immich', 'Fehler beim Hinzufügen: {msg}', { msg: e.message }))
 	} finally {
 		addingToAlbum.value = false
+	}
+}
+
+async function removeFromCurrentAlbum() {
+	if (store.selectedAssetIds.size === 0 || removingFromAlbum.value) return
+	const albumId = route.params.id
+	if (!albumId) return
+	removingFromAlbum.value = true
+	try {
+		const assetIds = [...store.selectedAssetIds]
+		const response = await removeAssetsFromAlbum(albumId, assetIds)
+		const results = response.data ?? []
+		const succeeded = results.filter(r => r.success !== false).length
+		const failed = results.length - succeeded
+		if (failed === 0) {
+			showSuccess(t('integration_immich', '{count} Asset(s) aus Album entfernt', { count: succeeded }))
+		} else if (succeeded > 0) {
+			showError(t('integration_immich', '{succeeded} entfernt, {failed} fehlgeschlagen', { succeeded, failed }))
+		} else {
+			showError(t('integration_immich', 'Fehler beim Entfernen aus Album'))
+		}
+		store.clearSelection()
+		await store.fetchAlbum(albumId)
+	} catch (e) {
+		showError(t('integration_immich', 'Fehler beim Entfernen: {msg}', { msg: e.message }))
+	} finally {
+		removingFromAlbum.value = false
 	}
 }
 
