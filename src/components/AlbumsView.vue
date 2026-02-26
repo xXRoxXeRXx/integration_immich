@@ -65,7 +65,7 @@
 		<!-- Create Album Dialog -->
 		<NcDialog v-if="showCreateDialog"
 			:name="t('integration_immich', 'Album erstellen')"
-			@closing="showCreateDialog = false">
+			@closing="showCreateDialog = false; newAlbumName = ''">
 			<div class="albums-view__dialog-body">
 				<NcTextField :label="t('integration_immich', 'Albumname')"
 					v-model="newAlbumName"
