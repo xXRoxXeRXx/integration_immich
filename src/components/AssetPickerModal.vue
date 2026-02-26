@@ -48,13 +48,26 @@
 								<div v-for="asset in assetsCache[buckets[index].timeBucket]"
 									:key="asset.id"
 									class="asset-picker-modal__item"
-									:class="{ 'asset-picker-modal__item--selected': selectedIds.has(asset.id) }"
+									:class="{
+										'asset-picker-modal__item--selected': selectedIds.has(asset.id),
+										'asset-picker-modal__item--existing': existingAssetIds.has(asset.id),
+									}"
 									@click="toggleAsset(asset.id)">
 									<img :src="getThumbnailUrl(asset.id)"
 										:alt="asset.originalFileName || ''"
 										loading="lazy"
 										class="asset-picker-modal__image">
-									<div class="asset-picker-modal__checkbox"
+									<!-- Video badge -->
+									<div v-if="asset.isImage === false" class="asset-picker-modal__video-badge">
+										<PlayIcon :size="16" />
+									</div>
+									<!-- Already in album badge -->
+									<div v-if="existingAssetIds.has(asset.id)" class="asset-picker-modal__existing-badge">
+										<CheckAllIcon :size="14" />
+									</div>
+									<!-- Selection checkbox -->
+									<div v-else
+										class="asset-picker-modal__checkbox"
 										:class="{ 'asset-picker-modal__checkbox--checked': selectedIds.has(asset.id) }">
 										<CheckIcon v-if="selectedIds.has(asset.id)" :size="14" />
 									</div>
@@ -94,10 +107,13 @@ import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { getTimeline, getThumbnailUrl } from '../services/api.js'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
+import CheckAllIcon from 'vue-material-design-icons/CheckAll.vue'
+import PlayIcon from 'vue-material-design-icons/Play.vue'
 
 const props = defineProps({
 	albumName: { type: String, required: true },
 	creating: { type: Boolean, default: false },
+	existingAssetIds: { type: Object, default: () => new Set() },
 })
 
 defineEmits(['confirm', 'cancel'])
@@ -106,6 +122,7 @@ defineEmits(['confirm', 'cancel'])
 const selectedIds = ref(new Set())
 
 function toggleAsset(id) {
+	if (props.existingAssetIds.has(id)) return  // already in album, not selectable
 	const next = new Set(selectedIds.value)
 	if (next.has(id)) {
 		next.delete(id)
@@ -414,6 +431,38 @@ onBeforeUnmount(() => {
 .asset-picker-modal__checkbox--checked {
 	background: var(--color-primary);
 	border-color: var(--color-primary);
+}
+
+.asset-picker-modal__item--existing {
+	opacity: 0.55;
+	cursor: default;
+}
+
+.asset-picker-modal__existing-badge {
+	position: absolute;
+	top: 5px;
+	left: 5px;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: var(--color-success);
+	border: 2px solid var(--color-success);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #fff;
+}
+
+.asset-picker-modal__video-badge {
+	position: absolute;
+	bottom: 6px;
+	right: 6px;
+	background: rgba(0, 0, 0, 0.6);
+	border-radius: 3px;
+	padding: 2px 4px;
+	color: #fff;
+	display: flex;
+	align-items: center;
 }
 
 .asset-picker-modal__footer {

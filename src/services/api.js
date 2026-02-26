@@ -31,6 +31,10 @@ export function deleteAlbum(albumId) {
 	return axios.post(`${baseUrl}/albums/${albumId}/delete`)
 }
 
+export function renameAlbum(albumId, albumName) {
+	return axios.post(`${baseUrl}/albums/${albumId}/rename`, { albumName })
+}
+
 export function removeAssetsFromAlbum(albumId, assetIds) {
 	return axios.post(`${baseUrl}/albums/${albumId}/assets/remove`, { assetIds })
 }

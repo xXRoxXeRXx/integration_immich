@@ -36,6 +36,7 @@ return [
         ['name' => 'albums#delete',       'url' => '/api/v1/albums/{id}/delete',             'verb' => 'POST'],
         ['name' => 'albums#addAssets',    'url' => '/api/v1/albums/{id}/assets/add',         'verb' => 'POST'],
         ['name' => 'albums#removeAssets', 'url' => '/api/v1/albums/{id}/assets/remove',      'verb' => 'POST'],
+        ['name' => 'albums#rename',       'url' => '/api/v1/albums/{id}/rename',             'verb' => 'POST'],
         ['name' => 'albums#thumbnail',    'url' => '/api/v1/albums/{id}/thumbnail',          'verb' => 'GET'],
 
         // People / Personen

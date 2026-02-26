@@ -121,6 +121,27 @@ class AlbumsController extends Controller {
 
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    public function rename(string $id): JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
+        }
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return new JSONResponse(['error' => 'Invalid album ID format'], Http::STATUS_BAD_REQUEST);
+        }
+        $albumName = trim($this->request->getParam('albumName', ''));
+        if ($albumName === '') {
+            return new JSONResponse(['error' => 'albumName is required'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $album = $this->immichService->renameAlbum($id, $albumName);
+            return new JSONResponse($album);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function removeAssets(string $id): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);

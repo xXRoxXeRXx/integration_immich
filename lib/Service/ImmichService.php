@@ -185,6 +185,10 @@ class ImmichService {
         $this->request('DELETE', '/albums/' . $albumId);
     }
 
+    public function renameAlbum(string $albumId, string $albumName): array {
+        return $this->request('PATCH', '/albums/' . $albumId, ['body' => ['albumName' => $albumName]]);
+    }
+
     public function updateAsset(string $id, array $data): array {
         return $this->request('PUT', '/assets/' . $id, ['body' => $data]);
     }
@@ -344,6 +348,7 @@ class ImmichService {
                 'GET' => $client->get($url, $requestOptions),
                 'POST' => $client->post($url, $requestOptions),
                 'PUT' => $client->put($url, $requestOptions),
+                'PATCH' => $client->patch($url, $requestOptions),
                 'DELETE' => $client->delete($url, $requestOptions),
                 default => throw new \InvalidArgumentException('Unsupported HTTP method: ' . $method),
             };
