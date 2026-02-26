@@ -30,13 +30,29 @@
 						{{ t('integration_immich', '{count} Bilder', { count: store.currentAlbum.assets?.length || 0 }) }}
 					</span>
 				</div>
+				<NcButton v-if="store.currentAlbum.assets && store.currentAlbum.assets.length > 0"
+					variant="secondary"
+					@click="showPicker = true">
+					<template #icon>
+						<ImagePlusIcon :size="20" />
+					</template>
+					{{ t('integration_immich', 'Bilder hinzufügen') }}
+				</NcButton>
 			</div>
 
 			<NcEmptyContent v-if="!store.currentAlbum.assets || store.currentAlbum.assets.length === 0"
 				:name="t('integration_immich', 'Album leer')"
-				:description="t('integration_immich', 'Dieses Album enthält keine Bilder.')">
+				:description="t('integration_immich', 'Dieses Album enthält noch keine Bilder.')">
 				<template #icon>
 					<ImageIcon :size="64" />
+				</template>
+				<template #action>
+					<NcButton variant="primary" @click="showPicker = true">
+						<template #icon>
+							<ImagePlusIcon :size="20" />
+						</template>
+						{{ t('integration_immich', 'Bilder hinzufügen') }}
+					</NcButton>
 				</template>
 			</NcEmptyContent>
 
@@ -44,20 +60,31 @@
 				:assets="store.currentAlbum.assets"
 				:selectable="true"
 				@click="(asset, idx) => store.openLightbox(store.currentAlbum.assets, idx)" />
+
+			<!-- Asset Picker Overlay für "Bilder hinzufügen" -->
+			<AssetPickerModal v-if="showPicker"
+				:album-name="store.currentAlbum.albumName"
+				:creating="addingAssets"
+				@confirm="addAssetsToAlbum"
+				@cancel="showPicker = false" />
 		</template>
 	</div>
 </template>
 
 <script setup>
-import { onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NcButton, NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
+import { showSuccess, showError } from '@nextcloud/dialogs'
 import { useImmichStore } from '../store/immich.js'
+import { addAssetsToAlbum as apiAddAssetsToAlbum } from '../services/api.js'
 import PhotoGrid from './PhotoGrid.vue'
+import AssetPickerModal from './AssetPickerModal.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import ArrowLeftIcon from 'vue-material-design-icons/ArrowLeft.vue'
 import ImageIcon from 'vue-material-design-icons/Image.vue'
+import ImagePlusIcon from 'vue-material-design-icons/ImagePlus.vue'
 
 const props = defineProps({
 	id: {
@@ -68,6 +95,8 @@ const props = defineProps({
 
 const store = useImmichStore()
 const router = useRouter()
+const showPicker = ref(false)
+const addingAssets = ref(false)
 
 function goBack() {
 	router.push({ name: 'albums' })
@@ -75,6 +104,33 @@ function goBack() {
 
 function loadAlbum() {
 	store.fetchAlbum(props.id)
+}
+
+async function addAssetsToAlbum(assetIds) {
+	if (!assetIds.length) {
+		showPicker.value = false
+		return
+	}
+	addingAssets.value = true
+	try {
+		const response = await apiAddAssetsToAlbum(props.id, assetIds)
+		const results = response.data ?? []
+		const succeeded = results.filter(r => r.success !== false).length
+		const failed = results.length - succeeded
+		showPicker.value = false
+		if (failed === 0) {
+			showSuccess(t('integration_immich', '{count} Bilder zum Album hinzugefügt', { count: succeeded }))
+		} else if (succeeded > 0) {
+			showError(t('integration_immich', '{succeeded} hinzugefügt, {failed} fehlgeschlagen', { succeeded, failed }))
+		} else {
+			showError(t('integration_immich', 'Fehler beim Hinzufügen zum Album'))
+		}
+		await store.fetchAlbum(props.id)
+	} catch (e) {
+		showError(t('integration_immich', 'Fehler beim Hinzufügen: {msg}', { msg: e.message }))
+	} finally {
+		addingAssets.value = false
+	}
 }
 
 onMounted(() => {

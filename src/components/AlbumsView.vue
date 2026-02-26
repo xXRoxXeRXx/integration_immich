@@ -81,9 +81,17 @@
 				<NcButton variant="tertiary" @click="showCreateDialog = false">
 					{{ t('integration_immich', 'Abbrechen') }}
 				</NcButton>
+				<NcButton variant="secondary"
+					:disabled="!newAlbumName.trim() || creating"
+					@click="openAssetPicker">
+					<template #icon>
+						<ImagePlusIcon :size="20" />
+					</template>
+					{{ t('integration_immich', 'Bilder auswählen') }}
+				</NcButton>
 				<NcButton variant="primary"
 					:disabled="!newAlbumName.trim() || creating"
-					@click="createAlbum">
+					@click="createAlbum()">
 					<template #icon>
 						<NcLoadingIcon v-if="creating" :size="20" />
 						<PlusIcon v-else :size="20" />
@@ -92,6 +100,13 @@
 				</NcButton>
 			</template>
 		</NcDialog>
+
+		<!-- Asset Picker Overlay -->
+		<AssetPickerModal v-if="showAssetPicker"
+			:album-name="newAlbumName"
+			:creating="creating"
+			@confirm="createAlbum"
+			@cancel="showAssetPicker = false" />
 
 		<!-- Delete Confirmation Dialog -->
 		<NcDialog v-if="albumToDelete"
@@ -130,11 +145,14 @@ import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import FolderIcon from 'vue-material-design-icons/FolderMultipleImage.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import TrashIcon from 'vue-material-design-icons/Delete.vue'
+import ImagePlusIcon from 'vue-material-design-icons/ImagePlus.vue'
+import AssetPickerModal from './AssetPickerModal.vue'
 
 const store = useImmichStore()
 const router = useRouter()
 
 const showCreateDialog = ref(false)
+const showAssetPicker = ref(false)
 const newAlbumName = ref('')
 const creating = ref(false)
 const albumToDelete = ref(null)
@@ -144,21 +162,32 @@ function openAlbum(id) {
 	router.push({ name: 'album-detail', params: { id } })
 }
 
-async function createAlbum() {
+function openAssetPicker() {
+	if (!newAlbumName.value.trim()) return
+	showCreateDialog.value = false
+	showAssetPicker.value = true
+}
+
+async function createAlbum(assetIds = []) {
 	if (!newAlbumName.value.trim() || creating.value) return
 	creating.value = true
 	try {
-		await apiCreateAlbum(newAlbumName.value.trim())
-		showSuccess(t('integration_immich', 'Album "{name}" erstellt', { name: newAlbumName.value.trim() }))
+		const response = await apiCreateAlbum(newAlbumName.value.trim(), assetIds)
+		const newAlbum = response.data
 		newAlbumName.value = ''
 		showCreateDialog.value = false
+		showAssetPicker.value = false
 		await store.fetchAlbums()
+		if (newAlbum?.id) {
+			router.push({ name: 'album-detail', params: { id: newAlbum.id } })
+		}
 	} catch (e) {
 		showError(t('integration_immich', 'Fehler beim Erstellen: {msg}', { msg: e.message }))
 	} finally {
 		creating.value = false
 	}
 }
+
 
 function confirmDelete(album) {
 	albumToDelete.value = album

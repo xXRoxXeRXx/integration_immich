@@ -129,8 +129,8 @@ import FolderRemoveIcon from 'vue-material-design-icons/FolderMinus.vue'
 import HeartOutlineIcon from 'vue-material-design-icons/HeartOutline.vue'
 import HeartIcon from 'vue-material-design-icons/Heart.vue'
 
-const route = useRoute()
 const store = useImmichStore()
+const route = useRoute()
 const saving = ref(false)
 const downloading = ref(false)
 const addingToAlbum = ref(false)
