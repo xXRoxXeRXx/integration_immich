@@ -69,7 +69,7 @@
 						:class="{ 'ic-lb-btn--active': showAlbumPanel }"
 						title="Zu Album hinzufügen"
 						:disabled="addingToAlbum"
-						@click.stop="showAlbumPanel ? showAlbumPanel = false : openAlbumPanel()"
+						@click.stop="toggleAlbumPanel()"
 					>
 						<svg v-if="!addingToAlbum" viewBox="0 0 24 24" aria-hidden="true">
 							<path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2m-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3z" />
@@ -101,7 +101,7 @@
 				v-if="currentIndex > 0"
 				class="ic-lb-arrow ic-lb-arrow--prev"
 				title="Vorherige"
-				@click.stop="store.lightboxPrev()"
+				@click.stop="navigate(-1)"
 			>
 				<svg viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z" />
@@ -109,17 +109,33 @@
 			</button>
 
 			<!-- Media -->
-			<div class="ic-lb-stage" @click.stop>
+			<div
+				class="ic-lb-stage"
+				@click.stop
+				@dblclick.stop="onDoubleTap"
+				@wheel.prevent="onWheel"
+				@touchstart.passive="onTouchStart"
+				@touchmove.passive="onTouchMove"
+				@touchend.passive="onTouchEnd"
+			>
+				<!-- Preload neighbours -->
+				<link v-if="prevAsset && prevAsset.isImage !== false" rel="prefetch" :href="getPreviewUrl(prevAsset.id)" as="image">
+				<link v-if="nextAsset && nextAsset.isImage !== false" rel="prefetch" :href="getPreviewUrl(nextAsset.id)" as="image">
+
 				<img
 					v-if="currentAsset && currentAsset.isImage !== false"
 					:src="previewSrc"
 					:alt="currentAsset.originalFileName || ''"
 					class="ic-lb-img"
+					:style="zoomStyle"
+					draggable="false"
+					@mousedown.prevent="onImgMouseDown"
 				/>
 				<video
 					v-else-if="currentAsset"
 					:src="videoSrc"
 					controls
+					autoplay
 					class="ic-lb-video"
 				/>
 			</div>
@@ -129,7 +145,7 @@
 				v-if="currentIndex < assets.length - 1"
 				class="ic-lb-arrow ic-lb-arrow--next"
 				title="Nächste"
-				@click.stop="store.lightboxNext()"
+				@click.stop="navigate(1)"
 			>
 				<svg viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z" />
@@ -145,11 +161,19 @@
 			<!-- Info panel -->
 			<Transition name="ic-lb-slide">
 				<div v-if="showInfo" class="ic-lb-info" @click.stop>
-					<div v-for="[label, val] in infoRows" :key="label" class="ic-lb-info__row">
-						<span class="ic-lb-info__label">{{ label }}</span>
-						<span class="ic-lb-info__val">{{ val }}</span>
+					<!-- Loading spinner while EXIF is being fetched -->
+					<div v-if="fetchingInfo" class="ic-lb-album-panel__loading">
+						<svg viewBox="0 0 24 24" class="ic-lb-spin ic-lb-album-panel__spinner" aria-hidden="true">
+							<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" fill="currentColor" />
+						</svg>
 					</div>
-					<p v-if="!infoRows.length" class="ic-lb-info__empty">Keine Metadaten verfügbar</p>
+					<template v-else>
+						<div v-for="[label, val] in infoRows" :key="label" class="ic-lb-info__row">
+							<span class="ic-lb-info__label">{{ label }}</span>
+							<span class="ic-lb-info__val">{{ val }}</span>
+						</div>
+						<p v-if="!infoRows.length" class="ic-lb-info__empty">Keine Metadaten verfügbar</p>
+					</template>
 				</div>
 			</Transition>
 
@@ -163,11 +187,48 @@
 						</svg>
 					</div>
 					<template v-else>
+						<!-- Neues Album erstellen -->
+						<div v-if="!creatingAlbum"
+							class="ic-lb-album-panel__item ic-lb-album-panel__item--new"
+							@click.stop="creatingAlbum = true">
+							<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor;flex-shrink:0" aria-hidden="true">
+								<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
+							</svg>
+							Neues Album
+						</div>
+						<div v-else class="ic-lb-album-panel__new-form">
+							<input
+								ref="newAlbumInputEl"
+								v-model="newAlbumName"
+								class="ic-lb-album-panel__new-input"
+								placeholder="Albumname …"
+								@keyup.enter="createAndAdd"
+								@keyup.escape="creatingAlbum = false"
+							>
+							<button class="ic-lb-album-panel__new-btn"
+								:disabled="!newAlbumName.trim() || creatingNewAlbum"
+								@click.stop="createAndAdd">
+								<svg v-if="!creatingNewAlbum" viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor" aria-hidden="true">
+									<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+								</svg>
+								<svg v-else viewBox="0 0 24 24" class="ic-lb-spin" style="width:16px;height:16px;fill:currentColor" aria-hidden="true">
+									<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" />
+								</svg>
+							</button>
+						</div>
 						<p v-if="albums.length === 0" class="ic-lb-info__empty">Keine Alben vorhanden</p>
 						<div v-for="album in albums"
 							:key="album.id"
 							class="ic-lb-album-panel__item"
-							@click.stop="addCurrentToAlbum(album.id)">
+							:class="{ 'ic-lb-album-panel__item--in-album': currentAssetAlbumIds.has(album.id) }"
+							:title="currentAssetAlbumIds.has(album.id) ? 'Bereits in diesem Album' : ''"
+							@click.stop="currentAssetAlbumIds.has(album.id) ? null : addCurrentToAlbum(album.id)">
+							<svg v-if="currentAssetAlbumIds.has(album.id)"
+								viewBox="0 0 24 24"
+								style="width:14px;height:14px;fill:currentColor;flex-shrink:0;opacity:0.55"
+								aria-hidden="true">
+								<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+							</svg>
 							{{ album.albumName }}
 						</div>
 					</template>
@@ -180,7 +241,7 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { useImmichStore } from '../store/immich.js'
-import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset } from '../services/api.js'
+import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset, createAlbum } from '../services/api.js'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 
@@ -197,11 +258,128 @@ const loadingAlbums = ref(false)
 const addingToAlbum = ref(false)
 const togglingFavorite = ref(false)
 
+// New album creation inside panel
+const creatingAlbum = ref(false)
+const newAlbumName = ref('')
+const newAlbumInputEl = ref(null)
+const creatingNewAlbum = ref(false)
+
+// IDs of albums the current asset is already in (populated when panel opens)
+const currentAssetAlbumIds = ref(new Set())
+
+// --- Zoom/Pan state ---
+const zoomLevel = ref(1)
+const panX = ref(0)
+const panY = ref(0)
+const isPanning = ref(false)
+let panStart = { x: 0, y: 0, px: 0, py: 0 }
+
+const zoomStyle = computed(() => {
+	if (zoomLevel.value === 1) return {}
+	return {
+		transform: `scale(${zoomLevel.value}) translate(${panX.value / zoomLevel.value}px, ${panY.value / zoomLevel.value}px)`,
+		cursor: isPanning.value ? 'grabbing' : 'grab',
+		transition: isPanning.value ? 'none' : 'transform 0.2s ease',
+	}
+})
+
+function resetZoom() {
+	zoomLevel.value = 1
+	panX.value = 0
+	panY.value = 0
+}
+
+function onDoubleTap(e) {
+	if (currentAsset.value?.isImage === false) return
+	if (zoomLevel.value > 1) {
+		resetZoom()
+	} else {
+		zoomLevel.value = 2.5
+	}
+}
+
+function onWheel(e) {
+	if (currentAsset.value?.isImage === false) return
+	const delta = e.deltaY > 0 ? -0.2 : 0.2
+	zoomLevel.value = Math.max(1, Math.min(5, zoomLevel.value + delta))
+	if (zoomLevel.value === 1) { panX.value = 0; panY.value = 0 }
+}
+
+
+// Mouse pan
+function onImgMouseDown(e) {
+	if (zoomLevel.value <= 1) return
+	isPanning.value = true
+	panStart = { x: e.clientX, y: e.clientY, px: panX.value, py: panY.value }
+	window.addEventListener('mousemove', onImgMouseMove)
+	window.addEventListener('mouseup', onImgMouseUp)
+}
+function onImgMouseMove(e) {
+	if (!isPanning.value) return
+	panX.value = panStart.px + (e.clientX - panStart.x)
+	panY.value = panStart.py + (e.clientY - panStart.y)
+}
+function onImgMouseUp() {
+	isPanning.value = false
+	window.removeEventListener('mousemove', onImgMouseMove)
+	window.removeEventListener('mouseup', onImgMouseUp)
+}
+
+// --- Touch / Swipe ---
+let touchStartX = 0
+let touchStartY = 0
+let touchStartDist = 0
+let touchZoomBase = 1
+
+function onTouchStart(e) {
+	if (e.touches.length === 1) {
+		touchStartX = e.touches[0].clientX
+		touchStartY = e.touches[0].clientY
+	} else if (e.touches.length === 2) {
+		touchStartDist = Math.hypot(
+			e.touches[0].clientX - e.touches[1].clientX,
+			e.touches[0].clientY - e.touches[1].clientY
+		)
+		touchZoomBase = zoomLevel.value
+	}
+}
+
+function onTouchMove(e) {
+	if (e.touches.length === 2) {
+		const dist = Math.hypot(
+			e.touches[0].clientX - e.touches[1].clientX,
+			e.touches[0].clientY - e.touches[1].clientY
+		)
+		zoomLevel.value = Math.max(1, Math.min(5, touchZoomBase * (dist / touchStartDist)))
+	}
+}
+
+function onTouchEnd(e) {
+	if (e.changedTouches.length === 1 && zoomLevel.value <= 1) {
+		const dx = e.changedTouches[0].clientX - touchStartX
+		const dy = e.changedTouches[0].clientY - touchStartY
+		if (Math.abs(dx) > 40 && Math.abs(dy) < 60) {
+			if (dx < 0) navigate(1)
+			else navigate(-1)
+		}
+	}
+	if (zoomLevel.value <= 1) { panX.value = 0; panY.value = 0 }
+}
+
+// --- Navigation ---
+function navigate(dir) {
+	resetZoom()
+	if (dir < 0) store.lightboxPrev()
+	else store.lightboxNext()
+}
+
 const isFavorite = computed(() => currentAsset.value?.isFavorite === true)
 
 const assets = computed(() => store.lightbox.assets ?? [])
 const currentIndex = computed(() => store.lightbox.currentIndex ?? 0)
 const currentAsset = computed(() => assets.value[currentIndex.value] ?? null)
+const prevAsset = computed(() => currentIndex.value > 0 ? assets.value[currentIndex.value - 1] : null)
+const nextAsset = computed(() => currentIndex.value < assets.value.length - 1 ? assets.value[currentIndex.value + 1] : null)
 const previewSrc = computed(() => currentAsset.value ? getPreviewUrl(currentAsset.value.id) : '')
 const videoSrc = computed(() => currentAsset.value ? getVideoUrl(currentAsset.value.id) : '')
 
@@ -250,10 +428,11 @@ async function ensureExifInfo() {
 		const response = await getAssetInfo(asset.id)
 		const full = response.data
 		if (full && full.exifInfo) {
-			store.lightbox.assets[currentIndex.value] = { ...asset, ...full }
+			// Use store action to avoid direct mutation
+			store.patchLightboxAsset(currentIndex.value, { ...asset, ...full })
 		}
 	} catch {
-		// silently ignore — info panel just shows "Keine Metadaten"
+		// silently ignore — info panel shows "Keine Metadaten"
 	} finally {
 		fetchingInfo.value = false
 	}
@@ -333,7 +512,6 @@ async function toggleFavorite() {
 	const newVal = !currentAsset.value.isFavorite
 	try {
 		await updateAsset(currentAsset.value.id, { isFavorite: newVal })
-		// Patch all caches (including the lightbox asset itself) so the UI updates immediately
 		store.patchAssetFavorite([currentAsset.value.id], newVal)
 		showSuccess(newVal
 			? t('integration_immich', 'Zu Favoriten hinzugefügt')
@@ -345,13 +523,36 @@ async function toggleFavorite() {
 	}
 }
 
+function toggleAlbumPanel() {
+	if (showAlbumPanel.value) {
+		showAlbumPanel.value = false
+		creatingAlbum.value = false
+		newAlbumName.value = ''
+	} else {
+		openAlbumPanel()
+	}
+}
+
+async function refreshAssetAlbumIds() {
+	const assetId = currentAsset.value?.id
+	if (!assetId) { currentAssetAlbumIds.value = new Set(); return }
+	try {
+		const response = await getAlbums({ assetId })
+		currentAssetAlbumIds.value = new Set((response.data ?? []).map(a => a.id))
+	} catch {
+		currentAssetAlbumIds.value = new Set()
+	}
+}
+
 async function openAlbumPanel() {
 	showInfo.value = false
 	showAlbumPanel.value = true
+	creatingAlbum.value = false
+	newAlbumName.value = ''
 	loadingAlbums.value = true
 	try {
-		const response = await getAlbums()
-		albums.value = response.data ?? []
+		const [allRes] = await Promise.all([getAlbums(), refreshAssetAlbumIds()])
+		albums.value = allRes.data ?? []
 	} catch (e) {
 		showError(t('integration_immich', 'Alben konnten nicht geladen werden'))
 		showAlbumPanel.value = false
@@ -380,27 +581,70 @@ async function addCurrentToAlbum(albumId) {
 	}
 }
 
+async function createAndAdd() {
+	const name = newAlbumName.value.trim()
+	if (!name || creatingNewAlbum.value) return
+	creatingNewAlbum.value = true
+	try {
+		const res = await createAlbum(name)
+		const albumId = res.data?.id
+		if (albumId && currentAsset.value) {
+			const addRes = await addAssetsToAlbum(albumId, [currentAsset.value.id])
+			const failed = (addRes.data ?? []).filter(r => !r.success).length
+			if (failed === 0) {
+				showSuccess(t('integration_immich', 'Album erstellt und Bild hinzugefügt'))
+			} else {
+				showError(t('integration_immich', 'Album erstellt, aber Fehler beim Hinzufügen'))
+			}
+		} else {
+			showSuccess(t('integration_immich', 'Album erstellt'))
+		}
+		showAlbumPanel.value = false
+		creatingAlbum.value = false
+		newAlbumName.value = ''
+	} catch (e) {
+		showError(t('integration_immich', 'Fehler beim Erstellen: {msg}', { msg: e.message }))
+	} finally {
+		creatingNewAlbum.value = false
+	}
+}
+
+// Auto-focus new album input when form opens
+watch(creatingAlbum, (val) => {
+	if (val) nextTick(() => newAlbumInputEl.value?.focus())
+})
+
 function close() {
 	showInfo.value = false
+	showAlbumPanel.value = false
+	resetZoom()
 	store.closeLightbox()
 }
 
 function onKey(e) {
-	if (e.key === 'Escape') close()
-	else if (e.key === 'ArrowLeft') store.lightboxPrev()
-	else if (e.key === 'ArrowRight') store.lightboxNext()
+	if (e.key === 'Escape') {
+		if (zoomLevel.value > 1) { resetZoom(); return }
+		close()
+	} else if (e.key === 'ArrowLeft') navigate(-1)
+	else if (e.key === 'ArrowRight') navigate(1)
 }
 
 watch(() => store.lightbox.visible, (visible) => {
 	if (visible) {
 		showInfo.value = false
+		showAlbumPanel.value = false
+		resetZoom()
 		nextTick(() => overlayEl.value?.focus())
 	}
 })
 
-// Fetch full exifInfo when lightbox opens or asset changes (so info panel is instant)
+// Fetch EXIF when asset changes, reset zoom, refresh album membership
 watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
-	if (visible) ensureExifInfo()
+	if (visible) {
+		resetZoom()
+		ensureExifInfo()
+		if (showAlbumPanel.value) refreshAssetAlbumIds()
+	}
 })
 </script>
 
@@ -408,11 +652,16 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
      außerhalb jedes Nextcloud-Stacking-Contexts.
      all:unset auf Buttons löscht NC-Globalstyles komplett. -->
 <style>
+/* ============================================================
+   LIGHTBOX — Modern Dark Glass UI
+   ============================================================ */
+
+/* ---- Base overlay ---- */
 .ic-lb {
 	position: fixed;
 	inset: 0;
 	z-index: 99000;
-	background: #000;
+	background: #080808;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -429,19 +678,21 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	top: 0;
 	left: 0;
 	right: 0;
-	height: 44px;
+	height: 56px;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 0 8px;
-	background: linear-gradient(rgba(0, 0, 0, 0.55), transparent);
+	padding: 0 12px 0 20px;
+	background: linear-gradient(180deg, rgba(0,0,0,0.72) 0%, transparent 100%);
 	z-index: 10;
 }
 
 .ic-lb-counter {
-	color: rgba(255, 255, 255, 0.75);
-	font-size: 13px;
-	line-height: 1;
+	color: rgba(255,255,255,0.5);
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0.08em;
+	font-variant-numeric: tabular-nums;
 }
 
 .ic-lb-bar-end {
@@ -449,7 +700,7 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	gap: 2px;
 }
 
-/* ---- Buttons (all:unset löscht NC-Stile komplett) ---- */
+/* ---- Icon buttons ---- */
 .ic-lb-btn {
 	all: unset;
 	box-sizing: border-box;
@@ -459,29 +710,31 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 4px;
-	color: #fff;
-	transition: background 0.15s;
+	border-radius: 8px;
+	color: rgba(255,255,255,0.7);
+	transition: color 0.15s, background 0.15s;
 }
 
 .ic-lb-btn svg {
-	width: 22px;
-	height: 22px;
+	width: 20px;
+	height: 20px;
 	fill: currentColor;
 	pointer-events: none;
 	display: block;
 }
 
 .ic-lb-btn:hover {
-	background: rgba(255, 255, 255, 0.15);
+	color: #fff;
+	background: rgba(255,255,255,0.08);
 }
 
 .ic-lb-btn--active {
-	background: rgba(255, 255, 255, 0.2);
+	color: #fff;
+	background: rgba(255,255,255,0.12);
 }
 
 .ic-lb-btn:disabled {
-	opacity: 0.5;
+	opacity: 0.3;
 	cursor: default;
 }
 
@@ -490,7 +743,7 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 }
 
 .ic-lb-spin {
-	animation: ic-lb-spin 0.8s linear infinite;
+	animation: ic-lb-spin 0.75s linear infinite;
 	transform-origin: center;
 }
 
@@ -502,36 +755,40 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	position: absolute;
 	top: 50%;
 	transform: translateY(-50%);
-	width: 48px;
-	height: 72px;
+	width: 44px;
+	height: 80px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgba(0, 0, 0, 0.35);
-	border-radius: 4px;
-	color: #fff;
+	background: rgba(255,255,255,0.06);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	border: 1px solid rgba(255,255,255,0.08);
+	border-radius: 12px;
+	color: rgba(255,255,255,0.65);
 	z-index: 10;
-	transition: background 0.15s, right 0.25s, left 0.25s;
+	transition: background 0.2s, color 0.2s, border-color 0.2s, right 0.28s cubic-bezier(.4,0,.2,1), left 0.28s cubic-bezier(.4,0,.2,1);
 }
 
 .ic-lb-arrow svg {
-	width: 28px;
-	height: 28px;
+	width: 24px;
+	height: 24px;
 	fill: currentColor;
 	pointer-events: none;
 	display: block;
 }
 
 .ic-lb-arrow:hover {
-	background: rgba(0, 0, 0, 0.6);
+	background: rgba(255,255,255,0.14);
+	border-color: rgba(255,255,255,0.18);
+	color: #fff;
 }
 
-.ic-lb-arrow--prev { left: 8px; }
-.ic-lb-arrow--next { right: 8px; }
+.ic-lb-arrow--prev { left: 16px; }
+.ic-lb-arrow--next { right: 16px; }
 
-/* Arrow rückt weg wenn Info-Panel offen */
 .ic-lb--info .ic-lb-arrow--next {
-	right: calc(8px + 280px);
+	right: calc(16px + 300px);
 }
 
 /* ---- Media stage ---- */
@@ -545,8 +802,8 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 }
 
 .ic-lb--info .ic-lb-stage {
-	padding-right: calc(64px + 280px);
-	transition: padding-right 0.25s ease;
+	padding-right: calc(300px);
+	transition: padding-right 0.28s cubic-bezier(.4,0,.2,1);
 }
 
 .ic-lb-img {
@@ -555,13 +812,14 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	object-fit: contain;
 	user-select: none;
 	display: block;
+	will-change: transform;
 }
 
 .ic-lb-video {
 	max-width: 100%;
 	max-height: 100%;
 	outline: none;
-	border-radius: 4px;
+	border-radius: 6px;
 	display: block;
 }
 
@@ -571,115 +829,212 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	padding: 20px 64px 14px 24px;
-	background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
+	padding: 48px 80px 22px 24px;
+	background: linear-gradient(transparent, rgba(0,0,0,0.7));
 	color: #fff;
 	display: flex;
 	flex-direction: column;
-	gap: 3px;
+	gap: 4px;
 	pointer-events: none;
 	z-index: 5;
 }
 
 .ic-lb-caption__name {
-	font-size: 14px;
+	font-size: 13px;
 	font-weight: 600;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	letter-spacing: 0.01em;
 }
 
 .ic-lb-caption__date {
-	font-size: 12px;
-	opacity: 0.72;
+	font-size: 11px;
+	color: rgba(255,255,255,0.5);
+	letter-spacing: 0.02em;
 }
 
-/* ---- Info panel ---- */
+/* ---- Side panels (info + album) ---- */
 .ic-lb-info {
 	position: absolute;
-	top: 44px;
+	top: 0;
 	right: 0;
 	bottom: 0;
-	width: 280px;
-	background: rgba(14, 14, 14, 0.95);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
+	width: 300px;
+	background: rgba(12,12,14,0.92);
+	backdrop-filter: blur(24px) saturate(160%);
+	-webkit-backdrop-filter: blur(24px) saturate(160%);
 	color: #fff;
-	padding: 20px 18px;
+	padding: 72px 0 0;
 	overflow-y: auto;
 	z-index: 10;
-	border-left: 1px solid rgba(255, 255, 255, 0.1);
+	border-left: 1px solid rgba(255,255,255,0.06);
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255,255,255,0.15) transparent;
 }
 
+.ic-lb-info::-webkit-scrollbar { width: 4px; }
+.ic-lb-info::-webkit-scrollbar-track { background: transparent; }
+.ic-lb-info::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+/* slide animation */
 .ic-lb-slide-enter-active,
 .ic-lb-slide-leave-active {
-	transition: transform 0.25s ease;
+	transition: transform 0.28s cubic-bezier(.4,0,.2,1), opacity 0.28s ease;
 }
 
 .ic-lb-slide-enter-from,
 .ic-lb-slide-leave-to {
 	transform: translateX(100%);
+	opacity: 0;
 }
 
+/* ---- Info rows ---- */
 .ic-lb-info__empty {
-	font-size: 13px;
-	opacity: 0.5;
+	font-size: 12px;
+	color: rgba(255,255,255,0.35);
 	margin: 0;
-	padding: 4px 0;
+	padding: 0 20px;
 }
 
 .ic-lb-info__row {
 	display: flex;
 	flex-direction: column;
-	gap: 3px;
-	margin-bottom: 16px;
+	gap: 2px;
+	padding: 0 20px 18px;
 }
 
 .ic-lb-info__label {
-	font-size: 10px;
-	font-weight: 600;
+	font-size: 9px;
+	font-weight: 700;
 	text-transform: uppercase;
-	letter-spacing: 0.07em;
-	opacity: 0.45;
+	letter-spacing: 0.1em;
+	color: rgba(255,255,255,0.3);
 }
 
 .ic-lb-info__val {
 	font-size: 13px;
-	line-height: 1.45;
+	line-height: 1.5;
 	word-break: break-word;
+	color: rgba(255,255,255,0.88);
 }
 
-/* ---- Album panel ---- */
+/* ---- Album panel extras ---- */
 .ic-lb-album-panel__title {
-	font-size: 11px;
+	font-size: 9px;
 	font-weight: 700;
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	opacity: 0.5;
-	margin: 0 0 14px;
+	letter-spacing: 0.1em;
+	color: rgba(255,255,255,0.3);
+	margin: 0 0 8px;
+	padding: 0 20px;
 }
 
 .ic-lb-album-panel__loading {
 	display: flex;
 	justify-content: center;
-	padding: 24px 0;
+	padding: 32px 0;
 }
 
 .ic-lb-album-panel__spinner {
-	width: 28px;
-	height: 28px;
+	width: 24px;
+	height: 24px;
 }
 
 .ic-lb-album-panel__item {
-	padding: 10px 12px;
-	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 20px;
 	cursor: pointer;
 	font-size: 13px;
 	line-height: 1.4;
-	transition: background 0.15s;
+	color: rgba(255,255,255,0.82);
+	transition: background 0.15s, color 0.15s;
+	border-radius: 0;
 }
 
 .ic-lb-album-panel__item:hover {
-	background: rgba(255, 255, 255, 0.1);
+	background: rgba(255,255,255,0.07);
+	color: #fff;
+}
+
+.ic-lb-album-panel__item--new {
+	color: rgba(120,180,255,0.9);
+	font-weight: 600;
+	border-bottom: 1px solid rgba(255,255,255,0.06);
+	margin-bottom: 4px;
+	padding-bottom: 12px;
+}
+
+.ic-lb-album-panel__item--new:hover {
+	background: rgba(120,180,255,0.06);
+	color: rgba(160,210,255,1);
+}
+
+.ic-lb-album-panel__item--in-album {
+	opacity: 0.35;
+	cursor: default;
+}
+
+.ic-lb-album-panel__item--in-album:hover {
+	background: transparent;
+	color: rgba(255,255,255,0.82);
+}
+
+.ic-lb-album-panel__new-form {
+	display: flex;
+	gap: 6px;
+	padding: 4px 20px 14px;
+}
+
+.ic-lb-album-panel__new-input {
+	all: unset;
+	box-sizing: border-box;
+	flex: 1;
+	background: rgba(255,255,255,0.06);
+	border: 1px solid rgba(255,255,255,0.14);
+	border-radius: 8px;
+	padding: 8px 12px;
+	color: #fff;
+	font-size: 13px;
+	transition: border-color 0.15s, background 0.15s;
+}
+
+.ic-lb-album-panel__new-input::placeholder {
+	color: rgba(255,255,255,0.3);
+}
+
+.ic-lb-album-panel__new-input:focus {
+	border-color: rgba(120,180,255,0.5);
+	background: rgba(255,255,255,0.09);
+	outline: none;
+}
+
+.ic-lb-album-panel__new-btn {
+	all: unset;
+	box-sizing: border-box;
+	cursor: pointer;
+	width: 36px;
+	height: 36px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(120,180,255,0.15);
+	border: 1px solid rgba(120,180,255,0.25);
+	border-radius: 8px;
+	color: rgba(160,210,255,0.9);
+	transition: background 0.15s, border-color 0.15s;
+	flex-shrink: 0;
+}
+
+.ic-lb-album-panel__new-btn:hover:not(:disabled) {
+	background: rgba(120,180,255,0.25);
+	border-color: rgba(120,180,255,0.45);
+}
+
+.ic-lb-album-panel__new-btn:disabled {
+	opacity: 0.3;
+	cursor: default;
 }
 </style>

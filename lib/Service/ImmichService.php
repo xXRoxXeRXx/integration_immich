@@ -157,8 +157,9 @@ class ImmichService {
         }
     }
 
-    public function getAlbums(): array {
-        return $this->request('GET', '/albums');
+    public function getAlbums(string $assetId = ''): array {
+        $options = $assetId !== '' ? ['query' => ['assetId' => $assetId]] : [];
+        return $this->request('GET', '/albums', $options);
     }
 
     public function getAlbum(string $id): array {

@@ -283,6 +283,12 @@ export const useImmichStore = defineStore('immich', {
 			}
 		},
 
+		patchLightboxAsset(index, assetData) {
+			if (this.lightbox.assets && index >= 0 && index < this.lightbox.assets.length) {
+				this.lightbox.assets[index] = assetData
+			}
+		},
+
 		// ---- Selection ----
 
 		enterSelectionMode() {

@@ -11,8 +11,8 @@ export function getTimeline(params = {}) {
 	return axios.get(`${baseUrl}/timeline`, { params })
 }
 
-export function getAlbums() {
-	return axios.get(`${baseUrl}/albums`)
+export function getAlbums(params = {}) {
+	return axios.get(`${baseUrl}/albums`, { params })
 }
 
 export function getAlbum(id) {

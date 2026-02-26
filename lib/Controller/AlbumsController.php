@@ -38,8 +38,13 @@ class AlbumsController extends Controller {
             );
         }
 
+        $assetId = $this->request->getParam('assetId', '');
+        if ($assetId !== '' && !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $assetId)) {
+            return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
+        }
+
         try {
-            $albums = $this->immichService->getAlbums();
+            $albums = $this->immichService->getAlbums($assetId);
             return new JSONResponse($albums);
         } catch (\Exception $e) {
             return new JSONResponse(
