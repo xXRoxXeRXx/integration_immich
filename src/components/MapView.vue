@@ -158,8 +158,8 @@ onUnmounted(() => {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	padding-left: 25px;
-	padding-right: 25px;
+	padding-left: 5px;
+	padding-right: 5px;
     padding-top: 5px;
 }
 

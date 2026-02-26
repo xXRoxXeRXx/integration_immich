@@ -25,7 +25,7 @@
 		</NcEmptyContent>
 
 		<div v-else class="explore-view__sections">
-			<section v-for="section in store.exploreData"
+			<section v-for="section in sortedExploreData"
 				:key="section.fieldName"
 				class="explore-view__section">
 				<h2 class="explore-view__section-title">{{ sectionLabel(section.fieldName) }}</h2>
@@ -49,7 +49,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
@@ -60,6 +60,16 @@ import CompassIcon from 'vue-material-design-icons/Compass.vue'
 
 const store = useImmichStore()
 const router = useRouter()
+
+const sectionOrder = ['exifInfo.country', 'exifInfo.state', 'exifInfo.city']
+
+const sortedExploreData = computed(() =>
+	[...store.exploreData].sort((a, b) => {
+		const ai = sectionOrder.indexOf(a.fieldName)
+		const bi = sectionOrder.indexOf(b.fieldName)
+		return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+	}),
+)
 
 function sectionLabel(fieldName) {
 	const labels = {

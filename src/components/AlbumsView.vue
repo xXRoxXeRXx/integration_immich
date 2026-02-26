@@ -76,6 +76,8 @@ onMounted(() => {
 
 <style scoped>
 .albums-view {
+	height: 100%;
+	overflow-y: auto;
 	padding: 16px 16px 16px 52px;
 }
 
