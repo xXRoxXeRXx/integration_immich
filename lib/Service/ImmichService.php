@@ -109,11 +109,15 @@ class ImmichService {
     }
 
     public function getAssetThumbnail(string $id, string $size = 'thumbnail'): array {
-        return $this->requestBinary('GET', '/assets/' . $id . '/thumbnail?size=' . urlencode($size));
+        return $this->requestBinary('/assets/' . $id . '/thumbnail?size=' . urlencode($size));
     }
 
     public function getAssetOriginal(string $id): array {
-        return $this->requestBinary('GET', '/assets/' . $id . '/original');
+        return $this->requestBinary('/assets/' . $id . '/original');
+    }
+
+    public function downloadArchive(array $assetIds): array {
+        return $this->requestBinaryPost('/download/archive', ['assetIds' => $assetIds]);
     }
 
     public function getVideoStream(string $id, string $rangeHeader = ''): array {
@@ -193,7 +197,7 @@ class ImmichService {
     }
 
     public function getPersonThumbnail(string $id): array {
-        return $this->requestBinary('GET', '/people/' . $id . '/thumbnail');
+        return $this->requestBinary('/people/' . $id . '/thumbnail');
     }
 
     // ---- Map ----
@@ -327,7 +331,7 @@ class ImmichService {
         }
     }
 
-    private function requestBinary(string $method, string $endpoint): array {
+    private function requestBinary(string $endpoint): array {
         $client = $this->clientService->newClient();
         $url = $this->getServerUrl() . '/api' . $endpoint;
 
@@ -341,6 +345,32 @@ class ImmichService {
             ];
         } catch (\Exception $e) {
             $this->logger->error('Immich binary request failed: ' . $e->getMessage(), [
+                'app' => Application::APP_ID,
+                'endpoint' => $endpoint,
+            ]);
+            throw $e;
+        }
+    }
+
+    private function requestBinaryPost(string $endpoint, array $body): array {
+        $client = $this->clientService->newClient();
+        $url = $this->getServerUrl() . '/api' . $endpoint;
+
+        try {
+            $response = $client->post($url, [
+                'headers' => [
+                    'x-api-key' => $this->getApiKey(),
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/octet-stream',
+                ],
+                'body' => json_encode($body),
+            ]);
+            return [
+                'body' => $response->getBody(),
+                'contentType' => $response->getHeader('Content-Type') ?: 'application/zip',
+            ];
+        } catch (\Exception $e) {
+            $this->logger->error('Immich binary POST request failed: ' . $e->getMessage(), [
                 'app' => Application::APP_ID,
                 'endpoint' => $endpoint,
             ]);

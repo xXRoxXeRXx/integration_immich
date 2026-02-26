@@ -238,6 +238,64 @@ class AssetsController extends Controller {
 
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    public function downloadAssets(): DataDownloadResponse|JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(
+                ['error' => 'Immich is not configured'],
+                Http::STATUS_PRECONDITION_FAILED
+            );
+        }
+
+        $assetIds = $this->request->getParam('assetIds', []);
+        if (!is_array($assetIds)) {
+            $assetIds = [$assetIds];
+        }
+
+        if (empty($assetIds)) {
+            return new JSONResponse(['error' => 'assetIds must be a non-empty array'], Http::STATUS_BAD_REQUEST);
+        }
+
+        foreach ($assetIds as $id) {
+            if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', (string)$id)) {
+                return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
+            }
+        }
+
+        try {
+            if (count($assetIds) === 1) {
+                // Single asset → GET /api/assets/{id}/original
+                $assetId = (string) $assetIds[0];
+                $asset = $this->immichService->getAsset($assetId);
+                $fileName = $asset['originalFileName'] ?? ($assetId . '.bin');
+
+                $result = $this->immichService->getAssetOriginal($assetId);
+                $response = new DataDownloadResponse(
+                    $result['body'],
+                    $fileName,
+                    $result['contentType'] ?? 'application/octet-stream'
+                );
+                return $response;
+            }
+
+            // Multiple assets → POST /api/download/archive → Immich builds the ZIP
+            $zipName = 'immich-download-' . date('Y-m-d') . '.zip';
+            $result = $this->immichService->downloadArchive(array_values(array_map('strval', $assetIds)));
+            $response = new DataDownloadResponse(
+                $result['body'],
+                $zipName,
+                'application/zip'
+            );
+            return $response;
+        } catch (\Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                Http::STATUS_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function saveToNextcloud(): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(

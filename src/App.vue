@@ -38,6 +38,15 @@
 								</template>
 								{{ t('integration_immich', 'In Nextcloud speichern') }}
 							</NcButton>
+							<NcButton variant="secondary"
+								:disabled="store.selectedAssetIds.size === 0 || downloading"
+								@click="downloadSelected">
+								<template #icon>
+									<NcLoadingIcon v-if="downloading" :size="20" />
+									<DownloadIcon v-else :size="20" />
+								</template>
+								{{ t('integration_immich', 'Herunterladen') }}
+							</NcButton>
 							<NcButton variant="tertiary" @click="store.clearSelection()">
 								{{ t('integration_immich', 'Abbrechen') }}
 							</NcButton>
@@ -60,15 +69,17 @@ import { NcContent, NcAppContent, NcButton, NcLoadingIcon } from '@nextcloud/vue
 import { translate as t } from '@nextcloud/l10n'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { useImmichStore } from './store/immich.js'
-import { saveAssetsToNextcloud } from './services/api.js'
+import { saveAssetsToNextcloud, downloadAssets } from './services/api.js'
 import Navigation from './components/Navigation.vue'
 import LightboxView from './components/LightboxView.vue'
 import CheckboxMultipleOutlineIcon from 'vue-material-design-icons/CheckboxMultipleOutline.vue'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
+import DownloadIcon from 'vue-material-design-icons/Download.vue'
 
 const route = useRoute()
 const store = useImmichStore()
 const saving = ref(false)
+const downloading = ref(false)
 
 const pageTitles = {
 	'timeline': t('integration_immich', 'Alle Medien'),
@@ -137,6 +148,40 @@ async function saveToNextcloud() {
 		showError(t('integration_immich', 'Fehler beim Speichern: {msg}', { msg: e.message }))
 	} finally {
 		saving.value = false
+	}
+}
+
+async function downloadSelected() {
+	const assetIds = [...store.selectedAssetIds]
+	if (assetIds.length === 0) return
+
+	downloading.value = true
+	try {
+		const response = await downloadAssets(assetIds)
+
+		// Derive filename from Content-Disposition or fall back to a default
+		const disposition = response.headers?.['content-disposition'] ?? ''
+		let fileName = assetIds.length === 1 ? 'immich-download.bin' : `immich-download-${new Date().toISOString().slice(0, 10)}.zip`
+		const match = disposition.match(/filename="?([^";\n]+)"?/)
+		if (match) {
+			fileName = match[1]
+		}
+
+		// Trigger browser download
+		const url = URL.createObjectURL(response.data)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = fileName
+		document.body.appendChild(a)
+		a.click()
+		document.body.removeChild(a)
+		URL.revokeObjectURL(url)
+
+		store.clearSelection()
+	} catch (e) {
+		showError(t('integration_immich', 'Fehler beim Herunterladen: {msg}', { msg: e.message }))
+	} finally {
+		downloading.value = false
 	}
 }
 </script>

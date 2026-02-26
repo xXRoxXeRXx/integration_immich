@@ -71,6 +71,10 @@ export function saveAssetsToNextcloud(assetIds, path) {
 	return axios.post(`${baseUrl}/assets/save`, { assetIds, path })
 }
 
+export function downloadAssets(assetIds) {
+	return axios.post(`${baseUrl}/download`, { assetIds }, { responseType: 'blob' })
+}
+
 export function getConfig() {
 	return axios.get(`${baseUrl}/config`)
 }
