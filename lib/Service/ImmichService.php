@@ -64,18 +64,24 @@ class ImmichService {
         }
     }
 
-    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null): array {
+    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null, ?string $assetType = null): array {
         $query = ['size' => $size];
         if ($personId !== null && $personId !== '') {
             $query['personId'] = $personId;
         }
+        if ($assetType !== null && $assetType !== '') {
+            $query['assetType'] = $assetType;
+        }
         return $this->request('GET', '/timeline/buckets', ['query' => $query]);
     }
 
-    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null): array {
+    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null, ?string $assetType = null): array {
         $query = ['timeBucket' => $timeBucket, 'size' => $size];
         if ($personId !== null && $personId !== '') {
             $query['personId'] = $personId;
+        }
+        if ($assetType !== null && $assetType !== '') {
+            $query['assetType'] = $assetType;
         }
         $raw = $this->request('GET', '/timeline/bucket', ['query' => $query]);
         return $this->transformBucketAssets($raw);

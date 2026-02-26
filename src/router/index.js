@@ -14,6 +14,8 @@ import PlaceDetailView from '../components/PlaceDetailView.vue'
 
 const routes = [
 	{ path: '/', name: 'timeline', component: TimelineView },
+	{ path: '/photos', name: 'photos', component: TimelineView, props: { assetType: 'IMAGE' } },
+	{ path: '/videos', name: 'videos', component: TimelineView, props: { assetType: 'VIDEO' } },
 	{ path: '/albums', name: 'albums', component: AlbumsView },
 	{ path: '/albums/:id', name: 'album-detail', component: AlbumDetailView, props: true },
 	{ path: '/people', name: 'people', component: PeopleView },

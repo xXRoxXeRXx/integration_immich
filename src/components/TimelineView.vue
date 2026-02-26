@@ -12,11 +12,11 @@
 			</template>
 		</NcEmptyContent>
 
-		<NcLoadingIcon v-else-if="store.loading && store.timelineBuckets.length === 0"
+		<NcLoadingIcon v-else-if="store.loading && buckets.length === 0"
 			:size="64"
 			class="timeline-view__loading" />
 
-		<NcEmptyContent v-else-if="store.timelineBuckets.length === 0"
+		<NcEmptyContent v-else-if="buckets.length === 0"
 			:name="t('integration_immich', 'Keine Bilder')"
 			:description="t('integration_immich', 'In deiner Immich Bibliothek sind noch keine Bilder vorhanden.')">
 			<template #icon>
@@ -29,29 +29,28 @@
 			ref="scrollContainer"
 			class="timeline-view__scroll"
 			@scroll="onScroll">
+			<!-- Sticky date overlay (works correctly as direct child of the scroll container) -->
+			<div class="timeline-view__sticky-date">
+				{{ currentBucketLabel }}
+				<span class="timeline-view__sticky-count">({{ currentBucketCount }})</span>
+			</div>
 			<!-- Spacer to create full scrollable height -->
 			<div class="timeline-view__runway" :style="{ height: totalHeight + 'px' }">
 				<!-- Only render buckets in the sliding window -->
 				<div v-for="index in windowIndices"
-					:key="store.timelineBuckets[index].timeBucket"
+					:key="buckets[index].timeBucket"
 					class="timeline-view__bucket"
 					:style="{ transform: `translateY(${bucketOffsets[index]}px)` }">
-					<h2 class="timeline-view__bucket-header">
-						{{ formatBucketDate(store.timelineBuckets[index].timeBucket) }}
-						<span class="timeline-view__bucket-count">
-							({{ store.timelineBuckets[index].count }})
-						</span>
-					</h2>
-					<NcLoadingIcon v-if="loadingSet.has(store.timelineBuckets[index].timeBucket)"
+					<NcLoadingIcon v-if="loadingSet.has(buckets[index].timeBucket)"
 						:size="32"
 						class="timeline-view__bucket-loading" />
-					<PhotoGrid v-else-if="store.timelineAssets[store.timelineBuckets[index].timeBucket]"
-						:assets="store.timelineAssets[store.timelineBuckets[index].timeBucket]"
+					<PhotoGrid v-else-if="assetsCache[buckets[index].timeBucket]"
+						:assets="assetsCache[buckets[index].timeBucket]"
 						:selectable="true"
 					@click="(_, idx) => openLightboxFromBucket(idx, index)" />
 					<div v-else
 						class="timeline-view__bucket-placeholder"
-						:style="{ height: (bucketHeights[index] - HEADER_HEIGHT) + 'px' }" />
+						:style="{ height: bucketHeights[index] + 'px' }" />
 				</div>
 			</div>
 		</div>
@@ -67,10 +66,22 @@ import PhotoGrid from './PhotoGrid.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import ImageIcon from 'vue-material-design-icons/Image.vue'
 
+const props = defineProps({
+	assetType: { type: String, default: null },
+})
+
 const store = useImmichStore()
 
+// Point to the right store state based on assetType prop
+const buckets = computed(() =>
+	props.assetType ? store.filteredBuckets[props.assetType] : store.timelineBuckets,
+)
+const assetsCache = computed(() =>
+	props.assetType ? store.filteredAssets[props.assetType] : store.timelineAssets,
+)
+
 // --- Constants ---
-const HEADER_HEIGHT = 48
+const HEADER_HEIGHT = 0
 const ROW_HEIGHT = 210
 const ITEMS_PER_ROW = 5
 const OVERSCAN = 800 // px above/below viewport to pre-render
@@ -94,7 +105,7 @@ function estimateBucketHeight(count) {
 
 // Track actual measured heights (initially estimated)
 const bucketHeights = computed(() => {
-	return store.timelineBuckets.map(b => estimateBucketHeight(b.count))
+	return buckets.value.map(b => estimateBucketHeight(b.count))
 })
 
 // Cumulative offsets for each bucket
@@ -116,13 +127,13 @@ const totalHeight = computed(() => {
 
 // --- Sliding window: which bucket indices are in/near the viewport ---
 const windowIndices = computed(() => {
-	if (store.timelineBuckets.length === 0) return []
+	if (buckets.value.length === 0) return []
 
 	const top = scrollTop.value - OVERSCAN
 	const bottom = scrollTop.value + viewportHeight.value + OVERSCAN
 	const indices = []
 
-	for (let i = 0; i < store.timelineBuckets.length; i++) {
+	for (let i = 0; i < buckets.value.length; i++) {
 		const bucketTop = bucketOffsets.value[i]
 		const bucketBottom = bucketTop + bucketHeights.value[i]
 
@@ -150,9 +161,34 @@ function onScroll() {
 	})
 }
 
+// --- Fetch/unload helpers depending on assetType ---
+async function fetchBuckets() {
+	if (props.assetType) {
+		await store.fetchFilteredBuckets(props.assetType)
+	} else {
+		await store.fetchTimelineBuckets()
+	}
+}
+
+async function fetchBucket(timeBucket) {
+	if (props.assetType) {
+		await store.fetchFilteredBucket(props.assetType, timeBucket)
+	} else {
+		await store.fetchTimelineBucket(timeBucket)
+	}
+}
+
+function unloadBucket(timeBucket) {
+	if (props.assetType) {
+		store.unloadFilteredBucket(props.assetType, timeBucket)
+	} else {
+		store.unloadTimelineBucket(timeBucket)
+	}
+}
+
 // --- Load / unload bucket data ---
 async function loadBucket(timeBucket) {
-	if (store.timelineAssets[timeBucket] || loadingSet.value.has(timeBucket)) {
+	if (assetsCache.value[timeBucket] || loadingSet.value.has(timeBucket)) {
 		return
 	}
 
@@ -166,7 +202,7 @@ async function loadBucket(timeBucket) {
 	loadingSet.value = new Set([...loadingSet.value, timeBucket])
 
 	try {
-		await store.fetchTimelineBucket(timeBucket)
+		await fetchBucket(timeBucket)
 	} finally {
 		loadingSet.value = new Set(
 			[...loadingSet.value].filter(b => b !== timeBucket),
@@ -180,18 +216,18 @@ async function loadBucket(timeBucket) {
 }
 
 function evictDistantBuckets(currentIndices) {
-	const loadedKeys = Object.keys(store.timelineAssets)
+	const loadedKeys = Object.keys(assetsCache.value)
 	if (loadedKeys.length <= MAX_LOADED_BUCKETS) return
 
 	const visibleKeys = new Set(
-		currentIndices.map(i => store.timelineBuckets[i].timeBucket),
+		currentIndices.map(i => buckets.value[i].timeBucket),
 	)
 
 	// Evict buckets that are loaded but far from current view
 	for (const key of loadedKeys) {
 		if (visibleKeys.has(key)) continue
 		if (loadedKeys.length <= MAX_LOADED_BUCKETS) break
-		store.unloadTimelineBucket(key)
+		unloadBucket(key)
 	}
 }
 
@@ -199,8 +235,8 @@ function evictDistantBuckets(currentIndices) {
 watch(windowIndices, (indices) => {
 	// Load visible buckets
 	for (const i of indices) {
-		const bucket = store.timelineBuckets[i]
-		if (bucket && !store.timelineAssets[bucket.timeBucket]) {
+		const bucket = buckets.value[i]
+		if (bucket && !assetsCache.value[bucket.timeBucket]) {
 			loadBucket(bucket.timeBucket)
 		}
 	}
@@ -212,8 +248,8 @@ watch(windowIndices, (indices) => {
 function openLightboxFromBucket(localIdx, bucketIndex) {
 	const allAssets = []
 	let globalIdx = 0
-	for (let i = 0; i < store.timelineBuckets.length; i++) {
-		const bucketAssets = store.timelineAssets[store.timelineBuckets[i].timeBucket]
+	for (let i = 0; i < buckets.value.length; i++) {
+		const bucketAssets = assetsCache.value[buckets.value[i].timeBucket]
 		if (!bucketAssets) continue
 		if (i === bucketIndex) globalIdx = allAssets.length + localIdx
 		allAssets.push(...bucketAssets)
@@ -226,12 +262,43 @@ function formatBucketDate(timeBucket) {
 	return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long' })
 }
 
+const currentBucketIndex = computed(() => {
+	if (buckets.value.length === 0) return 0
+	for (let i = buckets.value.length - 1; i >= 0; i--) {
+		if (bucketOffsets.value[i] <= scrollTop.value) return i
+	}
+	return 0
+})
+
+const currentBucketLabel = computed(() => {
+	if (buckets.value.length === 0) return ''
+	return formatBucketDate(buckets.value[currentBucketIndex.value].timeBucket)
+})
+
+const currentBucketCount = computed(() => {
+	if (buckets.value.length === 0) return 0
+	return buckets.value[currentBucketIndex.value].count
+})
+
 // --- Lifecycle ---
 onMounted(async () => {
 	if (scrollContainer.value) {
 		viewportHeight.value = scrollContainer.value.clientHeight
 	}
-	await store.fetchTimelineBuckets()
+	await fetchBuckets()
+})
+
+// When navigating between timeline / photos / videos, Vue Router reuses this
+// component instance — onMounted does NOT fire again. Watch the prop instead.
+watch(() => props.assetType, async () => {
+	scrollTop.value = 0
+	loadingSet.value = new Set()
+	pendingQueue.length = 0
+	activeRequests = 0
+	if (scrollContainer.value) {
+		scrollContainer.value.scrollTop = 0
+	}
+	await fetchBuckets()
 })
 
 onBeforeUnmount(() => {
@@ -273,23 +340,25 @@ onBeforeUnmount(() => {
 	padding: 0 16px 0 52px;
 }
 
-.timeline-view__bucket-header {
-	font-size: 18px;
-	font-weight: bold;
-	margin: 8px 0;
-	padding: 4px 0;
-	color: var(--color-main-text);
+.timeline-view__sticky-date {
 	position: sticky;
 	top: 0;
+	z-index: 10;
+	padding: 6px 16px 6px 52px;
+	font-size: 18px;
+	font-weight: bold;
+	color: var(--color-main-text);
 	background: var(--color-main-background);
-	z-index: 1;
+	pointer-events: none;
 }
 
-.timeline-view__bucket-count {
+.timeline-view__sticky-count {
 	font-size: 13px;
 	font-weight: normal;
 	color: var(--color-text-maxcontrast);
+	margin-left: 6px;
 }
+
 
 .timeline-view__bucket-loading {
 	display: flex;

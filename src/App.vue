@@ -71,7 +71,9 @@ const store = useImmichStore()
 const saving = ref(false)
 
 const pageTitles = {
-	'timeline': t('integration_immich', 'Alle Bilder'),
+	'timeline': t('integration_immich', 'Alle Medien'),
+	'photos': t('integration_immich', 'Fotos'),
+	'videos': t('integration_immich', 'Videos'),
 	'albums': t('integration_immich', 'Alben'),
 	'album-detail': t('integration_immich', 'Alben'),
 	'people': t('integration_immich', 'Personen'),
@@ -82,7 +84,7 @@ const pageTitles = {
 }
 
 // Views that contain individual selectable assets (photos/videos)
-const photoViews = new Set(['timeline', 'album-detail', 'person-detail', 'place-detail'])
+const photoViews = new Set(['timeline', 'photos', 'videos', 'album-detail', 'person-detail', 'place-detail'])
 
 const pageTitle = computed(() => pageTitles[route.name] ?? 'Immich')
 const isPhotoView = computed(() => photoViews.has(route.name))

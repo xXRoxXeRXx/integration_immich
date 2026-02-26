@@ -10,6 +10,9 @@ export const useImmichStore = defineStore('immich', {
 		// Timeline
 		timelineBuckets: [],
 		timelineAssets: {},
+		// Filtered timelines (keyed by assetType: 'IMAGE' | 'VIDEO')
+		filteredBuckets: { IMAGE: [], VIDEO: [] },
+		filteredAssets: { IMAGE: {}, VIDEO: {} },
 		// Albums
 		albums: [],
 		currentAlbum: null,
@@ -67,6 +70,47 @@ export const useImmichStore = defineStore('immich', {
 
 		unloadTimelineBucket(timeBucket) {
 			delete this.timelineAssets[timeBucket]
+		},
+
+		// ---- Filtered timelines (Fotos / Videos) ----
+
+		async fetchFilteredBuckets(assetType) {
+			this.loading = true
+			this.error = null
+			try {
+				// Immich's timeline/buckets endpoint does not support assetType filtering.
+				// Reuse the main timeline bucket structure; PHP will filter the asset content.
+				if (this.timelineBuckets.length === 0) {
+					const response = await getTimeline()
+					this.timelineBuckets = Array.isArray(response.data) ? response.data : []
+				}
+				this.filteredBuckets[assetType] = this.timelineBuckets.map(b => ({ ...b }))
+			} catch (e) {
+				this.error = e.response?.data?.error || e.message
+			} finally {
+				this.loading = false
+			}
+		},
+
+		async fetchFilteredBucket(assetType, timeBucket) {
+			if (this.filteredAssets[assetType][timeBucket]) return
+			try {
+				// Pass assetType so PHP backend can filter the returned assets by type
+				const response = await getTimeline({ assetType, timeBucket })
+				const assets = Array.isArray(response.data) ? response.data : []
+				this.filteredAssets[assetType][timeBucket] = assets
+				// Update bucket count to match actual filtered asset count for correct height estimation
+				const bucket = this.filteredBuckets[assetType].find(b => b.timeBucket === timeBucket)
+				if (bucket) {
+					bucket.count = assets.length
+				}
+			} catch (e) {
+				this.error = e.response?.data?.error || e.message
+			}
+		},
+
+		unloadFilteredBucket(assetType, timeBucket) {
+			delete this.filteredAssets[assetType][timeBucket]
 		},
 
 		// ---- Albums ----

@@ -47,9 +47,23 @@ class AssetsController extends Controller {
             $timeBucket = $this->request->getParam('timeBucket');
             $size = $this->request->getParam('size', 'MONTH');
             $personId = $this->request->getParam('personId');
+            $assetType = $this->request->getParam('assetType');
 
             if ($timeBucket) {
                 $data = $this->immichService->getTimelineBucket($timeBucket, $size, $personId);
+                // Immich timeline/bucket does not support assetType filtering.
+                // Immich returns isImage (bool) instead of a type field — filter in PHP.
+                if ($assetType === 'IMAGE') {
+                    $data = array_values(array_filter(
+                        $data,
+                        static fn(array $asset): bool => (bool)($asset['isImage'] ?? true)
+                    ));
+                } elseif ($assetType === 'VIDEO') {
+                    $data = array_values(array_filter(
+                        $data,
+                        static fn(array $asset): bool => !($asset['isImage'] ?? true)
+                    ));
+                }
             } else {
                 $data = $this->immichService->getTimelineBuckets($size, $personId);
             }
