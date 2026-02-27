@@ -3,17 +3,34 @@
       xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
     <id>integration_immich</id>
     <name>Immich Integration</name>
-    <summary>Browse your Immich photo library in Nextcloud</summary>
-    <description><![CDATA[Integrates Immich photo management into Nextcloud.
-Browse your timeline, view albums and upload files directly to Immich from Nextcloud.]]></description>
+    <summary>Browse your Immich photo library directly in Nextcloud</summary>
+    <description><![CDATA[
+Seamlessly integrates your [Immich](https://immich.app) photo library into Nextcloud.
+
+**Features:**
+- 🖼️ **Timeline** — lazy-loaded photo & video timeline grouped by date
+- 📁 **Albums** — browse, create, rename and delete Immich albums
+- 👤 **People** — explore your library by recognized person (face recognition)
+- 🗺️ **Map** — interactive map of all geotagged photos
+- 🔍 **Explore** — browse by city, country, state, object or tag
+- 🔎 **Lightbox** — full-screen viewer with keyboard navigation, pinch-to-zoom and EXIF metadata
+- ⭐ **Favorites** — mark and unmark photos as favorites
+- 💾 **Save to Nextcloud** — save Immich originals directly to your Nextcloud Files
+- ⬆️ **Upload to Immich** — send photos and videos from Nextcloud Files to Immich
+- ☑️ **Multi-select** — batch operations across any view
+    ]]></description>
     <version>1.0.0</version>
     <licence>agpl</licence>
     <author mail="gh@grenzallee.eu">Marcel Meyer</author>
     <namespace>IntegrationImmich</namespace>
     <category>multimedia</category>
+    <website>https://github.com/xXRoxXeRXx/integration_immich</website>
     <bugs>https://github.com/xXRoxXeRXx/integration_immich/issues</bugs>
+    <screenshot>https://raw.githubusercontent.com/xXRoxXeRXx/integration_immich/master/screenshots/allmedia.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/xXRoxXeRXx/integration_immich/master/screenshots/album.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/xXRoxXeRXx/integration_immich/master/screenshots/people.png</screenshot>
     <dependencies>
-        <nextcloud min-version="30"/>
+        <nextcloud min-version="30" max-version="32"/>
         <php min-version="8.1"/>
     </dependencies>
     <navigations>
