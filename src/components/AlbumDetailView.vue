@@ -17,6 +17,7 @@
 		</NcEmptyContent>
 
 		<template v-else-if="store.currentAlbum">
+			<!-- Sticky Header -->
 			<div class="album-detail__header">
 				<NcButton variant="tertiary" @click="goBack">
 					<template #icon>
@@ -95,26 +96,29 @@
 				</template>
 			</NcDialog>
 
-			<NcEmptyContent v-if="!store.currentAlbum.assets || store.currentAlbum.assets.length === 0"
-				:name="t('integration_immich', 'Album leer')"
-				:description="t('integration_immich', 'Dieses Album enthält noch keine Bilder.')">
-				<template #icon>
-					<ImageIcon :size="64" />
-				</template>
-				<template #action>
-					<NcButton variant="primary" @click="showPicker = true">
-						<template #icon>
-							<ImagePlusIcon :size="20" />
-						</template>
-						{{ t('integration_immich', 'Bilder hinzufügen') }}
-					</NcButton>
-				</template>
-			</NcEmptyContent>
+			<!-- Scroll-Bereich -->
+			<div class="album-detail__scroll">
+				<NcEmptyContent v-if="!store.currentAlbum.assets || store.currentAlbum.assets.length === 0"
+					:name="t('integration_immich', 'Album leer')"
+					:description="t('integration_immich', 'Dieses Album enthält noch keine Bilder.')">
+					<template #icon>
+						<ImageIcon :size="64" />
+					</template>
+					<template #action>
+						<NcButton variant="primary" @click="showPicker = true">
+							<template #icon>
+								<ImagePlusIcon :size="20" />
+							</template>
+							{{ t('integration_immich', 'Bilder hinzufügen') }}
+						</NcButton>
+					</template>
+				</NcEmptyContent>
 
-			<PhotoGrid v-else
-				:assets="store.currentAlbum.assets"
-				:selectable="true"
-				@click="(_, idx) => store.openLightbox(store.currentAlbum.assets, idx)" />
+				<PhotoGrid v-else
+					:assets="store.currentAlbum.assets"
+					:selectable="true"
+					@click="(_, idx) => store.openLightbox(store.currentAlbum.assets, idx)" />
+			</div>
 
 			<!-- Asset Picker Overlay für "Bilder hinzufügen" -->
 			<AssetPickerModal v-if="showPicker"
@@ -226,6 +230,7 @@ onMounted(() => {
 })
 
 watch(() => props.id, () => {
+	headerMenuOpen.value = false
 	loadAlbum()
 })
 </script>
@@ -233,9 +238,9 @@ watch(() => props.id, () => {
 <style scoped>
 .album-detail {
 	height: 100%;
-	overflow-y: auto;
-	box-sizing: border-box;
-	padding: 24px 16px 16px;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 }
 
 .album-detail__loading {
@@ -248,26 +253,37 @@ watch(() => props.id, () => {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	margin-bottom: 16px;
-	padding: 0 8px;
+	padding: 8px 16px;
+	flex-shrink: 0;
+	border-bottom: 1px solid var(--color-border);
 }
 
 .album-detail__title {
 	flex: 1;
 	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
 }
 
 .album-detail__title h2 {
 	margin: 0;
-	font-size: 22px;
+	font-size: 20px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
 .album-detail__count {
-	font-size: 14px;
+	font-size: 13px;
 	color: var(--color-text-maxcontrast);
+}
+
+.album-detail__scroll {
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px;
+	box-sizing: border-box;
 }
 
 /* Desktop: Buttons direkt sichtbar */
@@ -339,7 +355,11 @@ watch(() => props.id, () => {
 }
 
 @media (max-width: 680px) {
-	.album-detail {
+	.album-detail__header {
+		padding: 8px;
+	}
+
+	.album-detail__scroll {
 		padding: 8px;
 	}
 
@@ -352,7 +372,7 @@ watch(() => props.id, () => {
 	}
 
 	.album-detail__title h2 {
-		font-size: 18px;
+		font-size: 17px;
 	}
 }
 </style>
