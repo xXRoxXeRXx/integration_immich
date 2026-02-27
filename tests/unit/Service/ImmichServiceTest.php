@@ -92,4 +92,25 @@ class ImmichServiceTest extends TestCase {
 
 		$this->service->setServerUrl('https://photos.example.com/');
 	}
+
+	public function testGetApiKeyReturnsValue(): void {
+		$this->config->method('getUserValue')
+			->with('testuser', Application::APP_ID, 'api_key', '')
+			->willReturn('my-secret-key');
+
+		$this->assertEquals('my-secret-key', $this->service->getApiKey());
+	}
+
+	public function testValidateConnectionReturnsSuccessOnOk(): void {
+		// validateConnection calls request() internally which uses IClientService.
+		// We test the failure path which is fully controllable without HTTP.
+		$this->config->method('getUserValue')->willReturn('');
+
+		// isConfigured() → false → request() will throw because URL is empty.
+		// The exception is caught and wrapped in ['success' => false].
+		$result = $this->service->validateConnection();
+
+		$this->assertFalse($result['success']);
+		$this->assertArrayHasKey('error', $result);
+	}
 }

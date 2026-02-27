@@ -31,9 +31,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-versions: ['8.1', '8.2', '8.3']
+        php-versions: ['8.2', '8.3']
         databases: ['sqlite', 'mysql', 'pgsql']
-        server-versions: ['stable30', 'stable31', 'stable32', 'master']
+        server-versions: ['stable30', 'stable31', 'stable32', 'stable33', 'master']
 
     name: php${{ matrix.php-versions }}-${{ matrix.databases }}-${{ matrix.server-versions }}
 
