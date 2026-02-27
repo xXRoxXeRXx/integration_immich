@@ -325,7 +325,7 @@ watch([() => props.assetType, () => props.isFavorite], async () => {
 
 // When favorites are mutated externally (e.g. removed via toolbar), re-trigger
 // the window watcher by resetting scroll — buckets ref already changed reactively.
-watch(() => props.isFavorite && store.favoriteBuckets.length, (newLen, oldLen) => {
+watch(() => store.favoriteBuckets.length, (newLen, oldLen) => {
 	if (props.isFavorite && newLen !== oldLen) {
 		loadingSet.value = new Set()
 	}

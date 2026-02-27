@@ -29,6 +29,7 @@
 							{{ t('integration_immich', '{count} ausgewählt', { count: store.selectedAssetIds.size }) }}
 						</span>
 						<div class="view-toolbar__selection-actions">
+							<!-- Primary action: always visible -->
 							<NcButton variant="primary"
 								:disabled="store.selectedAssetIds.size === 0 || saving"
 								@click="saveToNextcloud">
@@ -36,48 +37,91 @@
 									<NcLoadingIcon v-if="saving" :size="20" />
 									<ContentSaveIcon v-else :size="20" />
 								</template>
-								{{ t('integration_immich', 'In Nextcloud speichern') }}
+								<span class="selection-btn-label">{{ t('integration_immich', 'In Nextcloud speichern') }}</span>
 							</NcButton>
-							<NcButton variant="secondary"
-								:disabled="store.selectedAssetIds.size === 0 || downloading"
-								@click="downloadSelected">
-								<template #icon>
-									<NcLoadingIcon v-if="downloading" :size="20" />
-									<DownloadIcon v-else :size="20" />
-								</template>
-								{{ t('integration_immich', 'Herunterladen') }}
-							</NcButton>
-							<NcButton v-if="isAlbumDetailView"
-								variant="error"
-								:disabled="store.selectedAssetIds.size === 0 || removingFromAlbum"
-								@click="removeFromCurrentAlbum">
-								<template #icon>
-									<NcLoadingIcon v-if="removingFromAlbum" :size="20" />
-									<FolderRemoveIcon v-else :size="20" />
-								</template>
-								{{ t('integration_immich', 'Aus Album entfernen') }}
-							</NcButton>
-							<NcButton v-else
-								variant="secondary"
-								:disabled="store.selectedAssetIds.size === 0 || addingToAlbum || showAlbumPicker"
-								@click="showAlbumPicker = true">
-								<template #icon>
-									<FolderPlusIcon :size="20" />
-								</template>
-								{{ t('integration_immich', 'Zu Album hinzufügen') }}
-							</NcButton>
-							<NcButton variant="secondary"
-								:disabled="store.selectedAssetIds.size === 0 || togglingFavorite"
-								@click="toggleFavoritesSelection">
-								<template #icon>
-									<NcLoadingIcon v-if="togglingFavorite" :size="20" />
-									<HeartIcon v-else-if="selectedAllFavorited" :size="20" />
-									<HeartOutlineIcon v-else :size="20" />
-								</template>
-								{{ selectedAllFavorited
-									? t('integration_immich', 'Aus Favoriten entfernen')
-									: t('integration_immich', 'Zu Favoriten') }}
-							</NcButton>
+
+							<!-- Secondary actions: visible on desktop, collapsed on mobile -->
+							<div class="selection-actions-desktop">
+								<NcButton variant="secondary"
+									:disabled="store.selectedAssetIds.size === 0 || downloading"
+									@click="downloadSelected">
+									<template #icon>
+										<NcLoadingIcon v-if="downloading" :size="20" />
+										<DownloadIcon v-else :size="20" />
+									</template>
+									{{ t('integration_immich', 'Herunterladen') }}
+								</NcButton>
+								<NcButton v-if="isAlbumDetailView"
+									variant="error"
+									:disabled="store.selectedAssetIds.size === 0 || removingFromAlbum"
+									@click="removeFromCurrentAlbum">
+									<template #icon>
+										<NcLoadingIcon v-if="removingFromAlbum" :size="20" />
+										<FolderRemoveIcon v-else :size="20" />
+									</template>
+									{{ t('integration_immich', 'Aus Album entfernen') }}
+								</NcButton>
+								<NcButton v-else
+									variant="secondary"
+									:disabled="store.selectedAssetIds.size === 0 || addingToAlbum || showAlbumPicker"
+									@click="showAlbumPicker = true">
+									<template #icon>
+										<FolderPlusIcon :size="20" />
+									</template>
+									{{ t('integration_immich', 'Zu Album hinzufügen') }}
+								</NcButton>
+								<NcButton variant="secondary"
+									:disabled="store.selectedAssetIds.size === 0 || togglingFavorite"
+									@click="toggleFavoritesSelection">
+									<template #icon>
+										<NcLoadingIcon v-if="togglingFavorite" :size="20" />
+										<HeartIcon v-else-if="selectedAllFavorited" :size="20" />
+										<HeartOutlineIcon v-else :size="20" />
+									</template>
+									{{ selectedAllFavorited
+										? t('integration_immich', 'Aus Favoriten entfernen')
+										: t('integration_immich', 'Zu Favoriten') }}
+								</NcButton>
+							</div>
+
+							<!-- 3-Punkte-Menü: nur auf Mobile sichtbar -->
+							<div class="selection-actions-mobile" :class="{ 'selection-actions-mobile--open': mobileMenuOpen }">
+								<button class="selection-kebab" @click.stop="mobileMenuOpen = !mobileMenuOpen" :aria-label="t('integration_immich', 'Mehr Aktionen')">
+									<DotsVerticalIcon :size="20" />
+								</button>
+								<div v-if="mobileMenuOpen" class="selection-kebab-menu" @click="mobileMenuOpen = false">
+									<button class="selection-kebab-menu__item"
+										:disabled="store.selectedAssetIds.size === 0 || downloading"
+										@click="downloadSelected">
+										<DownloadIcon :size="18" />
+										{{ t('integration_immich', 'Herunterladen') }}
+									</button>
+									<button v-if="isAlbumDetailView"
+										class="selection-kebab-menu__item selection-kebab-menu__item--danger"
+										:disabled="store.selectedAssetIds.size === 0 || removingFromAlbum"
+										@click="removeFromCurrentAlbum">
+										<FolderRemoveIcon :size="18" />
+										{{ t('integration_immich', 'Aus Album entfernen') }}
+									</button>
+									<button v-else
+										class="selection-kebab-menu__item"
+										:disabled="store.selectedAssetIds.size === 0 || addingToAlbum"
+										@click="showAlbumPicker = true">
+										<FolderPlusIcon :size="18" />
+										{{ t('integration_immich', 'Zu Album hinzufügen') }}
+									</button>
+									<button class="selection-kebab-menu__item"
+										:disabled="store.selectedAssetIds.size === 0 || togglingFavorite"
+										@click="toggleFavoritesSelection">
+										<HeartIcon v-if="selectedAllFavorited" :size="18" />
+										<HeartOutlineIcon v-else :size="18" />
+										{{ selectedAllFavorited
+											? t('integration_immich', 'Aus Favoriten entfernen')
+											: t('integration_immich', 'Zu Favoriten') }}
+									</button>
+								</div>
+							</div>
+
 							<NcButton variant="tertiary" @click="store.clearSelection()">
 								{{ t('integration_immich', 'Abbrechen') }}
 							</NcButton>
@@ -128,6 +172,7 @@ import FolderPlusIcon from 'vue-material-design-icons/FolderPlus.vue'
 import FolderRemoveIcon from 'vue-material-design-icons/FolderMinus.vue'
 import HeartOutlineIcon from 'vue-material-design-icons/HeartOutline.vue'
 import HeartIcon from 'vue-material-design-icons/Heart.vue'
+import DotsVerticalIcon from 'vue-material-design-icons/DotsVertical.vue'
 
 const store = useImmichStore()
 const route = useRoute()
@@ -139,6 +184,7 @@ const togglingFavorite = ref(false)
 const showAlbumPicker = ref(false)
 const albums = ref([])
 const loadingAlbums = ref(false)
+const mobileMenuOpen = ref(false)
 
 // True when ALL selected assets are already favorited → show "remove" action
 const selectedAllFavorited = computed(() => {
@@ -179,6 +225,7 @@ watch(() => route.name, () => {
 	if (store.isSelectionMode) {
 		store.clearSelection()
 	}
+	mobileMenuOpen.value = false
 })
 
 async function saveToNextcloud() {
@@ -420,6 +467,96 @@ async function toggleFavoritesSelection() {
 	align-items: center;
 	gap: 8px;
 	flex-shrink: 0;
+}
+
+/* Desktop: alle Buttons sichtbar */
+.selection-actions-desktop {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* Mobile: 3-Punkte-Menü sichtbar, Desktop-Buttons versteckt */
+.selection-actions-mobile {
+	display: none;
+	position: relative;
+}
+
+.selection-kebab {
+	all: unset;
+	box-sizing: border-box;
+	width: 44px;
+	height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	cursor: pointer;
+	color: var(--color-main-text);
+	transition: background 0.15s;
+}
+
+.selection-kebab:hover {
+	background: var(--color-background-hover);
+}
+
+.selection-kebab-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	z-index: 100;
+	background: var(--color-main-background);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+	min-width: 220px;
+	padding: 4px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.selection-kebab-menu__item {
+	all: unset;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	border-radius: var(--border-radius, 4px);
+	font-size: 14px;
+	cursor: pointer;
+	color: var(--color-main-text);
+	width: 100%;
+	transition: background 0.15s;
+}
+
+.selection-kebab-menu__item:hover {
+	background: var(--color-background-hover);
+}
+
+.selection-kebab-menu__item--danger {
+	color: var(--color-error);
+}
+
+.selection-kebab-menu__item:disabled {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+/* Label im primary Button auf Mobile ausblenden → nur Icon */
+@media (max-width: 680px) {
+	.selection-actions-desktop {
+		display: none;
+	}
+
+	.selection-actions-mobile {
+		display: block;
+	}
+
+	.selection-btn-label {
+		display: none;
+	}
 }
 
 /* View container — fills remaining space below toolbar */

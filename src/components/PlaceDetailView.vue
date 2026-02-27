@@ -118,7 +118,6 @@ function goBack() {
 	padding: 8px 16px;
 	flex-shrink: 0;
 	border-bottom: 1px solid var(--color-border);
-	background: var(--color-main-background);
 }
 
 .place-detail__title {

@@ -380,4 +380,18 @@ onBeforeUnmount(() => {
 	border-radius: 8px;
 	opacity: 0.15;
 }
+
+@media (max-width: 480px) {
+	.person-detail__header {
+		padding: 8px;
+	}
+
+	.person-detail__title h2 {
+		font-size: 18px;
+	}
+
+	.person-detail__bucket {
+		padding: 0 8px;
+	}
+}
 </style>

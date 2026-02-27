@@ -71,6 +71,7 @@ onMounted(() => {
 	height: 100%;
 	overflow-y: auto;
 	padding: 24px 16px 16px;
+	box-sizing: border-box;
 }
 
 .people-view__loading {

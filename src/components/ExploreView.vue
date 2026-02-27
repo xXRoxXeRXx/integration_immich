@@ -99,6 +99,7 @@ onMounted(() => {
 	padding: 24px 16px 16px;
 	overflow-y: auto;
 	height: 100%;
+	box-sizing: border-box;
 }
 
 .explore-view__loading {

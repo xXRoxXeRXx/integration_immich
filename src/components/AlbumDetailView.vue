@@ -30,20 +30,43 @@
 						{{ t('integration_immich', '{count} Bilder', { count: store.currentAlbum.assets?.length || 0 }) }}
 					</span>
 				</div>
-				<NcButton variant="tertiary" @click="startRename">
-					<template #icon>
-						<PencilIcon :size="20" />
-					</template>
-					{{ t('integration_immich', 'Umbenennen') }}
-				</NcButton>
-				<NcButton v-if="store.currentAlbum.assets && store.currentAlbum.assets.length > 0"
-					variant="secondary"
-					@click="showPicker = true">
-					<template #icon>
-						<ImagePlusIcon :size="20" />
-					</template>
-					{{ t('integration_immich', 'Bilder hinzufügen') }}
-				</NcButton>
+
+				<!-- Desktop: Buttons direkt sichtbar -->
+				<div class="album-detail__actions-desktop">
+					<NcButton variant="tertiary" @click="startRename">
+						<template #icon>
+							<PencilIcon :size="20" />
+						</template>
+						{{ t('integration_immich', 'Umbenennen') }}
+					</NcButton>
+					<NcButton v-if="store.currentAlbum.assets && store.currentAlbum.assets.length > 0"
+						variant="secondary"
+						@click="showPicker = true">
+						<template #icon>
+							<ImagePlusIcon :size="20" />
+						</template>
+						{{ t('integration_immich', 'Bilder hinzufügen') }}
+					</NcButton>
+				</div>
+
+				<!-- Mobile: 3-Punkte-Menü -->
+				<div class="album-detail__actions-mobile">
+					<button class="album-detail__kebab" @click.stop="headerMenuOpen = !headerMenuOpen" :aria-label="t('integration_immich', 'Mehr Aktionen')">
+						<DotsVerticalIcon :size="20" />
+					</button>
+					<div v-if="headerMenuOpen" class="album-detail__kebab-menu" @click="headerMenuOpen = false">
+						<button class="album-detail__kebab-item" @click="startRename">
+							<PencilIcon :size="18" />
+							{{ t('integration_immich', 'Umbenennen') }}
+						</button>
+						<button v-if="store.currentAlbum.assets && store.currentAlbum.assets.length > 0"
+							class="album-detail__kebab-item"
+							@click="showPicker = true">
+							<ImagePlusIcon :size="18" />
+							{{ t('integration_immich', 'Bilder hinzufügen') }}
+						</button>
+					</div>
+				</div>
 			</div>
 
 			<!-- Rename Dialog -->
@@ -91,7 +114,7 @@
 			<PhotoGrid v-else
 				:assets="store.currentAlbum.assets"
 				:selectable="true"
-				@click="(asset, idx) => store.openLightbox(store.currentAlbum.assets, idx)" />
+				@click="(_, idx) => store.openLightbox(store.currentAlbum.assets, idx)" />
 
 			<!-- Asset Picker Overlay für "Bilder hinzufügen" -->
 			<AssetPickerModal v-if="showPicker"
@@ -120,6 +143,7 @@ import ImageIcon from 'vue-material-design-icons/Image.vue'
 import ImagePlusIcon from 'vue-material-design-icons/ImagePlus.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
+import DotsVerticalIcon from 'vue-material-design-icons/DotsVertical.vue'
 
 const props = defineProps({
 	id: {
@@ -135,6 +159,7 @@ const addingAssets = ref(false)
 const showRenameDialog = ref(false)
 const renameValue = ref('')
 const renaming = ref(false)
+const headerMenuOpen = ref(false)
 
 // IDs der bereits im Album enthaltenen Assets → werden im Picker grau markiert
 const existingAssetIds = computed(() =>
@@ -222,18 +247,22 @@ watch(() => props.id, () => {
 .album-detail__header {
 	display: flex;
 	align-items: center;
-	gap: 16px;
+	gap: 8px;
 	margin-bottom: 16px;
 	padding: 0 8px;
 }
 
 .album-detail__title {
 	flex: 1;
+	min-width: 0;
 }
 
 .album-detail__title h2 {
 	margin: 0;
 	font-size: 22px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .album-detail__count {
@@ -241,14 +270,85 @@ watch(() => props.id, () => {
 	color: var(--color-text-maxcontrast);
 }
 
-@media (max-width: 480px) {
+/* Desktop: Buttons direkt sichtbar */
+.album-detail__actions-desktop {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+/* Mobile: 3-Punkte-Menü versteckt auf Desktop */
+.album-detail__actions-mobile {
+	display: none;
+	position: relative;
+	flex-shrink: 0;
+}
+
+.album-detail__kebab {
+	all: unset;
+	box-sizing: border-box;
+	width: 44px;
+	height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	cursor: pointer;
+	color: var(--color-main-text);
+	transition: background 0.15s;
+}
+
+.album-detail__kebab:hover {
+	background: var(--color-background-hover);
+}
+
+.album-detail__kebab-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	z-index: 100;
+	background: var(--color-main-background);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+	min-width: 200px;
+	padding: 4px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.album-detail__kebab-item {
+	all: unset;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	border-radius: var(--border-radius, 4px);
+	font-size: 14px;
+	cursor: pointer;
+	color: var(--color-main-text);
+	width: 100%;
+	transition: background 0.15s;
+}
+
+.album-detail__kebab-item:hover {
+	background: var(--color-background-hover);
+}
+
+@media (max-width: 680px) {
 	.album-detail {
 		padding: 8px;
 	}
 
-	.album-detail__header {
-		flex-wrap: wrap;
-		gap: 8px;
+	.album-detail__actions-desktop {
+		display: none;
+	}
+
+	.album-detail__actions-mobile {
+		display: block;
 	}
 
 	.album-detail__title h2 {
