@@ -71,6 +71,9 @@ function Invoke-Release {
         }
     }
 
+    # Remove source maps (not needed in production release)
+    Get-ChildItem (Join-Path $SourceDir 'js') -Filter '*.map' | Remove-Item -Force
+
     $zipPath = Join-Path $ReleaseDir "$AppName.zip"
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 

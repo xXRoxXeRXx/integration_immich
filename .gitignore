@@ -1,6 +1,7 @@
 node_modules/
 js/
 vendor/
+build/
 .php-cs-fixer.cache
 
 # Claude Code local config (contains deployment paths)
