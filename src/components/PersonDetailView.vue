@@ -273,6 +273,8 @@ watch(() => props.id, load)
 
 onBeforeUnmount(() => {
 	if (scrollRaf) cancelAnimationFrame(scrollRaf)
+	pendingQueue.length = 0
+	activeRequests = 0
 })
 </script>
 
@@ -366,7 +368,7 @@ onBeforeUnmount(() => {
 	top: 0;
 	left: 0;
 	right: 0;
-	padding: 0 16px;
+	padding: 15px 16px 0;
 }
 
 .person-detail__bucket-loading {

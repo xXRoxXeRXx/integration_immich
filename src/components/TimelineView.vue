@@ -335,6 +335,8 @@ onBeforeUnmount(() => {
 	if (scrollRaf) {
 		cancelAnimationFrame(scrollRaf)
 	}
+	pendingQueue.length = 0
+	activeRequests = 0
 })
 
 function scrollToTop() {
@@ -371,7 +373,7 @@ function scrollToTop() {
 	top: 0;
 	left: 0;
 	right: 0;
-	padding: 0 16px;
+	padding: 15px 16px 0;
 }
 
 /* ---- Sticky date — slim & elegant ---- */
