@@ -62,10 +62,24 @@
 				</template>
 			</NcAppNavigationItem>
 		</NcAppNavigationList>
+
+		<!-- Footer: Link zur Immich-Instanz -->
+		<template #footer>
+			<NcAppNavigationItem v-if="immichUrl"
+				:name="t('integration_immich', 'Immich öffnen')"
+				:href="immichUrl"
+				target="_blank"
+				rel="noopener noreferrer">
+				<template #icon>
+					<OpenInNewIcon :size="20" />
+				</template>
+			</NcAppNavigationItem>
+		</template>
 	</NcAppNavigation>
 </template>
 
 <script setup>
+import { loadState } from '@nextcloud/initial-state'
 import { NcAppNavigation, NcAppNavigationList, NcAppNavigationItem } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 
@@ -77,5 +91,9 @@ import FolderIcon from 'vue-material-design-icons/ViewGalleryOutline.vue'
 import AccountGroupIcon from 'vue-material-design-icons/FaceWomanShimmerOutline.vue'
 import MapIcon from 'vue-material-design-icons/MapOutline.vue'
 import CompassIcon from 'vue-material-design-icons/Telescope.vue'
+import OpenInNewIcon from 'vue-material-design-icons/OpenInNew.vue'
 
+const config = loadState('integration_immich', 'user-config', {})
+const rawUrl = config?.server_url || ''
+const immichUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://') ? rawUrl : ''
 </script>
