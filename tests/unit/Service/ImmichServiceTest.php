@@ -102,13 +102,30 @@ class ImmichServiceTest extends TestCase {
 	}
 
 	public function testValidateConnectionReturnsSuccessOnOk(): void {
-		// validateConnection calls request() internally which uses IClientService.
-		// We test the failure path which is fully controllable without HTTP.
-		$this->config->method('getUserValue')->willReturn('');
+		// validateConnection delegates to request() which uses IClientService.
+		// We verify the failure-wrapping branch by having the HTTP client throw.
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->method('post')->willThrowException(new \Exception('Connection refused'));
 
-		// isConfigured() → false → request() will throw because URL is empty.
-		// The exception is caught and wrapped in ['success' => false].
-		$result = $this->service->validateConnection();
+		$clientService = $this->createMock(\OCP\Http\Client\IClientService::class);
+		$clientService->method('newClient')->willReturn($client);
+
+		$this->config->method('getUserValue')->willReturnCallback(
+			fn(string $uid, string $app, string $key, string $default) => match ($key) {
+				'server_url' => 'https://photos.example.com',
+				'api_key'    => 'test-key',
+				default      => $default,
+			}
+		);
+
+		$service = new ImmichService(
+			$clientService,
+			$this->config,
+			$this->userSession,
+			$this->createMock(\Psr\Log\LoggerInterface::class),
+		);
+
+		$result = $service->validateConnection();
 
 		$this->assertFalse($result['success']);
 		$this->assertArrayHasKey('error', $result);

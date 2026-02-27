@@ -132,7 +132,7 @@ class AlbumsControllerTest extends TestCase {
 
 	public function testDeleteReturnsSuccess(): void {
 		$this->immichService->method('isConfigured')->willReturn(true);
-		$this->immichService->method('deleteAlbum')->willReturn(null);
+		// deleteAlbum returns void — no return value to mock
 
 		$response = $this->controller->delete(self::VALID_UUID);
 
