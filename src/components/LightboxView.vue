@@ -51,7 +51,7 @@
 						v-if="currentAsset"
 						class="ic-lb-btn"
 						:class="{ 'ic-lb-btn--active': isFavorite }"
-						:title="isFavorite ? t('integration_immich', 'Aus Favoriten entfernen') : t('integration_immich', 'Zu Favoriten hinzufügen')"
+						:title="isFavorite ? t('integration_immich', 'Remove from favorites') : t('integration_immich', 'Add to favorites')"
 						:disabled="togglingFavorite"
 						@click.stop="toggleFavorite"
 					>
@@ -456,7 +456,7 @@ async function downloadCurrent() {
 		document.body.removeChild(a)
 		URL.revokeObjectURL(url)
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler beim Herunterladen: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error downloading: {msg}', { msg: e.message }))
 	} finally {
 		downloadingAsset.value = false
 	}
@@ -465,11 +465,11 @@ async function downloadCurrent() {
 async function saveCurrentToNextcloud() {
 	if (!currentAsset.value || savingToNc.value) return
 
-	const picker = getFilePickerBuilder(t('integration_immich', 'Speicherort in Nextcloud wählen'))
+	const picker = getFilePickerBuilder(t('integration_immich', 'Choose save location in Nextcloud'))
 		.setMultiSelect(false)
 		.allowDirectories(true)
 		.addButton({
-			label: t('integration_immich', 'Hier speichern'),
+			label: t('integration_immich', 'Save here'),
 			type: 'primary',
 			callback: () => {},
 		})
@@ -482,7 +482,7 @@ async function saveCurrentToNextcloud() {
 	} catch (e) {
 		pickerOpen.value = false
 		if (!(e instanceof FilePickerClosed)) {
-			showError(t('integration_immich', 'Fehler beim Öffnen des Ordner-Dialogs'))
+			showError(t('integration_immich', 'Error opening folder dialog'))
 		}
 		return
 	}
@@ -495,12 +495,12 @@ async function saveCurrentToNextcloud() {
 		const response = await saveAssetsToNextcloud([currentAsset.value.id], path)
 		const { saved, failed } = response.data
 		if (failed === 0) {
-			showSuccess(t('integration_immich', 'Datei in Nextcloud gespeichert'))
+			showSuccess(t('integration_immich', 'File saved to Nextcloud'))
 		} else {
-			showError(t('integration_immich', 'Speichern fehlgeschlagen'))
+			showError(t('integration_immich', 'Save failed'))
 		}
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler beim Speichern: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error saving: {msg}', { msg: e.message }))
 	} finally {
 		savingToNc.value = false
 	}
@@ -514,10 +514,10 @@ async function toggleFavorite() {
 		await updateAsset(currentAsset.value.id, { isFavorite: newVal })
 		store.patchAssetFavorite([currentAsset.value.id], newVal)
 		showSuccess(newVal
-			? t('integration_immich', 'Zu Favoriten hinzugefügt')
-			: t('integration_immich', 'Aus Favoriten entfernt'))
+			? t('integration_immich', 'Added to favorites')
+			: t('integration_immich', 'Removed from favorites'))
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error: {msg}', { msg: e.message }))
 	} finally {
 		togglingFavorite.value = false
 	}
@@ -554,7 +554,7 @@ async function openAlbumPanel() {
 		const [allRes] = await Promise.all([getAlbums(), refreshAssetAlbumIds()])
 		albums.value = allRes.data ?? []
 	} catch (e) {
-		showError(t('integration_immich', 'Alben konnten nicht geladen werden'))
+		showError(t('integration_immich', 'Could not load albums'))
 		showAlbumPanel.value = false
 	} finally {
 		loadingAlbums.value = false
@@ -570,12 +570,12 @@ async function addCurrentToAlbum(albumId) {
 		const results = response.data ?? []
 		const failed = results.filter(r => !r.success).length
 		if (failed === 0) {
-			showSuccess(t('integration_immich', 'Zum Album hinzugefügt'))
+			showSuccess(t('integration_immich', 'Added to album'))
 		} else {
-			showError(t('integration_immich', 'Fehler beim Hinzufügen zum Album'))
+			showError(t('integration_immich', 'Error adding to album'))
 		}
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler beim Hinzufügen: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error adding: {msg}', { msg: e.message }))
 	} finally {
 		addingToAlbum.value = false
 	}
@@ -592,18 +592,18 @@ async function createAndAdd() {
 			const addRes = await addAssetsToAlbum(albumId, [currentAsset.value.id])
 			const failed = (addRes.data ?? []).filter(r => !r.success).length
 			if (failed === 0) {
-				showSuccess(t('integration_immich', 'Album erstellt und Bild hinzugefügt'))
+				showSuccess(t('integration_immich', 'Album created and photo added'))
 			} else {
-				showError(t('integration_immich', 'Album erstellt, aber Fehler beim Hinzufügen'))
+				showError(t('integration_immich', 'Album created, but error adding photo'))
 			}
 		} else {
-			showSuccess(t('integration_immich', 'Album erstellt'))
+			showSuccess(t('integration_immich', 'Album created'))
 		}
 		showAlbumPanel.value = false
 		creatingAlbum.value = false
 		newAlbumName.value = ''
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler beim Erstellen: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error creating: {msg}', { msg: e.message }))
 	} finally {
 		creatingNewAlbum.value = false
 	}

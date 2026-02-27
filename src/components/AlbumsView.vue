@@ -5,7 +5,7 @@
 <template>
 	<div class="albums-view">
 		<NcEmptyContent v-if="store.error"
-			:name="t('integration_immich', 'Fehler')"
+			:name="t('integration_immich', 'Error')"
 			:description="store.error">
 			<template #icon>
 				<AlertIcon :size="64" />
@@ -23,13 +23,13 @@
 					<template #icon>
 						<PlusIcon :size="20" />
 					</template>
-					{{ t('integration_immich', 'Album erstellen') }}
+					{{ t('integration_immich', 'Create album') }}
 				</NcButton>
 			</div>
 
 			<NcEmptyContent v-if="store.albums.length === 0"
-				:name="t('integration_immich', 'Keine Alben')"
-				:description="t('integration_immich', 'In deiner Immich Bibliothek sind noch keine Alben vorhanden.')">
+				:name="t('integration_immich', 'No albums')"
+				:description="t('integration_immich', 'Your Immich library does not contain any albums yet.')">
 				<template #icon>
 					<FolderIcon :size="64" />
 				</template>
@@ -55,11 +55,11 @@
 							{{ album.albumName }}
 						</h3>
 						<span class="albums-view__count">
-							{{ t('integration_immich', '{count} Bilder', { count: album.assetCount || 0 }) }}
+							{{ t('integration_immich', '{count} photos', { count: album.assetCount || 0 }) }}
 						</span>
 					</div>
 					<button class="albums-view__delete-btn"
-						:title="t('integration_immich', 'Album löschen')"
+						:title="t('integration_immich', 'Delete album')"
 						@click.stop="confirmDelete(album)">
 						<TrashIcon :size="18" />
 					</button>
@@ -69,17 +69,17 @@
 
 		<!-- Create Album Dialog -->
 		<NcDialog v-if="showCreateDialog"
-			:name="t('integration_immich', 'Album erstellen')"
+			:name="t('integration_immich', 'Create album')"
 			@closing="showCreateDialog = false; newAlbumName = ''">
 			<div class="albums-view__dialog-body">
-				<NcTextField :label="t('integration_immich', 'Albumname')"
+				<NcTextField :label="t('integration_immich', 'Album name')"
 					v-model="newAlbumName"
-					:placeholder="t('integration_immich', 'Mein Album')"
+					:placeholder="t('integration_immich', 'My album')"
 					@keyup.enter="createAlbum" />
 			</div>
 			<template #actions>
 				<NcButton variant="tertiary" @click="showCreateDialog = false">
-					{{ t('integration_immich', 'Abbrechen') }}
+					{{ t('integration_immich', 'Cancel') }}
 				</NcButton>
 				<NcButton variant="secondary"
 					:disabled="!newAlbumName.trim() || creating"
@@ -87,7 +87,7 @@
 					<template #icon>
 						<ImagePlusIcon :size="20" />
 					</template>
-					{{ t('integration_immich', 'Bilder auswählen') }}
+					{{ t('integration_immich', 'Select photos') }}
 				</NcButton>
 				<NcButton variant="primary"
 					:disabled="!newAlbumName.trim() || creating"
@@ -96,7 +96,7 @@
 						<NcLoadingIcon v-if="creating" :size="20" />
 						<PlusIcon v-else :size="20" />
 					</template>
-					{{ t('integration_immich', 'Erstellen') }}
+					{{ t('integration_immich', 'Create') }}
 				</NcButton>
 			</template>
 		</NcDialog>
@@ -110,14 +110,14 @@
 
 		<!-- Delete Confirmation Dialog -->
 		<NcDialog v-if="albumToDelete"
-			:name="t('integration_immich', 'Album löschen')"
+			:name="t('integration_immich', 'Delete album')"
 			@closing="albumToDelete = null">
 			<p style="padding: 8px 0">
-				{{ t('integration_immich', 'Album „{name}" wirklich löschen?', { name: albumToDelete.albumName }) }}
+				{{ t('integration_immich', 'Really delete album "{name}"?', { name: albumToDelete.albumName }) }}
 			</p>
 			<template #actions>
 				<NcButton variant="tertiary" @click="albumToDelete = null">
-					{{ t('integration_immich', 'Abbrechen') }}
+					{{ t('integration_immich', 'Cancel') }}
 				</NcButton>
 				<NcButton variant="error"
 					:disabled="deleting"
@@ -126,7 +126,7 @@
 						<NcLoadingIcon v-if="deleting" :size="20" />
 						<TrashIcon v-else :size="20" />
 					</template>
-					{{ t('integration_immich', 'Löschen') }}
+					{{ t('integration_immich', 'Delete') }}
 				</NcButton>
 			</template>
 		</NcDialog>
@@ -182,7 +182,7 @@ async function createAlbum(assetIds = []) {
 			router.push({ name: 'album-detail', params: { id: newAlbum.id } })
 		}
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler beim Erstellen: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error creating album: {msg}', { msg: e.message }))
 	} finally {
 		creating.value = false
 	}
@@ -198,11 +198,11 @@ async function deleteAlbumConfirmed() {
 	deleting.value = true
 	try {
 		await apiDeleteAlbum(albumToDelete.value.id)
-		showSuccess(t('integration_immich', 'Album gelöscht'))
+		showSuccess(t('integration_immich', 'Album deleted'))
 		albumToDelete.value = null
 		await store.fetchAlbums()
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler beim Löschen: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error deleting: {msg}', { msg: e.message }))
 	} finally {
 		deleting.value = false
 	}

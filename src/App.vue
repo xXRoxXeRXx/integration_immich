@@ -19,14 +19,14 @@
 							<template #icon>
 								<CheckboxMultipleOutlineIcon :size="20" />
 							</template>
-							{{ t('integration_immich', 'Auswählen') }}
+							{{ t('integration_immich', 'Select') }}
 						</NcButton>
 					</template>
 
 					<!-- Selection mode: count + action buttons -->
 					<template v-else>
 						<span class="view-toolbar__selection-count">
-							{{ t('integration_immich', '{count} ausgewählt', { count: store.selectedAssetIds.size }) }}
+							{{ t('integration_immich', '{count} selected', { count: store.selectedAssetIds.size }) }}
 						</span>
 						<div class="view-toolbar__selection-actions">
 							<!-- Primary action: always visible -->
@@ -37,7 +37,7 @@
 									<NcLoadingIcon v-if="saving" :size="20" />
 									<ContentSaveIcon v-else :size="20" />
 								</template>
-								<span class="selection-btn-label">{{ t('integration_immich', 'In Nextcloud speichern') }}</span>
+								<span class="selection-btn-label">{{ t('integration_immich', 'Save to Nextcloud') }}</span>
 							</NcButton>
 
 							<!-- Secondary actions: visible on desktop, collapsed on mobile -->
@@ -49,7 +49,7 @@
 										<NcLoadingIcon v-if="downloading" :size="20" />
 										<DownloadIcon v-else :size="20" />
 									</template>
-									{{ t('integration_immich', 'Herunterladen') }}
+									{{ t('integration_immich', 'Download') }}
 								</NcButton>
 								<NcButton v-if="isAlbumDetailView"
 									variant="error"
@@ -59,7 +59,7 @@
 										<NcLoadingIcon v-if="removingFromAlbum" :size="20" />
 										<FolderRemoveIcon v-else :size="20" />
 									</template>
-									{{ t('integration_immich', 'Aus Album entfernen') }}
+									{{ t('integration_immich', 'Remove from album') }}
 								</NcButton>
 								<NcButton v-else
 									variant="secondary"
@@ -68,7 +68,7 @@
 									<template #icon>
 										<FolderPlusIcon :size="20" />
 									</template>
-									{{ t('integration_immich', 'Zu Album hinzufügen') }}
+									{{ t('integration_immich', 'Add to album') }}
 								</NcButton>
 								<NcButton variant="secondary"
 									:disabled="store.selectedAssetIds.size === 0 || togglingFavorite"
@@ -79,14 +79,14 @@
 										<HeartOutlineIcon v-else :size="20" />
 									</template>
 									{{ selectedAllFavorited
-										? t('integration_immich', 'Aus Favoriten entfernen')
-										: t('integration_immich', 'Zu Favoriten') }}
+										? t('integration_immich', 'Remove from favorites')
+										: t('integration_immich', 'Add to favorites') }}
 								</NcButton>
 							</div>
 
 							<!-- 3-Punkte-Menü: nur auf Mobile sichtbar -->
 							<div class="selection-actions-mobile" :class="{ 'selection-actions-mobile--open': mobileMenuOpen }">
-								<button class="selection-kebab" @click.stop="mobileMenuOpen = !mobileMenuOpen" :aria-label="t('integration_immich', 'Mehr Aktionen')">
+								<button class="selection-kebab" @click.stop="mobileMenuOpen = !mobileMenuOpen" :aria-label="t('integration_immich', 'More actions')">
 									<DotsVerticalIcon :size="20" />
 								</button>
 								<div v-if="mobileMenuOpen" class="selection-kebab-menu" @click="mobileMenuOpen = false">
@@ -94,21 +94,21 @@
 										:disabled="store.selectedAssetIds.size === 0 || downloading"
 										@click="downloadSelected">
 										<DownloadIcon :size="18" />
-										{{ t('integration_immich', 'Herunterladen') }}
+										{{ t('integration_immich', 'Download') }}
 									</button>
 									<button v-if="isAlbumDetailView"
 										class="selection-kebab-menu__item selection-kebab-menu__item--danger"
 										:disabled="store.selectedAssetIds.size === 0 || removingFromAlbum"
 										@click="removeFromCurrentAlbum">
 										<FolderRemoveIcon :size="18" />
-										{{ t('integration_immich', 'Aus Album entfernen') }}
+										{{ t('integration_immich', 'Remove from album') }}
 									</button>
 									<button v-else
 										class="selection-kebab-menu__item"
 										:disabled="store.selectedAssetIds.size === 0 || addingToAlbum"
 										@click="showAlbumPicker = true">
 										<FolderPlusIcon :size="18" />
-										{{ t('integration_immich', 'Zu Album hinzufügen') }}
+										{{ t('integration_immich', 'Add to album') }}
 									</button>
 									<button class="selection-kebab-menu__item"
 										:disabled="store.selectedAssetIds.size === 0 || togglingFavorite"
@@ -116,14 +116,14 @@
 										<HeartIcon v-if="selectedAllFavorited" :size="18" />
 										<HeartOutlineIcon v-else :size="18" />
 										{{ selectedAllFavorited
-											? t('integration_immich', 'Aus Favoriten entfernen')
-											: t('integration_immich', 'Zu Favoriten') }}
+											? t('integration_immich', 'Remove from favorites')
+											: t('integration_immich', 'Add to favorites') }}
 									</button>
 								</div>
 							</div>
 
 							<NcButton variant="tertiary" @click="store.clearSelection()">
-								{{ t('integration_immich', 'Abbrechen') }}
+								{{ t('integration_immich', 'Cancel') }}
 							</NcButton>
 						</div>
 					</template>
@@ -136,13 +136,13 @@
 	</NcContent>
 	<LightboxView />
 	<NcDialog v-if="showAlbumPicker"
-		:name="t('integration_immich', 'Album auswählen')"
+		:name="t('integration_immich', 'Select album')"
 		@closing="showAlbumPicker = false">
 		<div class="album-picker">
 			<NcLoadingIcon v-if="loadingAlbums" :size="32" class="album-picker__loading" />
 			<template v-else>
 				<div v-if="albums.length === 0" class="album-picker__empty">
-					{{ t('integration_immich', 'Keine Alben vorhanden') }}
+					{{ t('integration_immich', 'No albums available') }}
 				</div>
 				<div v-for="album in albums"
 					:key="album.id"
@@ -201,17 +201,17 @@ const selectedAllFavorited = computed(() => {
 const isAlbumDetailView = computed(() => route.name === 'album-detail')
 
 const pageTitles = {
-	'timeline': t('integration_immich', 'Alle Medien'),
-	'photos': t('integration_immich', 'Fotos'),
+	'timeline': t('integration_immich', 'All media'),
+	'photos': t('integration_immich', 'Photos'),
 	'videos': t('integration_immich', 'Videos'),
-	'favorites': t('integration_immich', 'Favoriten'),
-	'albums': t('integration_immich', 'Alben'),
-	'album-detail': t('integration_immich', 'Alben'),
-	'people': t('integration_immich', 'Personen'),
-	'person-detail': t('integration_immich', 'Personen'),
-	'map': t('integration_immich', 'Karte'),
-	'explore': t('integration_immich', 'Erkunden'),
-	'place-detail': t('integration_immich', 'Erkunden'),
+	'favorites': t('integration_immich', 'Favorites'),
+	'albums': t('integration_immich', 'Albums'),
+	'album-detail': t('integration_immich', 'Albums'),
+	'people': t('integration_immich', 'People'),
+	'person-detail': t('integration_immich', 'People'),
+	'map': t('integration_immich', 'Map'),
+	'explore': t('integration_immich', 'Explore'),
+	'place-detail': t('integration_immich', 'Explore'),
 }
 
 // Views that contain individual selectable assets (photos/videos)
@@ -229,11 +229,11 @@ watch(() => route.name, () => {
 })
 
 async function saveToNextcloud() {
-	const picker = getFilePickerBuilder(t('integration_immich', 'Speicherort in Nextcloud wählen'))
+	const picker = getFilePickerBuilder(t('integration_immich', 'Choose save location in Nextcloud'))
 		.setMultiSelect(false)
 		.allowDirectories(true)
 		.addButton({
-			label: t('integration_immich', 'Hier speichern'),
+			label: t('integration_immich', 'Save here'),
 			type: 'primary',
 			callback: () => {},
 		})
@@ -244,7 +244,7 @@ async function saveToNextcloud() {
 		path = await picker.pick()
 	} catch (e) {
 		if (!(e instanceof FilePickerClosed)) {
-			showError(t('integration_immich', 'Fehler beim Öffnen des Ordner-Dialogs'))
+			showError(t('integration_immich', 'Error opening folder dialog'))
 		}
 		return
 	}
@@ -258,15 +258,15 @@ async function saveToNextcloud() {
 		const { saved, failed } = response.data
 
 		if (failed === 0) {
-			showSuccess(t('integration_immich', '{count} Datei(en) in Nextcloud gespeichert', { count: saved }))
+			showSuccess(t('integration_immich', '{count} file(s) saved to Nextcloud', { count: saved }))
 		} else if (saved > 0) {
-			showError(t('integration_immich', '{saved} gespeichert, {failed} fehlgeschlagen', { saved, failed }))
+			showError(t('integration_immich', '{saved} saved, {failed} failed', { saved, failed }))
 		} else {
-			showError(t('integration_immich', 'Speichern fehlgeschlagen'))
+			showError(t('integration_immich', 'Save failed'))
 		}
 		store.clearSelection()
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler beim Speichern: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error saving: {msg}', { msg: e.message }))
 	} finally {
 		saving.value = false
 	}
@@ -300,7 +300,7 @@ async function downloadSelected() {
 
 		store.clearSelection()
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler beim Herunterladen: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error downloading: {msg}', { msg: e.message }))
 	} finally {
 		downloading.value = false
 	}
@@ -313,7 +313,7 @@ watch(showAlbumPicker, async (val) => {
 			const response = await getAlbums()
 			albums.value = response.data ?? []
 		} catch (e) {
-			showError(t('integration_immich', 'Alben konnten nicht geladen werden'))
+			showError(t('integration_immich', 'Could not load albums'))
 			showAlbumPicker.value = false
 		} finally {
 			loadingAlbums.value = false
@@ -332,15 +332,15 @@ async function addToAlbum(albumId) {
 		const failed = results.filter(r => !r.success).length
 
 		if (failed === 0) {
-			showSuccess(t('integration_immich', '{count} Asset(s) zum Album hinzugefügt', { count: succeeded }))
+			showSuccess(t('integration_immich', '{count} asset(s) added to album', { count: succeeded }))
 		} else if (succeeded > 0) {
-			showError(t('integration_immich', '{succeeded} hinzugefügt, {failed} fehlgeschlagen', { succeeded, failed }))
+			showError(t('integration_immich', '{succeeded} added, {failed} failed', { succeeded, failed }))
 		} else {
-			showError(t('integration_immich', 'Fehler beim Hinzufügen zum Album'))
+			showError(t('integration_immich', 'Error adding to album'))
 		}
 		store.clearSelection()
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler beim Hinzufügen: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error adding: {msg}', { msg: e.message }))
 	} finally {
 		addingToAlbum.value = false
 	}
@@ -358,16 +358,16 @@ async function removeFromCurrentAlbum() {
 		const succeeded = results.filter(r => r.success !== false).length
 		const failed = results.length - succeeded
 		if (failed === 0) {
-			showSuccess(t('integration_immich', '{count} Asset(s) aus Album entfernt', { count: succeeded }))
+			showSuccess(t('integration_immich', '{count} asset(s) removed from album', { count: succeeded }))
 		} else if (succeeded > 0) {
-			showError(t('integration_immich', '{succeeded} entfernt, {failed} fehlgeschlagen', { succeeded, failed }))
+			showError(t('integration_immich', '{succeeded} removed, {failed} failed', { succeeded, failed }))
 		} else {
-			showError(t('integration_immich', 'Fehler beim Entfernen aus Album'))
+			showError(t('integration_immich', 'Error removing from album'))
 		}
 		store.clearSelection()
 		await store.fetchAlbum(albumId)
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler beim Entfernen: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error removing: {msg}', { msg: e.message }))
 	} finally {
 		removingFromAlbum.value = false
 	}
@@ -384,11 +384,11 @@ async function toggleFavoritesSelection() {
 		store.patchAssetFavorite(assetIds, !removing)
 		if (removing) {
 			showSuccess(
-				t('integration_immich', '{count} Asset(s) aus Favoriten entfernt', { count: assetIds.length }),
+				t('integration_immich', '{count} asset(s) removed from favorites', { count: assetIds.length }),
 			)
 		} else {
 			showSuccess(
-				t('integration_immich', '{count} Asset(s) zu Favoriten hinzugefügt', { count: assetIds.length }),
+				t('integration_immich', '{count} asset(s) added to favorites', { count: assetIds.length }),
 			)
 		}
 		// Invalidate favorites cache and immediately reload if currently on favorites view
@@ -399,7 +399,7 @@ async function toggleFavoritesSelection() {
 		}
 		store.clearSelection()
 	} catch (e) {
-		showError(t('integration_immich', 'Fehler beim Ändern der Favoriten: {msg}', { msg: e.message }))
+		showError(t('integration_immich', 'Error updating favorites: {msg}', { msg: e.message }))
 	} finally {
 		togglingFavorite.value = false
 	}

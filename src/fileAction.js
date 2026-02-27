@@ -17,7 +17,7 @@ async function uploadFile(node) {
 
 registerFileAction({
 	id: 'send-to-immich',
-	displayName: () => t('integration_immich', 'Zu Immich hinzufügen'),
+	displayName: () => t('integration_immich', 'Add to Immich'),
 	iconSvgInline: () => immichSvg,
 
 	enabled({ nodes, view }) {
@@ -36,11 +36,11 @@ registerFileAction({
 		const node = nodes[0]
 		try {
 			await uploadFile(node)
-			showSuccess(t('integration_immich', '"{name}" wurde zu Immich hinzugefügt', { name: node.basename }))
+			showSuccess(t('integration_immich', '"{name}" added to Immich', { name: node.basename }))
 			return true
 		} catch (e) {
 			const errorMsg = e.response?.data?.error || e.message
-			showError(t('integration_immich', 'Fehler beim Hochladen zu Immich: {error}', { error: errorMsg }))
+			showError(t('integration_immich', 'Error uploading to Immich: {error}', { error: errorMsg }))
 			return false
 		}
 	},
@@ -69,10 +69,10 @@ registerFileAction({
 		const failCount = results.length - successCount
 
 		if (successCount > 0) {
-			showSuccess(t('integration_immich', '{count} Dateien zu Immich hinzugefügt', { count: successCount }))
+			showSuccess(t('integration_immich', '{count} files added to Immich', { count: successCount }))
 		}
 		if (failCount > 0) {
-			showError(t('integration_immich', '{count} Dateien konnten nicht hochgeladen werden', { count: failCount }))
+			showError(t('integration_immich', '{count} files could not be uploaded', { count: failCount }))
 		}
 
 		return results

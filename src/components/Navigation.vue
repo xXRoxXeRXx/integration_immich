@@ -5,14 +5,14 @@
 <template>
 	<NcAppNavigation>
 		<NcAppNavigationList>
-			<NcAppNavigationItem :name="t('integration_immich', 'Alle Medien')"
+			<NcAppNavigationItem :name="t('integration_immich', 'All media')"
 				:to="{ name: 'timeline' }"
 				:active="$route.name === 'timeline'">
 				<template #icon>
 					<ImageIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<NcAppNavigationItem :name="t('integration_immich', 'Fotos')"
+			<NcAppNavigationItem :name="t('integration_immich', 'Photos')"
 				:to="{ name: 'photos' }"
 				:active="$route.name === 'photos'">
 				<template #icon>
@@ -26,35 +26,35 @@
 					<VideoIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<NcAppNavigationItem :name="t('integration_immich', 'Favoriten')"
+			<NcAppNavigationItem :name="t('integration_immich', 'Favorites')"
 				:to="{ name: 'favorites' }"
 				:active="$route.name === 'favorites'">
 				<template #icon>
 					<HeartIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<NcAppNavigationItem :name="t('integration_immich', 'Alben')"
+			<NcAppNavigationItem :name="t('integration_immich', 'Albums')"
 				:to="{ name: 'albums' }"
 				:active="$route.name === 'albums' || $route.name === 'album-detail'">
 				<template #icon>
 					<FolderIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<NcAppNavigationItem :name="t('integration_immich', 'Personen')"
+			<NcAppNavigationItem :name="t('integration_immich', 'People')"
 				:to="{ name: 'people' }"
 				:active="$route.name === 'people' || $route.name === 'person-detail'">
 				<template #icon>
 					<AccountGroupIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<NcAppNavigationItem :name="t('integration_immich', 'Karte')"
+			<NcAppNavigationItem :name="t('integration_immich', 'Map')"
 				:to="{ name: 'map' }"
 				:active="$route.name === 'map'">
 				<template #icon>
 					<MapIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<NcAppNavigationItem :name="t('integration_immich', 'Erkunden')"
+			<NcAppNavigationItem :name="t('integration_immich', 'Explore')"
 				:to="{ name: 'explore' }"
 				:active="$route.name === 'explore' || $route.name === 'place-detail'">
 				<template #icon>
@@ -63,10 +63,10 @@
 			</NcAppNavigationItem>
 		</NcAppNavigationList>
 
-		<!-- Footer: Link zur Immich-Instanz -->
+		<!-- Footer: link to Immich instance -->
 		<template #footer>
 			<NcAppNavigationItem v-if="immichUrl"
-				:name="t('integration_immich', 'Immich öffnen')"
+				:name="t('integration_immich', 'Open Immich')"
 				:href="immichUrl"
 				target="_blank"
 				rel="noopener noreferrer">

@@ -9,7 +9,7 @@
 			class="people-view__loading" />
 
 		<NcEmptyContent v-else-if="store.error"
-			:name="t('integration_immich', 'Fehler')"
+			:name="t('integration_immich', 'Error')"
 			:description="store.error">
 			<template #icon>
 				<AlertIcon :size="64" />
@@ -17,8 +17,8 @@
 		</NcEmptyContent>
 
 		<NcEmptyContent v-else-if="store.people.length === 0 && !store.loading"
-			:name="t('integration_immich', 'Keine Personen')"
-			:description="t('integration_immich', 'In deiner Immich Bibliothek wurden noch keine Personen erkannt.')">
+			:name="t('integration_immich', 'No people')"
+			:description="t('integration_immich', 'No people have been recognized in your Immich library yet.')">
 			<template #icon>
 				<AccountGroupIcon :size="64" />
 			</template>
@@ -35,7 +35,7 @@
 						loading="lazy"
 						class="people-view__face-img">
 				</div>
-				<span class="people-view__name">{{ person.name || t('integration_immich', 'Unbekannt') }}</span>
+				<span class="people-view__name">{{ person.name || t('integration_immich', 'Unknown') }}</span>
 			</div>
 		</div>
 	</div>

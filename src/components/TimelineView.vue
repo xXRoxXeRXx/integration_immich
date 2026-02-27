@@ -5,7 +5,7 @@
 <template>
 	<div class="timeline-view">
 		<NcEmptyContent v-if="store.error"
-			:name="t('integration_immich', 'Fehler')"
+			:name="t('integration_immich', 'Error')"
 			:description="store.error">
 			<template #icon>
 				<AlertIcon :size="64" />
@@ -17,8 +17,8 @@
 			class="timeline-view__loading" />
 
 		<NcEmptyContent v-else-if="buckets.length === 0"
-			:name="t('integration_immich', 'Keine Bilder')"
-			:description="t('integration_immich', 'In deiner Immich Bibliothek sind noch keine Bilder vorhanden.')">
+			:name="t('integration_immich', 'No photos')"
+			:description="t('integration_immich', 'Your Immich library does not contain any photos yet.')">
 			<template #icon>
 				<ImageIcon :size="64" />
 			</template>

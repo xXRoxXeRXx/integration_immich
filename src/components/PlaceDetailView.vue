@@ -9,7 +9,7 @@
 			class="place-detail__loading" />
 
 		<NcEmptyContent v-else-if="store.error"
-			:name="t('integration_immich', 'Fehler')"
+			:name="t('integration_immich', 'Error')"
 			:description="store.error">
 			<template #icon>
 				<AlertIcon :size="64" />
@@ -23,19 +23,19 @@
 					<template #icon>
 						<ArrowLeftIcon :size="20" />
 					</template>
-					{{ t('integration_immich', 'Zurück') }}
+					{{ t('integration_immich', 'Back') }}
 				</NcButton>
 				<div class="place-detail__title">
 					<h2>{{ props.value }}</h2>
 					<span class="place-detail__count">
-						{{ t('integration_immich', '{count} Fotos', { count: filteredAssets.length }) }}
+						{{ t('integration_immich', '{count} photos', { count: filteredAssets.length }) }}
 					</span>
 				</div>
 			</div>
 
 			<NcEmptyContent v-if="filteredAssets.length === 0"
-				:name="t('integration_immich', 'Keine Bilder')"
-				:description="t('integration_immich', 'Keine Fotos für diesen Ort gefunden.')">
+				:name="t('integration_immich', 'No photos')"
+				:description="t('integration_immich', 'No photos found for this location.')">
 				<template #icon>
 					<MapMarkerIcon :size="64" />
 				</template>

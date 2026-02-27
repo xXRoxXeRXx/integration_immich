@@ -9,7 +9,7 @@
 			class="map-view__loading" />
 
 		<NcEmptyContent v-else-if="store.error"
-			:name="t('integration_immich', 'Fehler')"
+			:name="t('integration_immich', 'Error')"
 			:description="store.error">
 			<template #icon>
 				<AlertIcon :size="64" />
@@ -17,8 +17,8 @@
 		</NcEmptyContent>
 
 		<NcEmptyContent v-else-if="store.mapMarkers.length === 0 && !store.loading"
-			:name="t('integration_immich', 'Keine Orte')"
-			:description="t('integration_immich', 'Keine Fotos mit GPS-Daten gefunden.')">
+			:name="t('integration_immich', 'No locations')"
+			:description="t('integration_immich', 'No photos with GPS data found.')">
 			<template #icon>
 				<MapIcon :size="64" />
 			</template>
@@ -71,11 +71,11 @@ const infoText = computed(() => {
 	if (shown < total) {
 		return t(
 			'integration_immich',
-			'{total} Fotos mit Standort – {shown} Orte angezeigt',
+			'{total} photos with location – showing {shown} places',
 			{ total, shown },
 		)
 	}
-	return t('integration_immich', '{count} Fotos mit Standort', { count: total })
+	return t('integration_immich', '{count} photos with location', { count: total })
 })
 
 async function initMap() {

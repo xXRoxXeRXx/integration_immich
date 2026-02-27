@@ -10,7 +10,7 @@
 			class="person-detail__loading" />
 
 		<NcEmptyContent v-else-if="store.error"
-			:name="t('integration_immich', 'Fehler')"
+			:name="t('integration_immich', 'Error')"
 			:description="store.error">
 			<template #icon>
 				<AlertIcon :size="64" />
@@ -24,7 +24,7 @@
 					<template #icon>
 						<ArrowLeftIcon :size="20" />
 					</template>
-					{{ t('integration_immich', 'Zurück') }}
+					{{ t('integration_immich', 'Back') }}
 				</NcButton>
 				<div class="person-detail__title">
 					<img :src="getPersonThumbnailUrl(props.id)"
@@ -33,15 +33,15 @@
 					<div>
 						<h2>{{ personName }}</h2>
 						<span class="person-detail__count">
-							{{ t('integration_immich', '{count} Bilder', { count: totalCount }) }}
+							{{ t('integration_immich', '{count} photos', { count: totalCount }) }}
 						</span>
 					</div>
 				</div>
 			</div>
 
 			<NcEmptyContent v-if="store.personBuckets.length === 0 && !store.loading"
-				:name="t('integration_immich', 'Keine Bilder')"
-				:description="t('integration_immich', 'Keine Bilder für diese Person gefunden.')">
+				:name="t('integration_immich', 'No photos')"
+				:description="t('integration_immich', 'No photos found for this person.')">
 				<template #icon>
 					<AccountIcon :size="64" />
 				</template>
@@ -120,7 +120,7 @@ const pendingQueue = []
 // --- Computed ---
 const personName = computed(() => {
 	const p = store.people.find(p => p.id === props.id)
-	return p?.name || t('integration_immich', 'Unbekannt')
+	return p?.name || t('integration_immich', 'Unknown')
 })
 
 const totalCount = computed(() =>
