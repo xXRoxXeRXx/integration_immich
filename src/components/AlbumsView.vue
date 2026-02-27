@@ -217,7 +217,7 @@ onMounted(() => {
 .albums-view {
 	height: 100%;
 	overflow-y: auto;
-	padding: 16px 16px 16px 52px;
+	padding: 24px 16px 16px;
 	box-sizing: border-box;
 }
 
@@ -322,5 +322,30 @@ onMounted(() => {
 .albums-view__dialog-body {
 	padding: 8px 0;
 	min-width: 300px;
+}
+
+@media (max-width: 480px) {
+	.albums-view {
+		padding: 8px;
+	}
+
+	.albums-view__grid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 8px;
+	}
+
+	.albums-view__name {
+		font-size: 13px;
+	}
+
+	.albums-view__info {
+		padding: 8px;
+	}
+}
+
+@media (hover: none) {
+	.albums-view__delete-btn {
+		opacity: 1;
+	}
 }
 </style>

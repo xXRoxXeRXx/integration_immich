@@ -293,10 +293,9 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	gap: 16px;
-	padding: 8px 16px 8px 52px;
+	padding: 8px 16px;
 	flex-shrink: 0;
 	border-bottom: 1px solid var(--color-border);
-	background: var(--color-main-background);
 }
 
 .person-detail__title {
@@ -332,7 +331,7 @@ onBeforeUnmount(() => {
 	position: sticky;
 	top: 0;
 	z-index: 10;
-	padding: 7px 16px 7px 52px;
+	padding: 7px 16px;
 	display: flex;
 	align-items: baseline;
 	gap: 8px;
@@ -367,7 +366,7 @@ onBeforeUnmount(() => {
 	top: 0;
 	left: 0;
 	right: 0;
-	padding: 0 16px 0 52px;
+	padding: 0 16px;
 }
 
 .person-detail__bucket-loading {

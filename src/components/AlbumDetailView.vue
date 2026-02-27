@@ -210,7 +210,7 @@ watch(() => props.id, () => {
 	height: 100%;
 	overflow-y: auto;
 	box-sizing: border-box;
-	padding: 16px 16px 16px 52px;
+	padding: 24px 16px 16px;
 }
 
 .album-detail__loading {
@@ -239,5 +239,20 @@ watch(() => props.id, () => {
 .album-detail__count {
 	font-size: 14px;
 	color: var(--color-text-maxcontrast);
+}
+
+@media (max-width: 480px) {
+	.album-detail {
+		padding: 8px;
+	}
+
+	.album-detail__header {
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.album-detail__title h2 {
+		font-size: 18px;
+	}
 }
 </style>

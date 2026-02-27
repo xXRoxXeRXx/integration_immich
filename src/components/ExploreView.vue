@@ -96,7 +96,7 @@ onMounted(() => {
 
 <style scoped>
 .explore-view {
-	padding: 16px 16px 16px 52px;
+	padding: 24px 16px 16px;
 	overflow-y: auto;
 	height: 100%;
 }
@@ -159,5 +159,21 @@ onMounted(() => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	color: var(--color-main-text);
+}
+
+@media (max-width: 480px) {
+	.explore-view {
+		padding: 8px;
+	}
+
+	.explore-view__section-title {
+		font-size: 16px;
+		margin-bottom: 10px;
+	}
+
+	.explore-view__grid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 8px;
+	}
 }
 </style>

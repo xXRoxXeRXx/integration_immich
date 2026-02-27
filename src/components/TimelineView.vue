@@ -371,7 +371,7 @@ function scrollToTop() {
 	top: 0;
 	left: 0;
 	right: 0;
-	padding: 0 16px 0 52px;
+	padding: 0 16px;
 }
 
 /* ---- Sticky date — slim & elegant ---- */
@@ -379,7 +379,7 @@ function scrollToTop() {
 	position: sticky;
 	top: 0;
 	z-index: 10;
-	padding: 7px 16px 7px 52px;
+	padding: 7px 16px;
 	display: flex;
 	align-items: baseline;
 	gap: 8px;

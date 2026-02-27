@@ -115,7 +115,7 @@ function goBack() {
 	display: flex;
 	align-items: center;
 	gap: 16px;
-	padding: 8px 16px 8px 52px;
+	padding: 8px 16px;
 	flex-shrink: 0;
 	border-bottom: 1px solid var(--color-border);
 	background: var(--color-main-background);
@@ -140,5 +140,21 @@ function goBack() {
 .place-detail__scroll {
 	flex: 1;
 	overflow-y: auto;
+	padding: 16px;
+	box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+	.place-detail__header {
+		padding: 8px;
+	}
+
+	.place-detail__scroll {
+		padding: 8px;
+	}
+
+	.place-detail__title h2 {
+		font-size: 17px;
+	}
 }
 </style>

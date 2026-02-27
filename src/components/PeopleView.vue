@@ -70,7 +70,7 @@ onMounted(() => {
 .people-view {
 	height: 100%;
 	overflow-y: auto;
-	padding: 16px 16px 16px 52px;
+	padding: 24px 16px 16px;
 }
 
 .people-view__loading {
@@ -122,5 +122,20 @@ onMounted(() => {
 	text-overflow: ellipsis;
 	max-width: 120px;
 	color: var(--color-main-text);
+}
+
+@media (max-width: 480px) {
+	.people-view {
+		padding: 8px;
+	}
+
+	.people-view__face {
+		width: 72px;
+		height: 72px;
+	}
+
+	.people-view__name {
+		max-width: 90px;
+	}
 }
 </style>
