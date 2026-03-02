@@ -19,7 +19,7 @@
 #>
 
 param(
-    [ValidateSet('all', 'release', 'clean')]
+    [ValidateSet('all', 'release', 'clean', 'zip-only')]
     [string]$Target = 'all'
 )
 
@@ -30,10 +30,9 @@ $SourceDir = Join-Path $BuildDir "source\$AppName"
 $ReleaseDir = Join-Path $BuildDir 'release'
 
 $AppFiles = @(
-    'appinfo', 'css', 'img', 'js', 'l10n', 'lib',
-    'templates', 'vendor',
-    'CHANGELOG.md', 'COPYING', 'README.md',
-    'composer.json', 'composer.lock'
+    'appinfo', 'composer', 'css', 'img', 'js', 'l10n', 'lib',
+    'templates',
+    'CHANGELOG.md', 'COPYING', 'README.md'
 )
 
 function Invoke-Build {
@@ -53,9 +52,11 @@ function Invoke-Composer {
 }
 
 function Invoke-Release {
-    Invoke-Composer
     Invoke-Build
+    Invoke-ZipOnly
+}
 
+function Invoke-ZipOnly {
     Write-Host "`n--- Assembling release package ---" -ForegroundColor Cyan
 
     if (Test-Path $SourceDir) { Remove-Item $SourceDir -Recurse -Force }
@@ -77,9 +78,37 @@ function Invoke-Release {
     $zipPath = Join-Path $ReleaseDir "$AppName.zip"
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 
-    Push-Location (Join-Path $BuildDir 'source')
-    Compress-Archive -Path $AppName -DestinationPath $zipPath
-    Pop-Location
+    # Build ZIP with correct Unix permissions (755 dirs, 644 files)
+    # so that Linux servers can traverse directories after unzip.
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+    $sourceBase = Join-Path $BuildDir 'source'
+    $stream = [System.IO.File]::Open($zipPath, [System.IO.FileMode]::Create)
+    $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Create)
+
+    $allItems = Get-ChildItem $SourceDir -Recurse
+    foreach ($item in $allItems) {
+        $relativePath = $item.FullName.Substring($sourceBase.Length + 1).Replace('\', '/')
+        if ($item.PSIsContainer) {
+            # Directory entry (must end with /)
+            $entry = $archive.CreateEntry("$relativePath/", [System.IO.Compression.CompressionLevel]::Optimal)
+            # Unix mode 040755 (directory + rwxr-xr-x) shifted left 16 bits
+            $entry.ExternalAttributes = (0x4000 -bor 0x01ED) -shl 16
+        } else {
+            $entry = $archive.CreateEntry($relativePath, [System.IO.Compression.CompressionLevel]::Optimal)
+            # Unix mode 0100644 (regular file + rw-r--r--) shifted left 16 bits
+            $entry.ExternalAttributes = (0x8000 -bor 0x01A4) -shl 16
+            $fileStream = [System.IO.File]::OpenRead($item.FullName)
+            $entryStream = $entry.Open()
+            $fileStream.CopyTo($entryStream)
+            $entryStream.Close()
+            $fileStream.Close()
+        }
+    }
+
+    $archive.Dispose()
+    $stream.Dispose()
 
     Write-Host "`n✅  Release ZIP: $zipPath" -ForegroundColor Green
     Write-Host "    Size: $([math]::Round((Get-Item $zipPath).Length / 1MB, 2)) MB" -ForegroundColor Green
@@ -92,7 +121,8 @@ function Invoke-Clean {
 }
 
 switch ($Target) {
-    'all'     { Invoke-Build }
-    'release' { Invoke-Release }
-    'clean'   { Invoke-Clean }
+    'all'      { Invoke-Build }
+    'release'  { Invoke-Release }
+    'zip-only' { Invoke-ZipOnly }
+    'clean'    { Invoke-Clean }
 }

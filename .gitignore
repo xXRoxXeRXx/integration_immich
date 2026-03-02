@@ -13,3 +13,6 @@ Thumbs.db
 
 # Build artifacts
 *.log
+
+# Code signing certificates (NEVER commit private keys!)
+certificates/
