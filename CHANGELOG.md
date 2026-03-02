@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-03-02
+
+### Fixed
+
+- Release ZIP now sets correct Unix permissions (755 for directories, 644 for files)
+  so that `lib/` is traversable after unzip on Linux without a manual `chmod`
+- Fixed autoloader not being executed due to a UTF-8 BOM in `composer/autoload.php`
+  that caused a PHP fatal error (`strict_types` must be the first statement)
+- Timeline: fast scrollbar jumps no longer leave the view blank — in-flight HTTP
+  requests for buckets that are no longer visible are now cancelled via `AbortController`
+  and stale entries are purged from the load queue immediately
+
 ## [1.0.0] - 2026-02-27
 
 ### Added
