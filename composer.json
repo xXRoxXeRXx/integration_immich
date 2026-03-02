@@ -20,5 +20,10 @@
     "require-dev": {
         "phpunit/phpunit": "^10.5",
         "bamarni/composer-bin-plugin": "*"
+    },
+    "config": {
+        "allow-plugins": {
+            "bamarni/composer-bin-plugin": true
+        }
     }
 }
