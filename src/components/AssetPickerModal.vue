@@ -102,7 +102,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { getTimeline, getThumbnailUrl } from '../services/api.js'
@@ -141,18 +141,25 @@ const scrollContainer = ref(null)
 const scrollTop = ref(0)
 const viewportHeight = ref(600)
 
-const ITEMS_PER_ROW = 5
-const ROW_HEIGHT = 160
+const GRID_MIN_ITEM = 130   // matches .asset-picker-modal__grid minmax(130px, 1fr)
+const GRID_GAP = 4           // matches gap: 4px
+const BUCKET_PADDING_LR = 16 // .asset-picker-modal__bucket padding: 0 8px → 8×2
 const OVERSCAN = 600
 const MAX_CONCURRENT = 2
 const MAX_LOADED = 10
 
+const containerWidth = ref(0)
 let activeRequests = 0
 const pendingQueue = []
+let resizeObserver = null
 
 // --- Height / offset calculations ---
 function estimateHeight(count) {
-	return Math.ceil(count / ITEMS_PER_ROW) * ROW_HEIGHT
+	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)
+	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
+	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
+	const rows = Math.ceil(count / cols)
+	return rows * colWidth + (rows - 1) * GRID_GAP
 }
 
 const bucketHeights = computed(() =>
@@ -263,10 +270,21 @@ const currentBucketLabel = computed(() =>
 )
 
 // --- Init ---
-onMounted(async () => {
-	if (scrollContainer.value) {
-		viewportHeight.value = scrollContainer.value.clientHeight
+watch(scrollContainer, (el) => {
+	resizeObserver?.disconnect()
+	resizeObserver = null
+	if (el) {
+		containerWidth.value = el.clientWidth
+		viewportHeight.value = el.clientHeight
+		resizeObserver = new ResizeObserver(([entry]) => {
+			containerWidth.value = entry.contentRect.width
+			viewportHeight.value = entry.contentRect.height
+		})
+		resizeObserver.observe(el)
 	}
+})
+
+onMounted(async () => {
 	try {
 		const res = await getTimeline({ size: 'MONTH' })
 		buckets.value = Array.isArray(res.data) ? res.data : []
@@ -281,6 +299,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
 	if (scrollRaf) cancelAnimationFrame(scrollRaf)
+	resizeObserver?.disconnect()
 })
 </script>
 

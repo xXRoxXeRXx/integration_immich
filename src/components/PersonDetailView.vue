@@ -100,10 +100,11 @@ const props = defineProps({
 const store = useImmichStore()
 const router = useRouter()
 
-// --- Constants (match TimelineView) ---
+// --- Constants ---
 const HEADER_HEIGHT = 40
-const ROW_HEIGHT = 210
-const ITEMS_PER_ROW = 5
+const GRID_MIN_ITEM = 180   // matches PhotoGrid minmax(180px, 1fr)
+const GRID_GAP = 3          // matches PhotoGrid gap: 3px
+const BUCKET_PADDING_LR = 32 // .person-detail__bucket padding: 15px 16px → 16×2
 const OVERSCAN = 800
 const MAX_CONCURRENT = 2
 const MAX_LOADED_BUCKETS = 12
@@ -112,10 +113,12 @@ const MAX_LOADED_BUCKETS = 12
 const scrollContainer = ref(null)
 const scrollTop = ref(0)
 const viewportHeight = ref(800)
+const containerWidth = ref(0)
 const loadingSet = ref(new Set())
 
 let activeRequests = 0
 const pendingQueue = []
+let resizeObserver = null
 
 // --- Computed ---
 const personName = computed(() => {
@@ -128,8 +131,11 @@ const totalCount = computed(() =>
 )
 
 function estimateBucketHeight(count) {
-	const rows = Math.ceil(count / ITEMS_PER_ROW)
-	return HEADER_HEIGHT + rows * ROW_HEIGHT
+	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)
+	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
+	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
+	const rows = Math.ceil(count / cols)
+	return HEADER_HEIGHT + rows * colWidth + (rows - 1) * GRID_GAP
 }
 
 const bucketHeights = computed(() =>
@@ -263,16 +269,28 @@ function goBack() {
 
 async function load() {
 	await store.fetchPersonBuckets(props.id)
-	if (scrollContainer.value) {
-		viewportHeight.value = scrollContainer.value.clientHeight
-	}
 }
+
+watch(scrollContainer, (el) => {
+	resizeObserver?.disconnect()
+	resizeObserver = null
+	if (el) {
+		containerWidth.value = el.clientWidth
+		viewportHeight.value = el.clientHeight
+		resizeObserver = new ResizeObserver(([entry]) => {
+			containerWidth.value = entry.contentRect.width
+			viewportHeight.value = entry.contentRect.height
+		})
+		resizeObserver.observe(el)
+	}
+})
 
 onMounted(load)
 watch(() => props.id, load)
 
 onBeforeUnmount(() => {
 	if (scrollRaf) cancelAnimationFrame(scrollRaf)
+	resizeObserver?.disconnect()
 	pendingQueue.length = 0
 	activeRequests = 0
 })
