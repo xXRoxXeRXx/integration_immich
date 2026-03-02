@@ -7,8 +7,8 @@ import { generateUrl } from '@nextcloud/router'
 
 const baseUrl = generateUrl('/apps/integration_immich/api/v1')
 
-export function getTimeline(params = {}) {
-	return axios.get(`${baseUrl}/timeline`, { params })
+export function getTimeline(params = {}, signal = null) {
+	return axios.get(`${baseUrl}/timeline`, { params, signal })
 }
 
 export function getAlbums(params = {}) {

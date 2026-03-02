@@ -59,14 +59,15 @@ export const useImmichStore = defineStore('immich', {
 			}
 		},
 
-		async fetchTimelineBucket(timeBucket) {
+		async fetchTimelineBucket(timeBucket, signal = null) {
 			if (this.timelineAssets[timeBucket]) {
 				return
 			}
 			try {
-				const response = await getTimeline({ timeBucket })
+				const response = await getTimeline({ timeBucket }, signal)
 				this.timelineAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
 			} catch (e) {
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
 				this.error = e.response?.data?.error || e.message
 			}
 		},
@@ -100,11 +101,11 @@ export const useImmichStore = defineStore('immich', {
 			}
 		},
 
-		async fetchFilteredBucket(assetType, timeBucket) {
+		async fetchFilteredBucket(assetType, timeBucket, signal = null) {
 			if (this.filteredAssets[assetType][timeBucket]) return
 			try {
 				// Pass assetType so PHP backend can filter the returned assets by type
-				const response = await getTimeline({ assetType, timeBucket })
+				const response = await getTimeline({ assetType, timeBucket }, signal)
 				const assets = Array.isArray(response.data) ? response.data : []
 				this.filteredAssets[assetType][timeBucket] = assets
 				// Update bucket count to match actual filtered asset count for correct height estimation
@@ -113,6 +114,7 @@ export const useImmichStore = defineStore('immich', {
 					bucket.count = assets.length
 				}
 			} catch (e) {
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
 				this.error = e.response?.data?.error || e.message
 			}
 		},
@@ -136,12 +138,13 @@ export const useImmichStore = defineStore('immich', {
 			}
 		},
 
-		async fetchFavoriteBucket(timeBucket) {
+		async fetchFavoriteBucket(timeBucket, signal = null) {
 			if (this.favoriteAssets[timeBucket]) return
 			try {
-				const response = await getTimeline({ isFavorite: true, timeBucket })
+				const response = await getTimeline({ isFavorite: true, timeBucket }, signal)
 				this.favoriteAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
 			} catch (e) {
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
 				this.error = e.response?.data?.error || e.message
 			}
 		},

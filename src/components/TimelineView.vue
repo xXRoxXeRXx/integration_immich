@@ -97,30 +97,43 @@ const assetsCache = computed(() => {
 })
 
 // --- Constants ---
-const HEADER_HEIGHT = 0
-const ROW_HEIGHT = 210
-const ITEMS_PER_ROW = 5
 const OVERSCAN = 800 // px above/below viewport to pre-render
 const MAX_CONCURRENT = 2
 const MAX_LOADED_BUCKETS = 12 // max buckets with loaded assets in memory
+
+// PhotoGrid uses: grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 3px
+// Each item has aspect-ratio: 1. Bucket has padding: 15px 16px 0 (top=15, lr=16).
+const GRID_MIN_ITEM = 180 // minmax min value
+const GRID_GAP = 3
+const BUCKET_PADDING_TOP = 15
+const BUCKET_PADDING_LR = 32 // 16px left + 16px right
 
 // --- Reactive state ---
 const scrollContainer = ref(null)
 const scrollTop = ref(0)
 const viewportHeight = ref(800)
+const containerWidth = ref(0) // measured width of the scroll container
 const loadingSet = ref(new Set())
 
 let activeRequests = 0
 const pendingQueue = []
+// AbortController per timeBucket for in-flight requests
+const abortControllers = new Map()
 
 // --- Height estimation ---
+// Derives column count and row height from the actual container width, matching
+// the CSS grid in PhotoGrid.vue (auto-fill, minmax(180px, 1fr), gap: 3px, aspect-ratio:1).
 function estimateBucketHeight(count) {
-	const rows = Math.ceil(count / ITEMS_PER_ROW)
-	return HEADER_HEIGHT + rows * ROW_HEIGHT
+	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)
+	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
+	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
+	const rows = Math.ceil(count / cols)
+	return BUCKET_PADDING_TOP + rows * colWidth + (rows - 1) * GRID_GAP
 }
 
 // Track actual measured heights (initially estimated)
 const bucketHeights = computed(() => {
+	// containerWidth is read inside estimateBucketHeight, establishing reactivity.
 	return buckets.value.map(b => estimateBucketHeight(b.count))
 })
 
@@ -166,11 +179,20 @@ const windowIndices = computed(() => {
 
 // --- Scroll handler (throttled) ---
 let scrollRaf = null
+let lastScrollTop = 0
 function onScroll() {
 	if (scrollRaf) return
 	scrollRaf = requestAnimationFrame(() => {
 		if (scrollContainer.value) {
-			scrollTop.value = scrollContainer.value.scrollTop
+			const newScrollTop = scrollContainer.value.scrollTop
+			// Large jump detection: if the user dragged the scrollbar far,
+			// flush the pending queue so stale out-of-view requests don't
+			// block the newly visible buckets.
+			if (Math.abs(newScrollTop - lastScrollTop) > viewportHeight.value * 2) {
+				pendingQueue.length = 0
+			}
+			lastScrollTop = newScrollTop
+			scrollTop.value = newScrollTop
 			viewportHeight.value = scrollContainer.value.clientHeight
 		}
 		scrollRaf = null
@@ -188,13 +210,13 @@ async function fetchBuckets() {
 	}
 }
 
-async function fetchBucket(timeBucket) {
+async function fetchBucket(timeBucket, signal) {
 	if (props.isFavorite) {
-		await store.fetchFavoriteBucket(timeBucket)
+		await store.fetchFavoriteBucket(timeBucket, signal)
 	} else if (props.assetType) {
-		await store.fetchFilteredBucket(props.assetType, timeBucket)
+		await store.fetchFilteredBucket(props.assetType, timeBucket, signal)
 	} else {
-		await store.fetchTimelineBucket(timeBucket)
+		await store.fetchTimelineBucket(timeBucket, signal)
 	}
 }
 
@@ -216,16 +238,33 @@ async function loadBucket(timeBucket) {
 
 	if (activeRequests >= MAX_CONCURRENT) {
 		return new Promise(resolve => {
-			pendingQueue.push(() => loadBucket(timeBucket).then(resolve))
+			// Only enqueue if not already waiting
+			const alreadyQueued = pendingQueue.some(fn => fn._bucket === timeBucket)
+			if (!alreadyQueued) {
+				const fn = () => loadBucket(timeBucket).then(resolve)
+				fn._bucket = timeBucket
+				pendingQueue.push(fn)
+			} else {
+				resolve()
+			}
 		})
 	}
+
+	const controller = new AbortController()
+	abortControllers.set(timeBucket, controller)
 
 	activeRequests++
 	loadingSet.value = new Set([...loadingSet.value, timeBucket])
 
 	try {
-		await fetchBucket(timeBucket)
+		await fetchBucket(timeBucket, controller.signal)
+	} catch (e) {
+		// Ignore abort errors — user just scrolled away
+		if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') {
+			return
+		}
 	} finally {
+		abortControllers.delete(timeBucket)
 		loadingSet.value = new Set(
 			[...loadingSet.value].filter(b => b !== timeBucket),
 		)
@@ -234,6 +273,25 @@ async function loadBucket(timeBucket) {
 			const next = pendingQueue.shift()
 			next()
 		}
+	}
+}
+
+// Cancel all in-flight requests for buckets not in the given set.
+// activeRequests is decremented by the finally-block in loadBucket — not here.
+// loadingSet is cleared immediately so that re-scrolling back to the same bucket
+// does not hit the early-return guard in loadBucket before finally can clean up.
+function cancelInvisibleRequests(visibleKeys) {
+	const toRemove = []
+	for (const [bucket, controller] of abortControllers.entries()) {
+		if (!visibleKeys.has(bucket)) {
+			controller.abort()
+			abortControllers.delete(bucket)
+			toRemove.push(bucket)
+		}
+	}
+	if (toRemove.length > 0) {
+		const removed = new Set(toRemove)
+		loadingSet.value = new Set([...loadingSet.value].filter(b => !removed.has(b)))
 	}
 }
 
@@ -255,6 +313,18 @@ function evictDistantBuckets(currentIndices) {
 
 // Watch visible window and trigger load/unload
 watch(windowIndices, (indices) => {
+	const visibleKeys = new Set(indices.map(i => buckets.value[i]?.timeBucket))
+
+	// Cancel any in-flight HTTP requests for buckets no longer visible
+	cancelInvisibleRequests(visibleKeys)
+
+	// Remove from pending queue any buckets that are no longer visible
+	for (let i = pendingQueue.length - 1; i >= 0; i--) {
+		if (!visibleKeys.has(pendingQueue[i]._bucket)) {
+			pendingQueue.splice(i, 1)
+		}
+	}
+
 	// Load visible buckets
 	for (const i of indices) {
 		const bucket = buckets.value[i]
@@ -303,10 +373,25 @@ const currentBucketCount = computed(() => {
 })
 
 // --- Lifecycle ---
-onMounted(async () => {
-	if (scrollContainer.value) {
-		viewportHeight.value = scrollContainer.value.clientHeight
+let resizeObserver = null
+
+// The scroll container is inside a v-else branch and only mounts after buckets
+// are loaded. onMounted fires before that, so we watch the ref instead.
+watch(scrollContainer, (el) => {
+	resizeObserver?.disconnect()
+	resizeObserver = null
+	if (el) {
+		containerWidth.value = el.clientWidth
+		viewportHeight.value = el.clientHeight
+		resizeObserver = new ResizeObserver(([entry]) => {
+			containerWidth.value = entry.contentRect.width
+			viewportHeight.value = entry.contentRect.height
+		})
+		resizeObserver.observe(el)
 	}
+})
+
+onMounted(async () => {
 	await fetchBuckets()
 })
 
@@ -314,7 +399,12 @@ onMounted(async () => {
 // component instance — onMounted does NOT fire again. Watch the props instead.
 watch([() => props.assetType, () => props.isFavorite], async () => {
 	scrollTop.value = 0
+	lastScrollTop = 0
 	loadingSet.value = new Set()
+	for (const controller of abortControllers.values()) {
+		controller.abort()
+	}
+	abortControllers.clear()
 	pendingQueue.length = 0
 	activeRequests = 0
 	if (scrollContainer.value) {
@@ -332,9 +422,15 @@ watch(() => store.favoriteBuckets.length, (newLen, oldLen) => {
 })
 
 onBeforeUnmount(() => {
+	resizeObserver?.disconnect()
 	if (scrollRaf) {
 		cancelAnimationFrame(scrollRaf)
 	}
+	// Abort all in-flight requests
+	for (const controller of abortControllers.values()) {
+		controller.abort()
+	}
+	abortControllers.clear()
 	pendingQueue.length = 0
 	activeRequests = 0
 })
