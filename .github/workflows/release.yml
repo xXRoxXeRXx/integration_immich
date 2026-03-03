@@ -1,0 +1,82 @@
+# SPDX-FileCopyrightText: 2026 Marcel Meyer <gh@grenzallee.eu>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+---
+name: Build and publish app release
+
+on:
+  release:
+    types: [published]
+
+env:
+  APP_NAME: integration_immich
+  PHP_VERSION: '8.2'
+  NODE_VERSION: '20'
+
+jobs:
+  build_and_publish:
+    runs-on: ubuntu-latest
+    name: "Release: build, sign and upload to App Store"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Build production JS
+        run: npm run build
+
+      - name: Assemble release tar.gz
+        run: |
+          mkdir -p build/release
+          mkdir -p build/source/${{ env.APP_NAME }}
+          cp -r appinfo composer css img js l10n lib templates \
+                CHANGELOG.md COPYING README.md \
+                build/source/${{ env.APP_NAME }}/
+          find build/source/${{ env.APP_NAME }}/js -name "*.map" -delete
+          cd build/source && tar -czf ../release/${{ env.APP_NAME }}.tar.gz ${{ env.APP_NAME }}
+
+      - name: Sign the release
+        run: |
+          # Write private key and certificate from secrets
+          mkdir -p ~/.nextcloud/certificates
+          echo "${{ secrets.APP_PRIVATE_KEY }}" > ~/.nextcloud/certificates/${{ env.APP_NAME }}.key
+          echo "${{ secrets.APP_PUBLIC_CRT }}" > ~/.nextcloud/certificates/${{ env.APP_NAME }}.crt
+
+          # Create signature
+          openssl dgst -sha512 \
+            -sign ~/.nextcloud/certificates/${{ env.APP_NAME }}.key \
+            build/release/${{ env.APP_NAME }}.tar.gz \
+            | openssl base64 > /tmp/${{ env.APP_NAME }}.sig
+
+          # Clean up key material
+          rm -f ~/.nextcloud/certificates/${{ env.APP_NAME }}.key
+
+      - name: Attach tar.gz to GitHub release
+        uses: svenstaro/upload-release-action@v2
+        id: attach_to_release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/release/${{ env.APP_NAME }}.tar.gz
+          asset_name: ${{ env.APP_NAME }}.tar.gz
+          tag: ${{ github.ref }}
+          overwrite: true
+
+      - name: Upload to Nextcloud App Store
+        uses: R0Wi/nextcloud-appstore-push-action@v1
+        with:
+          app_name: ${{ env.APP_NAME }}
+          appstore_token: ${{ secrets.APPSTORE_TOKEN }}
+          download_url: ${{ steps.attach_to_release.outputs.browser_download_url }}
+          app_private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          nightly: ${{ github.event.release.prerelease }}
+
+      - name: Remove certificates from runner
+        run: rm -rf ~/.nextcloud/certificates
