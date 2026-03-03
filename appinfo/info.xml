@@ -20,7 +20,7 @@ Seamlessly integrates your [Immich](https://immich.app) photo library into Nextc
 - ☑️ **Multi-select** — batch operations across any view
     ]]></description>
     <version>1.0.1</version>
-    <licence>agpl</licence>
+    <licence>AGPL-3.0-or-later</licence>
     <author mail="gh@grenzallee.eu">Marcel Meyer</author>
     <namespace>IntegrationImmich</namespace>
     <category>multimedia</category>

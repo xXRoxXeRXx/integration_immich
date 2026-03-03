@@ -38,9 +38,9 @@ release: build
 	cp -r $(appfiles) "$(source_dir)/"
 	mkdir -p "$(release_dir)"
 	cd "$(build_dir)/source" && find "$(app_name)/js" -name "*.map" -delete
-	cd "$(build_dir)/source" && zip -r "$(release_dir)/$(app_name).zip" "$(app_name)"
+	cd "$(build_dir)/source" && tar -czf "$(release_dir)/$(app_name).tar.gz" "$(app_name)"
 	@echo ""
-	@echo "✅  Release ZIP: $(release_dir)/$(app_name).zip"
+	@echo "✅  Release tar.gz: $(release_dir)/$(app_name).tar.gz"
 
 ## Remove build artifacts
 clean:

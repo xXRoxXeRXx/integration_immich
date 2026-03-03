@@ -75,43 +75,22 @@ function Invoke-ZipOnly {
     # Remove source maps (not needed in production release)
     Get-ChildItem (Join-Path $SourceDir 'js') -Filter '*.map' | Remove-Item -Force
 
-    $zipPath = Join-Path $ReleaseDir "$AppName.zip"
-    if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-
-    # Build ZIP with correct Unix permissions (755 dirs, 644 files)
-    # so that Linux servers can traverse directories after unzip.
-    Add-Type -AssemblyName System.IO.Compression
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    # The Nextcloud App Store requires tar.gz archives (not zip).
+    # We use WSL / tar.exe to produce a proper Unix tar.gz with correct permissions.
+    $tarPath = Join-Path $ReleaseDir "$AppName.tar.gz"
+    if (Test-Path $tarPath) { Remove-Item $tarPath -Force }
 
     $sourceBase = Join-Path $BuildDir 'source'
-    $stream = [System.IO.File]::Open($zipPath, [System.IO.FileMode]::Create)
-    $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Create)
+    # tar.exe (built into Windows 10+) can create tar.gz archives.
+    # We set the working directory so the archive contains integration_immich/ at the top level.
+    Push-Location $sourceBase
+    tar -czf $tarPath $AppName
+    Pop-Location
 
-    $allItems = Get-ChildItem $SourceDir -Recurse
-    foreach ($item in $allItems) {
-        $relativePath = $item.FullName.Substring($sourceBase.Length + 1).Replace('\', '/')
-        if ($item.PSIsContainer) {
-            # Directory entry (must end with /)
-            $entry = $archive.CreateEntry("$relativePath/", [System.IO.Compression.CompressionLevel]::Optimal)
-            # Unix mode 040755 (directory + rwxr-xr-x) shifted left 16 bits
-            $entry.ExternalAttributes = (0x4000 -bor 0x01ED) -shl 16
-        } else {
-            $entry = $archive.CreateEntry($relativePath, [System.IO.Compression.CompressionLevel]::Optimal)
-            # Unix mode 0100644 (regular file + rw-r--r--) shifted left 16 bits
-            $entry.ExternalAttributes = (0x8000 -bor 0x01A4) -shl 16
-            $fileStream = [System.IO.File]::OpenRead($item.FullName)
-            $entryStream = $entry.Open()
-            $fileStream.CopyTo($entryStream)
-            $entryStream.Close()
-            $fileStream.Close()
-        }
-    }
+    if ($LASTEXITCODE -ne 0) { throw "tar failed" }
 
-    $archive.Dispose()
-    $stream.Dispose()
-
-    Write-Host "`n✅  Release ZIP: $zipPath" -ForegroundColor Green
-    Write-Host "    Size: $([math]::Round((Get-Item $zipPath).Length / 1MB, 2)) MB" -ForegroundColor Green
+    Write-Host "`n✅  Release tar.gz: $tarPath" -ForegroundColor Green
+    Write-Host "    Size: $([math]::Round((Get-Item $tarPath).Length / 1MB, 2)) MB" -ForegroundColor Green
 }
 
 function Invoke-Clean {
