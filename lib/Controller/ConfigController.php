@@ -36,6 +36,7 @@ class ConfigController extends Controller {
         ]);
     }
 
+    #[NoAdminRequired]
     public function setConfig(): JSONResponse {
         $serverUrl = $this->request->getParam('server_url');
         $apiKey = $this->request->getParam('api_key');
@@ -52,7 +53,7 @@ class ConfigController extends Controller {
             $this->immichService->setApiKey($apiKey);
         }
 
-        if ($validate) {
+        if ($validate === true || $validate === 'true' || $validate === '1') {
             $result = $this->immichService->validateConnection();
             if (!$result['success']) {
                 $this->logger->warning('Immich connection validation failed: ' . ($result['error'] ?? 'unknown'), [
