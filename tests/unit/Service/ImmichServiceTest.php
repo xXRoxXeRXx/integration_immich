@@ -10,6 +10,7 @@ use OCP\Http\Client\IClientService;
 use OCP\IConfig;
 use OCP\IUser;
 use OCP\IUserSession;
+use OCP\Security\ICrypto;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 use Test\TestCase;
@@ -35,6 +36,7 @@ class ImmichServiceTest extends TestCase {
 			$this->config,
 			$this->userSession,
 			$this->createMock(LoggerInterface::class),
+			$this->createMock(ICrypto::class),
 		);
 	}
 
@@ -94,11 +96,22 @@ class ImmichServiceTest extends TestCase {
 	}
 
 	public function testGetApiKeyReturnsValue(): void {
+		$crypto = $this->createMock(ICrypto::class);
+		$crypto->method('decrypt')->willReturn('my-secret-key');
+
 		$this->config->method('getUserValue')
 			->with('testuser', Application::APP_ID, 'api_key', '')
-			->willReturn('my-secret-key');
+			->willReturn('encrypted-value');
 
-		$this->assertEquals('my-secret-key', $this->service->getApiKey());
+		$service = new ImmichService(
+			$this->createMock(IClientService::class),
+			$this->config,
+			$this->userSession,
+			$this->createMock(LoggerInterface::class),
+			$crypto,
+		);
+
+		$this->assertEquals('my-secret-key', $service->getApiKey());
 	}
 
 	public function testValidateConnectionReturnsSuccessOnOk(): void {
@@ -123,6 +136,7 @@ class ImmichServiceTest extends TestCase {
 			$this->config,
 			$this->userSession,
 			$this->createMock(\Psr\Log\LoggerInterface::class),
+			$this->createMock(ICrypto::class),
 		);
 
 		$result = $service->validateConnection();
