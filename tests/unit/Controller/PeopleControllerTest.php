@@ -9,6 +9,7 @@ use OCA\IntegrationImmich\Service\ImmichService;
 use OCP\AppFramework\Http;
 use OCP\IRequest;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 class PeopleControllerTest extends TestCase {
@@ -16,16 +17,21 @@ class PeopleControllerTest extends TestCase {
 	private PeopleController $controller;
 	private ImmichService&MockObject $immichService;
 	private IRequest&MockObject $request;
+	private LoggerInterface&MockObject $logger;
+
+	private const VALID_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 
 	protected function setUp(): void {
 		parent::setUp();
 
 		$this->immichService = $this->createMock(ImmichService::class);
 		$this->request = $this->createMock(IRequest::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 
 		$this->controller = new PeopleController(
 			$this->request,
 			$this->immichService,
+			$this->logger,
 		);
 	}
 
@@ -75,10 +81,10 @@ class PeopleControllerTest extends TestCase {
 	public function testAssetsReturnsPersonAssets(): void {
 		$this->immichService->method('isConfigured')->willReturn(true);
 		$this->immichService->method('getPersonAssets')->willReturn([
-			['id' => 'asset-uuid-1'],
+			['id' => self::VALID_UUID],
 		]);
 
-		$response = $this->controller->assets('person-uuid-1');
+		$response = $this->controller->assets(self::VALID_UUID);
 
 		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
 		$this->assertCount(1, $response->getData());
@@ -88,7 +94,7 @@ class PeopleControllerTest extends TestCase {
 		$this->immichService->method('isConfigured')->willReturn(true);
 		$this->immichService->method('getPersonAssets')->willThrowException(new \Exception('Timeout'));
 
-		$response = $this->controller->assets('person-uuid-1');
+		$response = $this->controller->assets(self::VALID_UUID);
 
 		$this->assertEquals(Http::STATUS_INTERNAL_SERVER_ERROR, $response->getStatus());
 	}

@@ -10,6 +10,7 @@ use OCP\AppFramework\Http;
 use OCP\Files\IRootFolder;
 use OCP\IRequest;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 class AssetsControllerTest extends TestCase {
@@ -17,18 +18,21 @@ class AssetsControllerTest extends TestCase {
 	private AssetsController $controller;
 	private ImmichService&MockObject $immichService;
 	private IRequest&MockObject $request;
+	private LoggerInterface&MockObject $logger;
 
 	protected function setUp(): void {
 		parent::setUp();
 
 		$this->immichService = $this->createMock(ImmichService::class);
 		$this->request = $this->createMock(IRequest::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 
 		$this->controller = new AssetsController(
 			$this->request,
 			$this->immichService,
 			$this->createMock(IRootFolder::class),
 			'testuser',
+			$this->logger,
 		);
 	}
 

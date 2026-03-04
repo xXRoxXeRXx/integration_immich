@@ -9,6 +9,7 @@ use OCA\IntegrationImmich\Service\ImmichService;
 use OCP\AppFramework\Http;
 use OCP\IRequest;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 class AlbumsControllerTest extends TestCase {
@@ -16,6 +17,7 @@ class AlbumsControllerTest extends TestCase {
 	private AlbumsController $controller;
 	private ImmichService&MockObject $immichService;
 	private IRequest&MockObject $request;
+	private LoggerInterface&MockObject $logger;
 
 	private const VALID_UUID   = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 	private const INVALID_UUID = 'not-a-valid-uuid';
@@ -25,10 +27,12 @@ class AlbumsControllerTest extends TestCase {
 
 		$this->immichService = $this->createMock(ImmichService::class);
 		$this->request = $this->createMock(IRequest::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 
 		$this->controller = new AlbumsController(
 			$this->request,
 			$this->immichService,
+			$this->logger,
 		);
 	}
 

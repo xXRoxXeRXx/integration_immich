@@ -9,6 +9,7 @@ use OCA\IntegrationImmich\Service\ImmichService;
 use OCP\AppFramework\Http;
 use OCP\IRequest;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 class ConfigControllerTest extends TestCase {
@@ -16,20 +17,23 @@ class ConfigControllerTest extends TestCase {
 	private ConfigController $controller;
 	private ImmichService&MockObject $immichService;
 	private IRequest&MockObject $request;
+	private LoggerInterface&MockObject $logger;
 
 	protected function setUp(): void {
 		parent::setUp();
 
 		$this->immichService = $this->createMock(ImmichService::class);
 		$this->request = $this->createMock(IRequest::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 
 		$this->controller = new ConfigController(
 			$this->request,
 			$this->immichService,
+			$this->logger,
 		);
 	}
 
-	public function testGetConfigReturnsServerUrlAndMaskedKey(): void {
+	public function testGetConfigReturnsServerUrlAndKeyStatus(): void {
 		$this->immichService->method('getServerUrl')->willReturn('https://photos.example.com');
 		$this->immichService->method('getApiKey')->willReturn('abcdefgh');
 
@@ -39,7 +43,7 @@ class ConfigControllerTest extends TestCase {
 		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
 		$this->assertEquals('https://photos.example.com', $data['server_url']);
 		$this->assertTrue($data['api_key_set']);
-		$this->assertEquals('abcd****', $data['api_key_masked']);
+		$this->assertArrayNotHasKey('api_key_masked', $data);
 	}
 
 	public function testGetConfigReturnsApiKeyNotSetWhenEmpty(): void {
@@ -50,7 +54,7 @@ class ConfigControllerTest extends TestCase {
 		$data = $response->getData();
 
 		$this->assertFalse($data['api_key_set']);
-		$this->assertEquals('', $data['api_key_masked']);
+		$this->assertArrayNotHasKey('api_key_masked', $data);
 	}
 
 	public function testSetConfigSavesUrlAndKey(): void {

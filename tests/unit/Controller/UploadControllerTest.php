@@ -12,6 +12,7 @@ use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\IRequest;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 class UploadControllerTest extends TestCase {
@@ -20,6 +21,7 @@ class UploadControllerTest extends TestCase {
 	private ImmichService&MockObject $immichService;
 	private IRequest&MockObject $request;
 	private IRootFolder&MockObject $rootFolder;
+	private LoggerInterface&MockObject $logger;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -27,12 +29,14 @@ class UploadControllerTest extends TestCase {
 		$this->immichService = $this->createMock(ImmichService::class);
 		$this->request = $this->createMock(IRequest::class);
 		$this->rootFolder = $this->createMock(IRootFolder::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 
 		$this->controller = new UploadController(
 			$this->request,
 			$this->immichService,
 			$this->rootFolder,
 			'testuser',
+			$this->logger,
 		);
 	}
 
