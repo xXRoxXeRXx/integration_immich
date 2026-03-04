@@ -98,7 +98,7 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
         }
 
@@ -115,7 +115,7 @@ class AssetsController extends Controller {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
         }
         $allowed = ['isFavorite', 'isArchived', 'description'];
@@ -140,7 +140,7 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
         }
 
@@ -169,7 +169,7 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
         }
 
@@ -195,7 +195,7 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
         }
 
@@ -286,7 +286,7 @@ class AssetsController extends Controller {
         }
 
         foreach ($assetIds as $id) {
-            if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', (string)$id)) {
+            if (!preg_match(ImmichService::UUID_PATTERN, (string)$id)) {
                 return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
             }
         }
@@ -341,6 +341,10 @@ class AssetsController extends Controller {
             return new JSONResponse(['error' => 'path is required'], Http::STATUS_BAD_REQUEST);
         }
 
+        if ($this->userId === null) {
+            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        }
+
         $userFolder = $this->rootFolder->getUserFolder($this->userId);
         $normalizedPath = trim((string)$path, '/');
 
@@ -373,7 +377,7 @@ class AssetsController extends Controller {
                 // Fetch the original binary (works for images and videos)
                 $result = $this->immichService->getAssetOriginal((string)$assetId);
 
-                // Write to Nextcloud
+                // Write to Nextcloud — body is a stream, putContent accepts resource
                 $file = $targetNode->newFile($fileName);
                 $file->putContent($result['body']);
 
@@ -400,12 +404,14 @@ class AssetsController extends Controller {
         $name = $info['filename'];
         $ext = isset($info['extension']) ? '.' . $info['extension'] : '';
 
-        $i = 1;
-        do {
+        for ($i = 1; $i <= 9999; $i++) {
             $candidate = $name . ' (' . $i . ')' . $ext;
-            $i++;
-        } while ($folder->nodeExists($candidate));
+            if (!$folder->nodeExists($candidate)) {
+                return $candidate;
+            }
+        }
 
-        return $candidate;
+        // Fallback: append a unique suffix to guarantee uniqueness
+        return $name . ' (' . uniqid('', true) . ')' . $ext;
     }
 }

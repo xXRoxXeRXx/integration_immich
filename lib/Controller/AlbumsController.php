@@ -52,7 +52,7 @@ class AlbumsController extends Controller {
         }
 
         $assetId = $this->request->getParam('assetId', '');
-        if ($assetId !== '' && !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $assetId)) {
+        if ($assetId !== '' && !preg_match(ImmichService::UUID_PATTERN, $assetId)) {
             return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
         }
 
@@ -73,7 +73,7 @@ class AlbumsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid album ID format'], Http::STATUS_BAD_REQUEST);
         }
 
@@ -100,7 +100,7 @@ class AlbumsController extends Controller {
 
         $assetIds = is_array($assetIds) ? $assetIds : [];
         foreach ($assetIds as $assetId) {
-            if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', (string)$assetId)) {
+            if (!preg_match(ImmichService::UUID_PATTERN, (string)$assetId)) {
                 return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
             }
         }
@@ -118,7 +118,7 @@ class AlbumsController extends Controller {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid album ID format'], Http::STATUS_BAD_REQUEST);
         }
         try {
@@ -134,7 +134,7 @@ class AlbumsController extends Controller {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid album ID format'], Http::STATUS_BAD_REQUEST);
         }
         $albumName = trim($this->request->getParam('albumName', ''));
@@ -154,7 +154,7 @@ class AlbumsController extends Controller {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid album ID format'], Http::STATUS_BAD_REQUEST);
         }
         $assetIds = $this->request->getParam('assetIds', []);
@@ -162,7 +162,7 @@ class AlbumsController extends Controller {
             return new JSONResponse(['error' => 'assetIds must be a non-empty array'], Http::STATUS_BAD_REQUEST);
         }
         foreach ($assetIds as $assetId) {
-            if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', (string)$assetId)) {
+            if (!preg_match(ImmichService::UUID_PATTERN, (string)$assetId)) {
                 return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
             }
         }
@@ -180,7 +180,7 @@ class AlbumsController extends Controller {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
         }
 
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid album ID format'], Http::STATUS_BAD_REQUEST);
         }
 
@@ -190,7 +190,7 @@ class AlbumsController extends Controller {
         }
 
         foreach ($assetIds as $assetId) {
-            if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', (string)$assetId)) {
+            if (!preg_match(ImmichService::UUID_PATTERN, (string)$assetId)) {
                 return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
             }
         }
@@ -212,7 +212,7 @@ class AlbumsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid album ID format'], Http::STATUS_BAD_REQUEST);
         }
 

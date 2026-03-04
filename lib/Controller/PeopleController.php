@@ -68,7 +68,7 @@ class PeopleController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid person ID format'], Http::STATUS_BAD_REQUEST);
         }
 
@@ -89,7 +89,7 @@ class PeopleController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid person ID format'], Http::STATUS_BAD_REQUEST);
         }
 
