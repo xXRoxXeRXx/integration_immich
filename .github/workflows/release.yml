@@ -28,7 +28,7 @@ jobs:
           cache: 'npm'
 
       - name: Install JS dependencies
-        run: npm ci
+        run: npm install --no-package-lock
 
       - name: Build production JS
         run: npm run build
