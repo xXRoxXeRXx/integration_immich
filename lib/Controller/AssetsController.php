@@ -22,6 +22,7 @@ use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\IRequest;
+use Psr\Log\LoggerInterface;
 
 class AssetsController extends Controller {
     public function __construct(
@@ -29,8 +30,20 @@ class AssetsController extends Controller {
         private ImmichService $immichService,
         private IRootFolder $rootFolder,
         private ?string $userId,
+        private LoggerInterface $logger,
     ) {
         parent::__construct(Application::APP_ID, $request);
+    }
+
+    private function errorResponse(string $context, \Exception $e): JSONResponse {
+        $this->logger->error('Immich ' . $context . ' failed: ' . $e->getMessage(), [
+            'app' => Application::APP_ID,
+            'exception' => $e,
+        ]);
+        return new JSONResponse(
+            ['error' => 'An internal error occurred'],
+            Http::STATUS_INTERNAL_SERVER_ERROR
+        );
     }
 
     #[NoAdminRequired]
@@ -72,10 +85,7 @@ class AssetsController extends Controller {
 
             return new JSONResponse($data);
         } catch (\Exception $e) {
-            return new JSONResponse(
-                ['error' => $e->getMessage()],
-                Http::STATUS_INTERNAL_SERVER_ERROR
-            );
+            return $this->errorResponse('timeline', $e);
         }
     }
 
@@ -88,20 +98,19 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
+        }
 
         try {
             $data = $this->immichService->getAsset($id);
             return new JSONResponse($data);
         } catch (\Exception $e) {
-            return new JSONResponse(
-                ['error' => $e->getMessage()],
-                Http::STATUS_INTERNAL_SERVER_ERROR
-            );
+            return $this->errorResponse('asset info', $e);
         }
     }
 
     #[NoAdminRequired]
-    #[NoCSRFRequired]
     public function update(string $id): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
@@ -118,7 +127,7 @@ class AssetsController extends Controller {
             $result = $this->immichService->updateAsset($id, $data);
             return new JSONResponse($result);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+            return $this->errorResponse('asset update', $e);
         }
     }
 
@@ -131,9 +140,13 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
+        }
 
         try {
             $size = $this->request->getParam('size', 'thumbnail');
+            $size = in_array($size, ['thumbnail', 'preview'], true) ? $size : 'thumbnail';
             $result = $this->immichService->getAssetThumbnail($id, $size);
             $response = new DataDownloadResponse(
                 $result['body'],
@@ -143,10 +156,7 @@ class AssetsController extends Controller {
             $response->cacheFor(3600);
             return $response;
         } catch (\Exception $e) {
-            return new JSONResponse(
-                ['error' => $e->getMessage()],
-                Http::STATUS_INTERNAL_SERVER_ERROR
-            );
+            return $this->errorResponse('thumbnail', $e);
         }
     }
 
@@ -159,6 +169,9 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
+        }
 
         try {
             $result = $this->immichService->getAssetOriginal($id);
@@ -169,10 +182,7 @@ class AssetsController extends Controller {
             );
             return $response;
         } catch (\Exception $e) {
-            return new JSONResponse(
-                ['error' => $e->getMessage()],
-                Http::STATUS_INTERNAL_SERVER_ERROR
-            );
+            return $this->errorResponse('original', $e);
         }
     }
 
@@ -185,9 +195,15 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
+        }
 
         try {
             $rangeHeader = $this->request->getHeader('Range') ?? '';
+            if ($rangeHeader !== '' && !preg_match('/^bytes=(\d+-\d*|-\d+)(,\s*(\d+-\d*|-\d+))*$/', $rangeHeader)) {
+                $rangeHeader = '';
+            }
             $result = $this->immichService->getVideoStream($id, $rangeHeader);
 
             $response = new DataDownloadResponse(
@@ -211,10 +227,7 @@ class AssetsController extends Controller {
 
             return $response;
         } catch (\Exception $e) {
-            return new JSONResponse(
-                ['error' => $e->getMessage()],
-                Http::STATUS_INTERNAL_SERVER_ERROR
-            );
+            return $this->errorResponse('video stream', $e);
         }
     }
 
@@ -232,10 +245,7 @@ class AssetsController extends Controller {
             $markers = $this->immichService->getMapMarkers();
             return new JSONResponse($markers);
         } catch (\Exception $e) {
-            return new JSONResponse(
-                ['error' => $e->getMessage()],
-                Http::STATUS_INTERNAL_SERVER_ERROR
-            );
+            return $this->errorResponse('map markers', $e);
         }
     }
 
@@ -253,15 +263,11 @@ class AssetsController extends Controller {
             $data = $this->immichService->getExplore();
             return new JSONResponse($data);
         } catch (\Exception $e) {
-            return new JSONResponse(
-                ['error' => $e->getMessage()],
-                Http::STATUS_INTERNAL_SERVER_ERROR
-            );
+            return $this->errorResponse('explore', $e);
         }
     }
 
     #[NoAdminRequired]
-    #[NoCSRFRequired]
     public function downloadAssets(): DataDownloadResponse|JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(
@@ -311,15 +317,11 @@ class AssetsController extends Controller {
             );
             return $response;
         } catch (\Exception $e) {
-            return new JSONResponse(
-                ['error' => $e->getMessage()],
-                Http::STATUS_INTERNAL_SERVER_ERROR
-            );
+            return $this->errorResponse('download', $e);
         }
     }
 
     #[NoAdminRequired]
-    #[NoCSRFRequired]
     public function saveToNextcloud(): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(
@@ -340,7 +342,11 @@ class AssetsController extends Controller {
         }
 
         $userFolder = $this->rootFolder->getUserFolder($this->userId);
-        $normalizedPath = ltrim((string)$path, '/');
+        $normalizedPath = trim((string)$path, '/');
+
+        if (str_contains($normalizedPath, '..') || str_contains($normalizedPath, "\0")) {
+            return new JSONResponse(['error' => 'Invalid path'], Http::STATUS_BAD_REQUEST);
+        }
 
         try {
             $targetNode = $userFolder->get($normalizedPath);
@@ -348,7 +354,7 @@ class AssetsController extends Controller {
                 return new JSONResponse(['error' => 'Path is not a folder'], Http::STATUS_BAD_REQUEST);
             }
         } catch (NotFoundException $e) {
-            return new JSONResponse(['error' => 'Folder not found: ' . $normalizedPath], Http::STATUS_NOT_FOUND);
+            return new JSONResponse(['error' => 'Folder not found'], Http::STATUS_NOT_FOUND);
         }
 
         $saved = 0;
@@ -374,7 +380,11 @@ class AssetsController extends Controller {
                 $saved++;
             } catch (\Exception $e) {
                 $failed++;
-                $errors[] = ['id' => $assetId, 'error' => $e->getMessage()];
+                $this->logger->error('Immich save-to-nextcloud failed for asset ' . $assetId . ': ' . $e->getMessage(), [
+                    'app' => Application::APP_ID,
+                    'exception' => $e,
+                ]);
+                $errors[] = ['id' => $assetId, 'error' => 'Failed to save asset'];
             }
         }
 

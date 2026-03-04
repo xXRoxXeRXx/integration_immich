@@ -17,33 +17,36 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
+use Psr\Log\LoggerInterface;
 
 class ConfigController extends Controller {
     public function __construct(
         IRequest $request,
         private ImmichService $immichService,
+        private LoggerInterface $logger,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
 
     #[NoCSRFRequired]
     public function getConfig(): JSONResponse {
-        $apiKey = $this->immichService->getApiKey();
         return new JSONResponse([
             'server_url' => $this->immichService->getServerUrl(),
-            'api_key_set' => $apiKey !== '',
-            'api_key_masked' => $apiKey !== '' ? substr($apiKey, 0, 4) . '****' : '',
+            'api_key_set' => $this->immichService->getApiKey() !== '',
         ]);
     }
 
-    #[NoCSRFRequired]
     public function setConfig(): JSONResponse {
         $serverUrl = $this->request->getParam('server_url');
         $apiKey = $this->request->getParam('api_key');
         $validate = $this->request->getParam('validate', false);
 
         if ($serverUrl !== null) {
-            $this->immichService->setServerUrl($serverUrl);
+            try {
+                $this->immichService->setServerUrl($serverUrl);
+            } catch (\InvalidArgumentException $e) {
+                return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            }
         }
         if ($apiKey !== null && $apiKey !== '') {
             $this->immichService->setApiKey($apiKey);
@@ -52,8 +55,11 @@ class ConfigController extends Controller {
         if ($validate) {
             $result = $this->immichService->validateConnection();
             if (!$result['success']) {
+                $this->logger->warning('Immich connection validation failed: ' . ($result['error'] ?? 'unknown'), [
+                    'app' => Application::APP_ID,
+                ]);
                 return new JSONResponse(
-                    ['error' => $result['error']],
+                    ['error' => 'Connection validation failed'],
                     Http::STATUS_BAD_REQUEST
                 );
             }

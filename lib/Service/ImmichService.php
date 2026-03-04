@@ -14,6 +14,7 @@ use OCA\IntegrationImmich\AppInfo\Application;
 use OCP\Http\Client\IClientService;
 use OCP\IConfig;
 use OCP\IUserSession;
+use OCP\Security\ICrypto;
 use Psr\Log\LoggerInterface;
 
 class ImmichService {
@@ -25,6 +26,7 @@ class ImmichService {
         private IConfig $config,
         private IUserSession $userSession,
         private LoggerInterface $logger,
+        private ICrypto $crypto,
     ) {
     }
 
@@ -40,15 +42,33 @@ class ImmichService {
     }
 
     public function getApiKey(): string {
-        return $this->config->getUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_API_KEY, '');
+        $stored = $this->config->getUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_API_KEY, '');
+        if ($stored === '') {
+            return '';
+        }
+        try {
+            return $this->crypto->decrypt($stored);
+        } catch (\Exception $e) {
+            // Fallback: value was stored before encryption was added
+            return $stored;
+        }
     }
 
     public function setServerUrl(string $url): void {
-        $this->config->setUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_SERVER_URL, rtrim($url, '/'));
+        $url = rtrim($url, '/');
+        $parsed = parse_url($url);
+        if (!$parsed || !in_array($parsed['scheme'] ?? '', ['http', 'https'], true)) {
+            throw new \InvalidArgumentException('Invalid server URL: must use http or https scheme');
+        }
+        if (empty($parsed['host'])) {
+            throw new \InvalidArgumentException('Invalid server URL: missing host');
+        }
+        $this->config->setUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_SERVER_URL, $url);
     }
 
     public function setApiKey(string $key): void {
-        $this->config->setUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_API_KEY, $key);
+        $encrypted = $this->crypto->encrypt($key);
+        $this->config->setUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_API_KEY, $encrypted);
     }
 
     public function isConfigured(): bool {

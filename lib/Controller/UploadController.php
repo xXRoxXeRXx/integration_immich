@@ -15,10 +15,10 @@ use OCA\IntegrationImmich\Service\ImmichService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
-use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\Files\IRootFolder;
 use OCP\IRequest;
+use Psr\Log\LoggerInterface;
 
 class UploadController extends Controller {
     public function __construct(
@@ -26,12 +26,12 @@ class UploadController extends Controller {
         private ImmichService $immichService,
         private IRootFolder $rootFolder,
         private ?string $userId,
+        private LoggerInterface $logger,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
 
     #[NoAdminRequired]
-    #[NoCSRFRequired]
     public function upload(): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(
@@ -79,8 +79,12 @@ class UploadController extends Controller {
 
             return new JSONResponse($result);
         } catch (\Exception $e) {
+            $this->logger->error('Immich upload failed: ' . $e->getMessage(), [
+                'app' => Application::APP_ID,
+                'exception' => $e,
+            ]);
             return new JSONResponse(
-                ['error' => $e->getMessage()],
+                ['error' => 'An internal error occurred'],
                 Http::STATUS_INTERNAL_SERVER_ERROR
             );
         }

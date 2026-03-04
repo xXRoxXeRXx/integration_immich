@@ -19,13 +19,26 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
+use Psr\Log\LoggerInterface;
 
 class AlbumsController extends Controller {
     public function __construct(
         IRequest $request,
         private ImmichService $immichService,
+        private LoggerInterface $logger,
     ) {
         parent::__construct(Application::APP_ID, $request);
+    }
+
+    private function errorResponse(string $context, \Exception $e): JSONResponse {
+        $this->logger->error('Immich ' . $context . ' failed: ' . $e->getMessage(), [
+            'app' => Application::APP_ID,
+            'exception' => $e,
+        ]);
+        return new JSONResponse(
+            ['error' => 'An internal error occurred'],
+            Http::STATUS_INTERNAL_SERVER_ERROR
+        );
     }
 
     #[NoAdminRequired]
@@ -47,10 +60,7 @@ class AlbumsController extends Controller {
             $albums = $this->immichService->getAlbums($assetId);
             return new JSONResponse($albums);
         } catch (\Exception $e) {
-            return new JSONResponse(
-                ['error' => $e->getMessage()],
-                Http::STATUS_INTERNAL_SERVER_ERROR
-            );
+            return $this->errorResponse('albums list', $e);
         }
     }
 
@@ -71,15 +81,11 @@ class AlbumsController extends Controller {
             $album = $this->immichService->getAlbum($id);
             return new JSONResponse($album);
         } catch (\Exception $e) {
-            return new JSONResponse(
-                ['error' => $e->getMessage()],
-                Http::STATUS_INTERNAL_SERVER_ERROR
-            );
+            return $this->errorResponse('album show', $e);
         }
     }
 
     #[NoAdminRequired]
-    #[NoCSRFRequired]
     public function create(): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
@@ -103,12 +109,11 @@ class AlbumsController extends Controller {
             $album = $this->immichService->createAlbum($albumName, $assetIds);
             return new JSONResponse($album, Http::STATUS_CREATED);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+            return $this->errorResponse('album create', $e);
         }
     }
 
     #[NoAdminRequired]
-    #[NoCSRFRequired]
     public function delete(string $id): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
@@ -120,12 +125,11 @@ class AlbumsController extends Controller {
             $this->immichService->deleteAlbum($id);
             return new JSONResponse(['success' => true]);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+            return $this->errorResponse('album delete', $e);
         }
     }
 
     #[NoAdminRequired]
-    #[NoCSRFRequired]
     public function rename(string $id): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
@@ -141,12 +145,11 @@ class AlbumsController extends Controller {
             $album = $this->immichService->renameAlbum($id, $albumName);
             return new JSONResponse($album);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+            return $this->errorResponse('album rename', $e);
         }
     }
 
     #[NoAdminRequired]
-    #[NoCSRFRequired]
     public function removeAssets(string $id): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
@@ -167,12 +170,11 @@ class AlbumsController extends Controller {
             $result = $this->immichService->removeAssetsFromAlbum($id, $assetIds);
             return new JSONResponse($result);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+            return $this->errorResponse('album remove assets', $e);
         }
     }
 
     #[NoAdminRequired]
-    #[NoCSRFRequired]
     public function addAssets(string $id): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
@@ -197,7 +199,7 @@ class AlbumsController extends Controller {
             $result = $this->immichService->addAssetsToAlbum($id, $assetIds);
             return new JSONResponse($result);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+            return $this->errorResponse('album add assets', $e);
         }
     }
 
@@ -209,6 +211,9 @@ class AlbumsController extends Controller {
                 ['error' => 'Immich is not configured'],
                 Http::STATUS_PRECONDITION_FAILED
             );
+        }
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return new JSONResponse(['error' => 'Invalid album ID format'], Http::STATUS_BAD_REQUEST);
         }
 
         try {
@@ -235,10 +240,7 @@ class AlbumsController extends Controller {
             $response->cacheFor(3600);
             return $response;
         } catch (\Exception $e) {
-            return new JSONResponse(
-                ['error' => $e->getMessage()],
-                Http::STATUS_INTERNAL_SERVER_ERROR
-            );
+            return $this->errorResponse('album thumbnail', $e);
         }
     }
 }
