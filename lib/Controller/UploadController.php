@@ -49,6 +49,9 @@ class UploadController extends Controller {
         }
 
         try {
+            if ($this->userId === null) {
+                return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+            }
             $userFolder = $this->rootFolder->getUserFolder($this->userId);
             $files = $userFolder->getById((int)$fileId);
 
@@ -69,13 +72,23 @@ class UploadController extends Controller {
             }
 
             $creationTime = $file->getCreationTime() ?: $file->getMTime();
-            $result = $this->immichService->uploadAsset(
-                $file->getContent(),
-                $file->getName(),
-                $file->getMimeType(),
-                date('c', $creationTime),
-                date('c', $file->getMTime()),
-            );
+            $stream = $file->fopen('rb');
+            if ($stream === false) {
+                return new JSONResponse(['error' => 'Could not open file for reading'], Http::STATUS_INTERNAL_SERVER_ERROR);
+            }
+            try {
+                $result = $this->immichService->uploadAsset(
+                    $stream,
+                    $file->getName(),
+                    $file->getMimeType(),
+                    date('c', $creationTime),
+                    date('c', $file->getMTime()),
+                );
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            }
 
             return new JSONResponse($result);
         } catch (\Exception $e) {
