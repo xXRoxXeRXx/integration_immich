@@ -15,6 +15,7 @@ async function uploadFile(node) {
 	await axios.post(url, { fileId: node.fileid })
 }
 
+// NC33+ API: context object { nodes, view, folder, contents }
 registerFileAction({
 	id: 'send-to-immich',
 	displayName: () => t('integration_immich', 'Add to Immich'),

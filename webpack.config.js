@@ -5,6 +5,7 @@ webpackConfig.entry = {
     main: path.join(__dirname, 'src', 'main.js'),
     adminSettings: path.join(__dirname, 'src', 'adminSettings.js'),
     fileAction: path.join(__dirname, 'src', 'fileAction.js'),
+    'fileAction-nc32': path.join(__dirname, 'src', 'fileAction-nc32.js'),
 }
 
 // @nextcloud/webpack-vue-config hardcodes publicPath to /apps/{appId}/js/ but this
