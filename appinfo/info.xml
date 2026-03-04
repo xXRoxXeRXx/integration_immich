@@ -30,7 +30,7 @@ Seamlessly integrates your [Immich](https://immich.app) photo library into Nextc
     <screenshot>https://raw.githubusercontent.com/xXRoxXeRXx/integration_immich/master/screenshots/album.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/xXRoxXeRXx/integration_immich/master/screenshots/people.png</screenshot>
     <dependencies>
-        <nextcloud min-version="26" max-version="33"/>
+        <nextcloud min-version="27" max-version="33"/>
         <php min-version="8.2"/>
     </dependencies>
     <navigations>

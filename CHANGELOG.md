@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **NC26–32 compatibility**: "Add to Immich" file action was not visible on Nextcloud 26–32
   due to a registry scoping change in `@nextcloud/files` v4 (only compatible with NC33+).
   A separate webpack bundle using `@nextcloud/files` v3 is now built and loaded automatically
-  for Nextcloud versions below 33.
+  for Nextcloud versions below 33. Minimum supported version is now NC27.
 
 ### Security
 

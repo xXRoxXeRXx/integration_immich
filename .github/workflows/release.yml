@@ -10,7 +10,7 @@ on:
 env:
   APP_NAME: integration_immich
   PHP_VERSION: '8.2'
-  NODE_VERSION: '20'
+  NODE_VERSION: '24'
 
 jobs:
   build_and_publish:
