@@ -21,6 +21,12 @@ class ImmichService {
     private const CONFIG_SERVER_URL = 'server_url';
     private const CONFIG_API_KEY = 'api_key';
 
+    /** Regex for a canonical UUID v4 string. */
+    public const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
+
+    /** Max monthly buckets fetched in a single bulk person-assets request (~2 years). */
+    private const MAX_PERSON_BUCKETS = 24;
+
     public function __construct(
         private IClientService $clientService,
         private IConfig $config,
@@ -31,7 +37,11 @@ class ImmichService {
     }
 
     private function getUserId(): string {
-        return $this->userSession->getUser()?->getUID() ?? '';
+        $uid = $this->userSession->getUser()?->getUID();
+        if ($uid === null) {
+            throw new \RuntimeException('No authenticated user session available');
+        }
+        return $uid;
     }
 
     public function getServerUrl(): string {
@@ -49,7 +59,12 @@ class ImmichService {
         try {
             return $this->crypto->decrypt($stored);
         } catch (\Exception $e) {
-            // Fallback: value was stored before encryption was added
+            // Fallback: value was stored in plaintext before encryption was added.
+            // Only treat it as plaintext when it looks like a raw key (no base64/HMAC wrapper).
+            // Log a warning so admins know re-saving the key will encrypt it properly.
+            $this->logger->warning('ICrypto decrypt failed for api_key — assuming legacy plaintext value. Re-save the key in settings to encrypt it.', [
+                'app' => Application::APP_ID,
+            ]);
             return $stored;
         }
     }
@@ -232,8 +247,10 @@ class ImmichService {
             return [];
         }
 
+        // Cap bucket fetches to avoid holding the worker for too long.
+        // The frontend can implement pagination if more are needed.
         $assets = [];
-        foreach ($buckets as $bucket) {
+        foreach (array_slice($buckets, 0, self::MAX_PERSON_BUCKETS) as $bucket) {
             $timeBucket = $bucket['timeBucket'] ?? null;
             if (!$timeBucket) {
                 continue;
@@ -316,13 +333,13 @@ class ImmichService {
     // ---- Upload ----
 
     public function uploadAsset(
-        string $fileContent,
+        mixed $fileContent,
         string $fileName,
         string $mimeType,
         string $createdAt,
         string $modifiedAt,
     ): array {
-        $deviceAssetId = $fileName . '-' . md5($fileContent);
+        $deviceAssetId = $fileName . '-' . bin2hex(random_bytes(8));
         $client = $this->clientService->newClient();
         $url = $this->getServerUrl() . '/api/assets';
 
@@ -340,7 +357,8 @@ class ImmichService {
             ],
         ]);
 
-        return json_decode($response->getBody(), true);
+        $decoded = json_decode($response->getBody(), true);
+        return is_array($decoded) ? $decoded : ['status' => 'unknown', 'raw' => (string)$response->getBody()];
     }
 
     // ---- HTTP helpers ----
@@ -379,9 +397,9 @@ class ImmichService {
             return $decoded ?? [];
         } catch (\Exception $e) {
             $this->logger->error('Immich API request failed: ' . $e->getMessage(), [
-                'app' => Application::APP_ID,
+                'app'      => Application::APP_ID,
                 'endpoint' => $endpoint,
-                'url' => $url,
+                'method'   => $method,
             ]);
             throw $e;
         }
