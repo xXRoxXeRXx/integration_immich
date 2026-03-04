@@ -21,11 +21,16 @@ class ImmichServiceTest extends TestCase {
 	private IConfig&MockObject $config;
 	private IUserSession&MockObject $userSession;
 
+	private ICrypto&MockObject $crypto;
+
 	protected function setUp(): void {
 		parent::setUp();
 
 		$this->config = $this->createMock(IConfig::class);
 		$this->userSession = $this->createMock(IUserSession::class);
+		$this->crypto = $this->createMock(ICrypto::class);
+		// Default: decrypt returns the input unchanged (simulates plaintext fallback)
+		$this->crypto->method('decrypt')->willReturnArgument(0);
 
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('testuser');
@@ -36,7 +41,7 @@ class ImmichServiceTest extends TestCase {
 			$this->config,
 			$this->userSession,
 			$this->createMock(LoggerInterface::class),
-			$this->createMock(ICrypto::class),
+			$this->crypto,
 		);
 	}
 
@@ -96,22 +101,12 @@ class ImmichServiceTest extends TestCase {
 	}
 
 	public function testGetApiKeyReturnsValue(): void {
-		$crypto = $this->createMock(ICrypto::class);
-		$crypto->method('decrypt')->willReturn('my-secret-key');
-
 		$this->config->method('getUserValue')
 			->with('testuser', Application::APP_ID, 'api_key', '')
-			->willReturn('encrypted-value');
+			->willReturn('my-secret-key');
 
-		$service = new ImmichService(
-			$this->createMock(IClientService::class),
-			$this->config,
-			$this->userSession,
-			$this->createMock(LoggerInterface::class),
-			$crypto,
-		);
-
-		$this->assertEquals('my-secret-key', $service->getApiKey());
+		// crypto mock returns its input (set up in setUp), so decrypt('my-secret-key') = 'my-secret-key'
+		$this->assertEquals('my-secret-key', $this->service->getApiKey());
 	}
 
 	public function testValidateConnectionReturnsSuccessOnOk(): void {
@@ -136,7 +131,7 @@ class ImmichServiceTest extends TestCase {
 			$this->config,
 			$this->userSession,
 			$this->createMock(\Psr\Log\LoggerInterface::class),
-			$this->createMock(ICrypto::class),
+			$this->crypto,
 		);
 
 		$result = $service->validateConnection();
