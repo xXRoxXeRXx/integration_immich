@@ -16,6 +16,8 @@ jobs:
   build_and_publish:
     runs-on: ubuntu-latest
     name: "Release: build, sign and upload to App Store"
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
