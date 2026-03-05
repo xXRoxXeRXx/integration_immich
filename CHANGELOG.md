@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-03-05
+
+### Fixed
+
+- File upload to Immich now streams the file content instead of loading it fully into PHP memory — prevents OOM crashes for large files
+- `userId` null-guard added in upload and save-to-Nextcloud flows to return `401` instead of crashing
+- `setConfig()` now correctly ignores `validate=false` strings (PHP truthy-check bug)
+- `#[NoAdminRequired]` added to `setConfig()` so regular users can save their own settings
+
+### Refactored
+
+- UUID validation regex extracted to `ImmichService::UUID_PATTERN` — eliminates 18 duplicated inline patterns across all controllers
+- `getUniqueFileName()` loop replaced with bounded `for`-loop and `uniqid()` fallback to prevent infinite loops
+- `getPersonAssets()` capped at 24 monthly buckets (~2 years) to prevent unbounded sequential HTTP requests
+- `uploadAsset()` response null-guard: invalid JSON from Immich no longer returns `null` to the frontend
+- API key decrypt failures now logged as `warning` with hint to re-save the key
+
+### Security
+
+- `dompurify` updated to 3.3.2 — fixes XSS bypass and prototype pollution
+- `immutable` updated to 5.1.5 — fixes prototype pollution in `mergeDeep`/`toJS`
+- `minimatch` updated to 3.1.5 — fixes ReDoS vulnerability
+
+### Dependencies
+
+- `pinia` 2 → 3
+- `vue` → 3.5.29, `vue-router` 4 → 5
+- `eslint-webpack-plugin` 4 → 5
+- `actions/checkout` v4 → v6, `actions/setup-node` v4 → v6
+- `terser-webpack-plugin` → 5.3.17, `fast-xml-parser` → 4.5.4
+
 ## [1.0.2] - 2026-03-04
 
 ### Fixed
