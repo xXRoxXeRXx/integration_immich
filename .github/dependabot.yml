@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Marcel Meyer <gh@grenzallee.eu>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+version: 2
+updates:
+  # JavaScript / npm (webpack, Vue, @nextcloud/* packages)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      nextcloud:
+        patterns:
+          - "@nextcloud/*"
+      vue:
+        patterns:
+          - "vue"
+          - "@vue/*"
+          - "vue-*"
+
+  # PHP / Composer (dev dependencies like PHPUnit)
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+
+  # GitHub Actions (actions/checkout, setup-node, etc.)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
