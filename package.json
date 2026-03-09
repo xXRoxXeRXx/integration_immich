@@ -21,7 +21,7 @@
         "@nextcloud/vue": "^9.0.0",
         "leaflet": "^1.9.4",
         "pinia": "^3.0.4",
-        "vue": "^3.5.29",
+        "vue": "^3.5.30",
         "vue-material-design-icons": "^5.3.0",
         "vue-router": "^5.0.3"
     },
