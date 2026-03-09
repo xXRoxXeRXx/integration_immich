@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-03-09
+
+### Fixed
+
+- Missing `use OCP\AppFramework\Http\Attribute\NoAdminRequired;` import in `ConfigController` — the attribute was present but PHP silently ignored it without the import, causing Nextcloud to treat both config endpoints as admin-only and returning `403 Forbidden` for regular users
+- Added `#[NoAdminRequired]` to `getConfig()` so regular users can also read their own saved settings
+
+### Documentation
+
+- Added required Immich API key permissions table to README
+
+### Dependencies
+
+- `vue` 3.5.29 → 3.5.30 (bug fixes: reactivity, SSR, custom elements)
+
 ## [1.0.3] - 2026-03-05
 
 ### Fixed
