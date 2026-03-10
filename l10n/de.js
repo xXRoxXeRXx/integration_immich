@@ -120,7 +120,7 @@ OC.L10N.register(
     "Tags": "Tags",
     "No locations": "Keine Orte",
     "No photos with GPS data found.": "Keine Fotos mit GPS-Daten gefunden.",
-    "{total} photos with location \u2013 showing {shown} places": "{total} Fotos mit Standort \u2013 {shown} Orte angezeigt",
+    "{total} photos with location – showing {shown} places": "{total} Fotos mit Standort – {shown} Orte angezeigt",
     "{count} photos with location": "{count} Fotos mit Standort",
     "No photos found for this location.": "Keine Fotos für diesen Ort gefunden.",
     "Select photos for \"{name}\"": "Bilder für \"{name}\" auswählen",

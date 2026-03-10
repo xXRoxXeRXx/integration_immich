@@ -5,10 +5,11 @@
     "license": "AGPL-3.0-or-later",
     "private": true,
     "scripts": {
-        "build": "webpack --node-env production --progress",
-        "dev": "webpack --node-env development --progress",
-        "watch": "webpack --node-env development --watch --progress",
-        "serve": "webpack --node-env development serve --progress"
+        "build": "node build-l10n.mjs && webpack --node-env production --progress",
+        "dev": "node build-l10n.mjs && webpack --node-env development --progress",
+        "watch": "node build-l10n.mjs && webpack --node-env development --watch --progress",
+        "serve": "node build-l10n.mjs && webpack --node-env development serve --progress",
+        "l10n": "node build-l10n.mjs"
     },
     "dependencies": {
         "@nextcloud/axios": "^2.5.0",
