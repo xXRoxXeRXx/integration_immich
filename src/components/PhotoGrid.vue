@@ -102,7 +102,7 @@ function formatDate(asset) {
 	const raw = asset?.localDateTime || asset?.fileCreatedAt
 	if (!raw) return ''
 	try {
-		return new Date(raw).toLocaleDateString('de-DE', {
+		return new Date(raw).toLocaleDateString(undefined, {
 			day: '2-digit', month: 'short', year: 'numeric',
 		})
 	} catch { return '' }
