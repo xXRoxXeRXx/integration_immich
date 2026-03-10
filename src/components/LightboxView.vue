@@ -21,7 +21,7 @@
 						v-if="currentAsset"
 						class="ic-lb-btn"
 						:class="{ 'ic-lb-btn--loading': savingToNc }"
-						title="In Nextcloud speichern"
+						:title="t('integration_immich', 'Save to Nextcloud')"
 						:disabled="savingToNc"
 						@click.stop="saveCurrentToNextcloud"
 					>
@@ -36,7 +36,7 @@
 						v-if="currentAsset"
 						class="ic-lb-btn"
 						:class="{ 'ic-lb-btn--loading': downloadingAsset }"
-						title="Herunterladen"
+						:title="t('integration_immich', 'Download')"
 						:disabled="downloadingAsset"
 						@click.stop="downloadCurrent"
 					>
@@ -67,7 +67,7 @@
 						v-if="currentAsset"
 						class="ic-lb-btn"
 						:class="{ 'ic-lb-btn--active': showAlbumPanel }"
-						title="Zu Album hinzufügen"
+						:title="t('integration_immich', 'Add to album')"
 						:disabled="addingToAlbum"
 						@click.stop="toggleAlbumPanel()"
 					>
@@ -81,14 +81,14 @@
 					<button
 						class="ic-lb-btn"
 						:class="{ 'ic-lb-btn--active': showInfo }"
-						title="Info"
+						:title="t('integration_immich', 'Info')"
 						@click.stop="showAlbumPanel = false; showInfo = !showInfo"
 					>
 						<svg viewBox="0 0 24 24" aria-hidden="true">
 							<path d="M13 9h-2V7h2m0 10h-2v-6h2m-1-9A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z" />
 						</svg>
 					</button>
-					<button class="ic-lb-btn" title="Schließen" @click.stop="close">
+					<button class="ic-lb-btn" :title="t('integration_immich', 'Close')" @click.stop="close">
 						<svg viewBox="0 0 24 24" aria-hidden="true">
 							<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
 						</svg>
@@ -100,7 +100,7 @@
 			<button
 				v-if="currentIndex > 0"
 				class="ic-lb-arrow ic-lb-arrow--prev"
-				title="Vorherige"
+				:title="t('integration_immich', 'Previous')"
 				@click.stop="navigate(-1)"
 			>
 				<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -144,7 +144,7 @@
 			<button
 				v-if="currentIndex < assets.length - 1"
 				class="ic-lb-arrow ic-lb-arrow--next"
-				title="Nächste"
+				:title="t('integration_immich', 'Next')"
 				@click.stop="navigate(1)"
 			>
 				<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -172,7 +172,7 @@
 							<span class="ic-lb-info__label">{{ label }}</span>
 							<span class="ic-lb-info__val">{{ val }}</span>
 						</div>
-						<p v-if="!infoRows.length" class="ic-lb-info__empty">Keine Metadaten verfügbar</p>
+						<p v-if="!infoRows.length" class="ic-lb-info__empty">{{ t('integration_immich', 'No metadata available') }}</p>
 					</template>
 				</div>
 			</Transition>
@@ -180,7 +180,7 @@
 			<!-- Album picker panel -->
 			<Transition name="ic-lb-slide">
 				<div v-if="showAlbumPanel" class="ic-lb-info ic-lb-album-panel" @click.stop>
-					<p class="ic-lb-album-panel__title">Zu Album hinzufügen</p>
+					<p class="ic-lb-album-panel__title">{{ t('integration_immich', 'Add to album') }}</p>
 					<div v-if="loadingAlbums" class="ic-lb-album-panel__loading">
 						<svg viewBox="0 0 24 24" class="ic-lb-spin ic-lb-album-panel__spinner" aria-hidden="true">
 							<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" fill="currentColor" />
@@ -194,14 +194,14 @@
 							<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor;flex-shrink:0" aria-hidden="true">
 								<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
 							</svg>
-							Neues Album
+							{{ t('integration_immich', 'New album') }}
 						</div>
 						<div v-else class="ic-lb-album-panel__new-form">
 							<input
 								ref="newAlbumInputEl"
 								v-model="newAlbumName"
 								class="ic-lb-album-panel__new-input"
-								placeholder="Albumname …"
+								:placeholder="t('integration_immich', 'Album name …')"
 								@keyup.enter="createAndAdd"
 								@keyup.escape="creatingAlbum = false"
 							>
@@ -216,12 +216,12 @@
 								</svg>
 							</button>
 						</div>
-						<p v-if="albums.length === 0" class="ic-lb-info__empty">Keine Alben vorhanden</p>
+						<p v-if="albums.length === 0" class="ic-lb-info__empty">{{ t('integration_immich', 'No albums available') }}</p>
 						<div v-for="album in albums"
 							:key="album.id"
 							class="ic-lb-album-panel__item"
 							:class="{ 'ic-lb-album-panel__item--in-album': currentAssetAlbumIds.has(album.id) }"
-							:title="currentAssetAlbumIds.has(album.id) ? 'Bereits in diesem Album' : ''"
+							:title="currentAssetAlbumIds.has(album.id) ? t('integration_immich', 'Already in this album') : ''"
 							@click.stop="currentAssetAlbumIds.has(album.id) ? null : addCurrentToAlbum(album.id)">
 							<svg v-if="currentAssetAlbumIds.has(album.id)"
 								viewBox="0 0 24 24"
@@ -387,7 +387,7 @@ function formatDate(asset) {
 	const raw = asset?.localDateTime || asset?.fileCreatedAt || asset?.exifInfo?.dateTimeOriginal
 	if (!raw) return ''
 	try {
-		return new Date(raw).toLocaleDateString('de-DE', {
+		return new Date(raw).toLocaleDateString(undefined, {
 			year: 'numeric', month: 'long', day: 'numeric',
 			hour: '2-digit', minute: '2-digit',
 		})
@@ -402,21 +402,21 @@ const infoRows = computed(() => {
 	const e = asset.exifInfo || {}
 	const rows = []
 	const date = formatDate(asset)
-	if (date) rows.push(['Datum', date])
+	if (date) rows.push([t('integration_immich', 'Date'), date])
 	const camera = [e.make, e.model].filter(Boolean).join(' ')
-	if (camera) rows.push(['Kamera', camera])
-	if (e.lensModel) rows.push(['Objektiv', e.lensModel])
+	if (camera) rows.push([t('integration_immich', 'Camera'), camera])
+	if (e.lensModel) rows.push([t('integration_immich', 'Lens'), e.lensModel])
 	const exposure = [
 		e.fNumber ? `f/${e.fNumber}` : null,
 		e.exposureTime ? `${e.exposureTime}s` : null,
 		e.iso ? `ISO\u00a0${e.iso}` : null,
 		e.focalLength ? `${e.focalLength}\u00a0mm` : null,
 	].filter(Boolean)
-	if (exposure.length) rows.push(['Belichtung', exposure.join('  ·  ')])
+	if (exposure.length) rows.push([t('integration_immich', 'Exposure'), exposure.join('  ·  ')])
 	const location = [e.city, e.state, e.country].filter(Boolean).join(', ')
-	if (location) rows.push(['Ort', location])
-	if (e.fileSizeInByte) rows.push(['Größe', (e.fileSizeInByte / 1024 / 1024).toFixed(1) + '\u00a0MB'])
-	if (asset.originalFileName) rows.push(['Dateiname', asset.originalFileName])
+	if (location) rows.push([t('integration_immich', 'Location'), location])
+	if (e.fileSizeInByte) rows.push([t('integration_immich', 'Size'), (e.fileSizeInByte / 1024 / 1024).toFixed(1) + '\u00a0MB'])
+	if (asset.originalFileName) rows.push([t('integration_immich', 'Filename'), asset.originalFileName])
 	return rows
 })
 
