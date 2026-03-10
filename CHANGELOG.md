@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-03-10
+
+### Added
+
+- French (`fr`), Spanish (`es-ES`), Dutch (`nl`) and Portuguese (`pt`) translations via [l10n.dev](https://l10n.dev) (closes #19)
+- `build-l10n.mjs` — automatically generates `l10n/*.js` from `l10n/*.json` at build time; adding a new language only requires a single JSON file
+
 ## [1.0.6] - 2026-03-10
 
 ### Fixed
