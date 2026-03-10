@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-03-10
+
+### Fixed
+
+- When the Immich server URL points to a private/local IP and Nextcloud's SSRF protection blocks the request, the settings page now shows the exact cause and the `occ` command to resolve it, instead of a generic "Connection failed" message (refs #12)
+- Connection test errors now show the actual error detail from the server instead of a generic message
+
 ## [1.0.5] - 2026-03-10
 
 ### Fixed
