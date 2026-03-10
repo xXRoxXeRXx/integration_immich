@@ -58,11 +58,20 @@ class ConfigController extends Controller {
         if ($validate === true || $validate === 'true' || $validate === '1') {
             $result = $this->immichService->validateConnection();
             if (!$result['success']) {
-                $this->logger->warning('Immich connection validation failed: ' . ($result['error'] ?? 'unknown'), [
+                $errorMsg = $result['error'] ?? 'unknown';
+                $this->logger->warning('Immich connection validation failed: ' . $errorMsg, [
                     'app' => Application::APP_ID,
                 ]);
+
+                // Detect Nextcloud's SSRF protection blocking local/private IPs
+                $isLocalAccessBlocked = str_contains($errorMsg, 'violates local access rules');
+
                 return new JSONResponse(
-                    ['error' => 'Connection validation failed'],
+                    [
+                        'error' => 'Connection validation failed',
+                        'detail' => $errorMsg,
+                        'local_access_blocked' => $isLocalAccessBlocked,
+                    ],
                     Http::STATUS_BAD_REQUEST
                 );
             }

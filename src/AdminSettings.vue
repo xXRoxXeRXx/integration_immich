@@ -44,6 +44,13 @@
 				<NcNoteCard v-if="message" :type="messageType">
 					{{ message }}
 				</NcNoteCard>
+				<NcNoteCard v-if="localAccessBlocked" type="error">
+					{{ t('integration_immich', 'Nextcloud is blocking the connection because the Immich server address is a private/local IP. A Nextcloud administrator can allow this by running:') }}
+					<br><br>
+					<code>php occ config:system:set allow_local_remote_servers --value=true --type=boolean</code>
+					<br><br>
+					{{ t('integration_immich', 'Alternatively, use a public hostname for your Immich server instead of a local IP address.') }}
+				</NcNoteCard>
 			</div>
 		</NcSettingsSection>
 	</div>
@@ -70,6 +77,7 @@ const saving = ref(false)
 const testing = ref(false)
 const message = ref('')
 const messageType = ref('success')
+const localAccessBlocked = ref(false)
 
 onMounted(() => {
 	try {
@@ -116,6 +124,7 @@ async function saveSettings() {
 async function testConnection() {
 	testing.value = true
 	message.value = ''
+	localAccessBlocked.value = false
 	try {
 		const config = { server_url: serverUrl.value, validate: true }
 		if (apiKey.value) {
@@ -125,7 +134,13 @@ async function testConnection() {
 		message.value = t('integration_immich', 'Connection successful!')
 		messageType.value = 'success'
 	} catch (e) {
-		message.value = e.response?.data?.error || t('integration_immich', 'Connection failed')
+		const data = e.response?.data
+		localAccessBlocked.value = data?.local_access_blocked === true
+		if (localAccessBlocked.value) {
+			message.value = t('integration_immich', 'Connection failed: local IP blocked by Nextcloud')
+		} else {
+			message.value = data?.detail || data?.error || t('integration_immich', 'Connection failed')
+		}
 		messageType.value = 'error'
 	} finally {
 		testing.value = false
