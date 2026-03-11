@@ -1,6 +1,6 @@
 {
     "name": "integration_immich",
-    "version": "1.0.0",
+    "version": "1.0.7",
     "description": "Immich Integration for Nextcloud",
     "license": "AGPL-3.0-or-later",
     "private": true,
