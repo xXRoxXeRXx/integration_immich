@@ -46,30 +46,37 @@ Timeline, albums, people, map, explore — all seamlessly integrated.
 | 💾 **Save to Nextcloud** | Select photos and videos and save the originals directly to your Nextcloud Files |
 | ⬆️ **Upload to Immich** | Send photos and videos from Nextcloud Files to Immich via the file action menu |
 | ☑️ **Multi-select** | Select multiple assets across any view for batch operations |
-| 🌍 **Translations** | Full German translation included, more languages via Transifex |
+| 🌍 **Translations** | German, French, Spanish, Dutch and Portuguese included |
 | ⚙️ **Admin Settings** | Configure Immich server URL and API key per user |
 
 ---
 
 ## 🔧 Requirements
 
-- **Nextcloud** 30 or newer
-- **PHP** 8.1 or newer
+- **Nextcloud** 27 or newer
+- **PHP** 8.2 or newer
 - A running [Immich](https://immich.app) instance (with API access enabled)
 
 ---
 
 ## 🚀 Installation
 
-### Via custom_apps (manual)
+### Via Nextcloud App Store *(recommended)*
 
-```bash
-cd /path/to/nextcloud/custom_apps
-git clone https://github.com/xXRoxXeRXx/integration_immich
-cd integration_immich
-npm ci && npm run build
-php occ app:enable integration_immich
-```
+1. Open **Nextcloud → Apps → Search** for `Immich Integration`
+2. Click **Install**
+
+### Via Release Tarball (manual)
+
+1. Download `integration_immich.tar.gz` from the [latest release](https://github.com/xXRoxXeRXx/integration_immich/releases/latest)
+2. Extract into your Nextcloud `apps/` directory:
+   ```bash
+   tar -xzf integration_immich.tar.gz -C /path/to/nextcloud/apps/
+   ```
+3. Enable the app:
+   ```bash
+   php occ app:enable integration_immich
+   ```
 
 ---
 
@@ -80,8 +87,6 @@ php occ app:enable integration_immich
 3. Enter your **API key** — found in Immich under *Account Settings → API Keys*
 4. Click **Test connection** to verify, then **Save**
 5. The **Immich** entry now appears in the Nextcloud top navigation
-
-> Admin-level defaults can also be set under **Admin Settings → Immich Integration**.
 
 ### 🔑 Required Immich API Key Permissions
 
