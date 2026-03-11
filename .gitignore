@@ -7,6 +7,17 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Build artifacts
 *.log
+*.map
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# PHP
+*.phar
