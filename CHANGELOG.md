@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2026-03-13
+
+### Fixed
+
+- Map view: OpenStreetMap tile images were blocked by Nextcloud's Content Security Policy — added a `CspListener` that extends `img-src` to allow `https://*.tile.openstreetmap.org` (fixes #18)
+- Photo hover date tooltip was displayed in German (`de-DE`) regardless of user language — now uses browser locale
+
 ## [1.0.7] - 2026-03-10
 
 ### Added
