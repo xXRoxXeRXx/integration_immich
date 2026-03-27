@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2026-03-27
+
+### Fixed
+
+- Map view: OpenStreetMap tiles were blocked because Nextcloud sets `Referrer-Policy: no-referrer` page-wide, stripping the `Referer` header OSM requires — added `referrerPolicy: no-referrer-when-downgrade` directly on the tile layer so the browser sends the origin as referer for tile requests (fixes #26)
+
+### Dependencies
+
+- `vue` 3.5.30 → 3.5.31
+- `vue-router` 5.0.3 → 5.0.4
+- `@nextcloud/vue` 9.5.0 → 9.6.0
+- `flatted` 3.3.3 → 3.4.2 (security: prototype pollution fix)
+- `picomatch` 4.0.3 → 4.0.4 (security: ReDoS fix)
+- `yaml` 2.8.2 → 2.8.3 (security: stack overflow fix)
+
 ## [1.0.8] - 2026-03-13
 
 ### Fixed
