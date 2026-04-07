@@ -48,9 +48,6 @@
 				@click="(_, idx) => store.openLightbox(filteredAssets, idx)" />
 			</div>
 		</template>
-
-		<!-- Selection Toolbar -->
-		<SelectionToolbar @assets-deleted="handleAssetsDeleted" />
 	</div>
 </template>
 
@@ -61,7 +58,6 @@ import { NcButton, NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { useImmichStore } from '../store/immich.js'
 import PhotoGrid from './PhotoGrid.vue'
-import SelectionToolbar from './SelectionToolbar.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import ArrowLeftIcon from 'vue-material-design-icons/ArrowLeft.vue'
 import MapMarkerIcon from 'vue-material-design-icons/MapMarker.vue'
@@ -99,11 +95,6 @@ onMounted(async () => {
 
 function goBack() {
 	router.push({ name: 'explore' })
-}
-
-function handleAssetsDeleted(deletedIds) {
-	// Assets are already removed from store by SelectionToolbar
-	// Nothing extra needed here
 }
 </script>
 

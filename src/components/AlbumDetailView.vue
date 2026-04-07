@@ -128,13 +128,6 @@
 				@confirm="addAssetsToAlbum"
 				@cancel="showPicker = false" />
 		</template>
-
-		<!-- Selection Toolbar for removing assets from album -->
-		<SelectionToolbar
-			:show-remove-from-album="true"
-			:album-id="props.id"
-			hide-album
-			@assets-removed-from-album="handleAssetsRemovedFromAlbum" />
 	</div>
 </template>
 
@@ -148,7 +141,6 @@ import { useImmichStore } from '../store/immich.js'
 import { addAssetsToAlbum as apiAddAssetsToAlbum, renameAlbum as apiRenameAlbum } from '../services/api.js'
 import PhotoGrid from './PhotoGrid.vue'
 import AssetPickerModal from './AssetPickerModal.vue'
-import SelectionToolbar from './SelectionToolbar.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import ArrowLeftIcon from 'vue-material-design-icons/ArrowLeft.vue'
 import ImageIcon from 'vue-material-design-icons/Image.vue'
@@ -231,11 +223,6 @@ async function addAssetsToAlbum(assetIds) {
 	} finally {
 		addingAssets.value = false
 	}
-}
-
-function handleAssetsRemovedFromAlbum(removedIds) {
-	// Refresh the album to show updated asset list
-	store.fetchAlbum(props.id)
 }
 
 onMounted(() => {

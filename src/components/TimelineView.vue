@@ -65,9 +65,6 @@
 				</div>
 			</div>
 		</div>
-
-		<!-- Selection Toolbar -->
-		<SelectionToolbar @assets-deleted="handleAssetsDeleted" />
 	</div>
 </template>
 
@@ -77,7 +74,6 @@ import { NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { useImmichStore } from '../store/immich.js'
 import PhotoGrid from './PhotoGrid.vue'
-import SelectionToolbar from './SelectionToolbar.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import ImageIcon from 'vue-material-design-icons/Image.vue'
 
@@ -356,11 +352,6 @@ function openLightboxFromBucket(localIdx, bucketIndex) {
 function formatBucketDate(timeBucket) {
 	const date = new Date(timeBucket)
 	return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long' })
-}
-
-function handleAssetsDeleted(deletedIds) {
-	// Assets are already removed from store by SelectionToolbar
-	// Nothing extra needed here as the store handles all cache cleanup
 }
 
 const currentBucketIndex = computed(() => {

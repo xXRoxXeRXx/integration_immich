@@ -82,6 +82,16 @@
 										? t('integration_immich', 'Remove from favorites')
 										: t('integration_immich', 'Add to favorites') }}
 								</NcButton>
+								<NcButton v-if="!isAlbumDetailView"
+									variant="error"
+									:disabled="store.selectedAssetIds.size === 0 || deleting"
+									@click="deleteSelectedAssets">
+									<template #icon>
+										<NcLoadingIcon v-if="deleting" :size="20" />
+										<DeleteIcon v-else :size="20" />
+									</template>
+									{{ t('integration_immich', 'Delete') }}
+								</NcButton>
 							</div>
 
 							<!-- 3-Punkte-Menü: nur auf Mobile sichtbar -->
@@ -118,6 +128,13 @@
 										{{ selectedAllFavorited
 											? t('integration_immich', 'Remove from favorites')
 											: t('integration_immich', 'Add to favorites') }}
+									</button>
+									<button v-if="!isAlbumDetailView"
+										class="selection-kebab-menu__item selection-kebab-menu__item--danger"
+										:disabled="store.selectedAssetIds.size === 0 || deleting"
+										@click="deleteSelectedAssets">
+										<DeleteIcon :size="18" />
+										{{ t('integration_immich', 'Delete') }}
 									</button>
 								</div>
 							</div>
@@ -162,7 +179,7 @@ import { NcContent, NcAppContent, NcButton, NcLoadingIcon, NcDialog } from '@nex
 import { translate as t } from '@nextcloud/l10n'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { useImmichStore } from './store/immich.js'
-import { saveAssetsToNextcloud, downloadAssets, addAssetsToAlbum, removeAssetsFromAlbum, getAlbums, updateAsset } from './services/api.js'
+import { saveAssetsToNextcloud, downloadAssets, addAssetsToAlbum, removeAssetsFromAlbum, getAlbums, updateAsset, deleteAssets } from './services/api.js'
 import Navigation from './components/Navigation.vue'
 import LightboxView from './components/LightboxView.vue'
 import CheckboxMultipleOutlineIcon from 'vue-material-design-icons/CheckboxMultipleOutline.vue'
@@ -172,6 +189,7 @@ import FolderPlusIcon from 'vue-material-design-icons/FolderPlus.vue'
 import FolderRemoveIcon from 'vue-material-design-icons/FolderMinus.vue'
 import HeartOutlineIcon from 'vue-material-design-icons/HeartOutline.vue'
 import HeartIcon from 'vue-material-design-icons/Heart.vue'
+import DeleteIcon from 'vue-material-design-icons/Delete.vue'
 import DotsVerticalIcon from 'vue-material-design-icons/DotsVertical.vue'
 
 const store = useImmichStore()
@@ -181,6 +199,7 @@ const downloading = ref(false)
 const addingToAlbum = ref(false)
 const removingFromAlbum = ref(false)
 const togglingFavorite = ref(false)
+const deleting = ref(false)
 const showAlbumPicker = ref(false)
 const albums = ref([])
 const loadingAlbums = ref(false)
@@ -402,6 +421,35 @@ async function toggleFavoritesSelection() {
 		showError(t('integration_immich', 'Error updating favorites: {msg}', { msg: e.message }))
 	} finally {
 		togglingFavorite.value = false
+	}
+}
+
+async function deleteSelectedAssets() {
+	if (store.selectedAssetIds.size === 0 || deleting.value) return
+
+	const confirmed = await new Promise((resolve) => {
+		OC.dialogs.confirm(
+			t('integration_immich', 'Are you sure you want to delete {count} asset(s)? If trash is enabled in Immich, they will be moved to trash, otherwise they will be permanently deleted.', { count: store.selectedAssetIds.size }),
+			t('integration_immich', 'Delete assets'),
+			(result) => resolve(result),
+			true
+		)
+	})
+
+	if (!confirmed) return
+
+	deleting.value = true
+	const ids = Array.from(store.selectedAssetIds)
+	try {
+		await deleteAssets(ids)
+		showSuccess(t('integration_immich', '{count} asset(s) deleted', { count: ids.length }))
+		// Remove from all caches
+		ids.forEach(id => store.removeAssetFromAllCaches(id))
+		store.clearSelection()
+	} catch (e) {
+		showError(t('integration_immich', 'Error deleting assets: {msg}', { msg: e.response?.data?.error || e.message }))
+	} finally {
+		deleting.value = false
 	}
 }
 </script>
