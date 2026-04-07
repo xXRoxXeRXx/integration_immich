@@ -19,7 +19,7 @@ Seamlessly integrates your [Immich](https://immich.app) photo library into Nextc
 - ⬆️ **Upload to Immich** — send photos and videos from Nextcloud Files to Immich
 - ☑️ **Multi-select** — batch operations across any view
     ]]></description>
-    <version>1.0.9</version>
+    <version>1.1.0</version>
     <licence>AGPL-3.0-or-later</licence>
     <author mail="gh@grenzallee.eu">Marcel Meyer</author>
     <namespace>IntegrationImmich</namespace>

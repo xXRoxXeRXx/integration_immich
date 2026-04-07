@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-07
+
+### Added
+
+- **Delete assets** — Delete files from Immich via lightbox or selection toolbar (moved to trash if enabled in Immich) (#18)
+- `asset.delete` API permission required for delete functionality
+
+### Changed
+
+- Optimized selection toolbar on desktop: Download button + overflow menu (moved Album/Favorites/Delete to kebab menu to reduce clutter)
+
+### Dependencies
+
+- `vue` 3.5.31 → 3.5.32
+- `lodash` 4.17.23 → 4.18.1 (dev dependency, security update)
+- `brace-expansion` 1.1.12 → 1.1.13 (dev dependency)
+- `eslint-webpack-plugin` 5.0.3 → 6.0.0 (dev dependency)
+- `yaml` 2.8.2 → 2.8.3
+
 ## [1.0.9] - 2026-03-27
 
 ### Fixed
