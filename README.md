@@ -43,7 +43,8 @@ Timeline, albums, people, map, explore — all seamlessly integrated.
 | 🔍 **Explore** | Browse by city, country, state, object or tag |
 | 🔎 **Lightbox** | Full-screen viewer with keyboard navigation, pinch-to-zoom and EXIF metadata panel |
 | ⭐ **Favorites** | Mark and unmark photos as favorites directly from Nextcloud |
-| 💾 **Save to Nextcloud** | Select photos and videos and save the originals directly to your Nextcloud Files |
+| �️ **Delete** | Delete files from Immich (moved to trash if enabled) via lightbox or selection menu |
+| �💾 **Save to Nextcloud** | Select photos and videos and save the originals directly to your Nextcloud Files |
 | ⬆️ **Upload to Immich** | Send photos and videos from Nextcloud Files to Immich via the file action menu |
 | ☑️ **Multi-select** | Select multiple assets across any view for batch operations |
 | 🌍 **Translations** | German, French, Spanish, Dutch and Portuguese included |
@@ -99,6 +100,7 @@ When creating an API key in Immich (*Account Settings → API Keys → New API k
 | `asset.update` | Mark / unmark favorites |
 | `asset.upload` | Upload files from Nextcloud to Immich |
 | `asset.download` | Download originals and archives to Nextcloud |
+| `asset.delete` | Delete assets from Immich (moves to trash if enabled) |
 | `album.read` | List all albums and album contents |
 | `album.create` | Create new albums |
 | `album.update` | Rename albums |

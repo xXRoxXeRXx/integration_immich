@@ -545,11 +545,16 @@ async function deleteCurrent() {
 	// Show confirmation dialog
 	const confirmed = await new Promise((resolve) => {
 		OC.dialogs.confirm(
-			t('integration_immich', 'Are you sure you want to delete this asset? If trash is enabled in Immich, it will be moved to trash, otherwise it will be permanently deleted.'),
-			t('integration_immich', 'Delete asset'),
+			t('integration_immich', 'Are you sure you want to delete this file? If trash is enabled in Immich, it will be moved to trash, otherwise it will be permanently deleted.'),
+			t('integration_immich', 'Delete file'),
 			(result) => resolve(result),
 			true
 		)
+		// Ensure dialog appears above lightbox (lightbox has z-index 2000)
+		setTimeout(() => {
+			const dialog = document.querySelector('.oc-dialog-container')
+			if (dialog) dialog.style.zIndex = '10000'
+		}, 10)
 	})
 
 	if (!confirmed) return
@@ -561,14 +566,14 @@ async function deleteCurrent() {
 	try {
 		await deleteAssets([assetId])
 		store.removeAssetFromLightbox(assetId)
-		showSuccess(t('integration_immich', 'Asset deleted'))
+		showSuccess(t('integration_immich', 'File deleted'))
 
 		// If this was the last asset, close the lightbox
 		if (wasLastAsset) {
 			close()
 		}
 	} catch (e) {
-		showError(t('integration_immich', 'Error deleting asset: {msg}', { msg: e.response?.data?.error || e.message }))
+		showError(t('integration_immich', 'Error deleting file: {msg}', { msg: e.response?.data?.error || e.message }))
 	} finally {
 		deletingAsset.value = false
 	}
@@ -711,7 +716,7 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 .ic-lb {
 	position: fixed;
 	inset: 0;
-	z-index: 99000;
+	z-index: 2000;
 	background: #080808;
 	display: flex;
 	align-items: center;

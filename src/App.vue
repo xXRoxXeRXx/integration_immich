@@ -51,50 +51,48 @@
 									</template>
 									{{ t('integration_immich', 'Download') }}
 								</NcButton>
-								<NcButton v-if="isAlbumDetailView"
-									variant="error"
-									:disabled="store.selectedAssetIds.size === 0 || removingFromAlbum"
-									@click="removeFromCurrentAlbum">
-									<template #icon>
-										<NcLoadingIcon v-if="removingFromAlbum" :size="20" />
-										<FolderRemoveIcon v-else :size="20" />
-									</template>
-									{{ t('integration_immich', 'Remove from album') }}
-								</NcButton>
-								<NcButton v-else
-									variant="secondary"
-									:disabled="store.selectedAssetIds.size === 0 || addingToAlbum || showAlbumPicker"
-									@click="showAlbumPicker = true">
-									<template #icon>
-										<FolderPlusIcon :size="20" />
-									</template>
-									{{ t('integration_immich', 'Add to album') }}
-								</NcButton>
-								<NcButton variant="secondary"
-									:disabled="store.selectedAssetIds.size === 0 || togglingFavorite"
-									@click="toggleFavoritesSelection">
-									<template #icon>
-										<NcLoadingIcon v-if="togglingFavorite" :size="20" />
-										<HeartIcon v-else-if="selectedAllFavorited" :size="20" />
-										<HeartOutlineIcon v-else :size="20" />
-									</template>
-									{{ selectedAllFavorited
-										? t('integration_immich', 'Remove from favorites')
-										: t('integration_immich', 'Add to favorites') }}
-								</NcButton>
-								<NcButton v-if="!isAlbumDetailView"
-									variant="error"
-									:disabled="store.selectedAssetIds.size === 0 || deleting"
-									@click="deleteSelectedAssets">
-									<template #icon>
-										<NcLoadingIcon v-if="deleting" :size="20" />
-										<DeleteIcon v-else :size="20" />
-									</template>
-									{{ t('integration_immich', 'Delete') }}
-								</NcButton>
 							</div>
 
-							<!-- 3-Punkte-Menü: nur auf Mobile sichtbar -->
+							<!-- 3-Punkte-Menü für weitere Aktionen -->
+							<div class="selection-actions-desktop">
+								<button class="selection-kebab" @click.stop="mobileMenuOpen = !mobileMenuOpen" :aria-label="t('integration_immich', 'More actions')">
+									<DotsVerticalIcon :size="20" />
+								</button>
+								<div v-if="mobileMenuOpen" class="selection-kebab-menu" @click="mobileMenuOpen = false">
+									<button v-if="isAlbumDetailView"
+										class="selection-kebab-menu__item selection-kebab-menu__item--danger"
+										:disabled="store.selectedAssetIds.size === 0 || removingFromAlbum"
+										@click="removeFromCurrentAlbum">
+										<FolderRemoveIcon :size="18" />
+										{{ t('integration_immich', 'Remove from album') }}
+									</button>
+									<button v-else
+										class="selection-kebab-menu__item"
+										:disabled="store.selectedAssetIds.size === 0 || addingToAlbum"
+										@click="showAlbumPicker = true">
+										<FolderPlusIcon :size="18" />
+										{{ t('integration_immich', 'Add to album') }}
+									</button>
+									<button class="selection-kebab-menu__item"
+										:disabled="store.selectedAssetIds.size === 0 || togglingFavorite"
+										@click="toggleFavoritesSelection">
+										<HeartIcon v-if="selectedAllFavorited" :size="18" />
+										<HeartOutlineIcon v-else :size="18" />
+										{{ selectedAllFavorited
+											? t('integration_immich', 'Remove from favorites')
+											: t('integration_immich', 'Add to favorites') }}
+									</button>
+									<button v-if="!isAlbumDetailView"
+										class="selection-kebab-menu__item selection-kebab-menu__item--danger"
+										:disabled="store.selectedAssetIds.size === 0 || deleting"
+										@click="deleteSelectedAssets">
+										<DeleteIcon :size="18" />
+										{{ t('integration_immich', 'Delete') }}
+									</button>
+								</div>
+							</div>
+
+							<!-- Mobile: nur 3-Punkte-Menü -->
 							<div class="selection-actions-mobile" :class="{ 'selection-actions-mobile--open': mobileMenuOpen }">
 								<button class="selection-kebab" @click.stop="mobileMenuOpen = !mobileMenuOpen" :aria-label="t('integration_immich', 'More actions')">
 									<DotsVerticalIcon :size="20" />
@@ -429,11 +427,16 @@ async function deleteSelectedAssets() {
 
 	const confirmed = await new Promise((resolve) => {
 		OC.dialogs.confirm(
-			t('integration_immich', 'Are you sure you want to delete {count} asset(s)? If trash is enabled in Immich, they will be moved to trash, otherwise they will be permanently deleted.', { count: store.selectedAssetIds.size }),
-			t('integration_immich', 'Delete assets'),
+			t('integration_immich', 'Are you sure you want to delete {count} file(s)? If trash is enabled in Immich, they will be moved to trash, otherwise they will be permanently deleted.', { count: store.selectedAssetIds.size }),
+			t('integration_immich', 'Delete files'),
 			(result) => resolve(result),
 			true
 		)
+		// Ensure dialog appears above any overlays
+		setTimeout(() => {
+			const dialog = document.querySelector('.oc-dialog-container')
+			if (dialog) dialog.style.zIndex = '10000'
+		}, 10)
 	})
 
 	if (!confirmed) return
@@ -442,12 +445,12 @@ async function deleteSelectedAssets() {
 	const ids = Array.from(store.selectedAssetIds)
 	try {
 		await deleteAssets(ids)
-		showSuccess(t('integration_immich', '{count} asset(s) deleted', { count: ids.length }))
+		showSuccess(t('integration_immich', '{count} file(s) deleted', { count: ids.length }))
 		// Remove from all caches
 		ids.forEach(id => store.removeAssetFromAllCaches(id))
 		store.clearSelection()
 	} catch (e) {
-		showError(t('integration_immich', 'Error deleting assets: {msg}', { msg: e.response?.data?.error || e.message }))
+		showError(t('integration_immich', 'Error deleting files: {msg}', { msg: e.response?.data?.error || e.message }))
 	} finally {
 		deleting.value = false
 	}
@@ -584,7 +587,11 @@ async function deleteSelectedAssets() {
 }
 
 .selection-kebab-menu__item--danger {
-	color: var(--color-error);
+	color: #e9322d;
+}
+
+.selection-kebab-menu__item--danger:hover {
+	background: rgba(233, 50, 45, 0.1);
 }
 
 .selection-kebab-menu__item:disabled {
