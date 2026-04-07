@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="img/app-dark.svg" width="80" alt="Immich Integration">
+<img src="img/app-dar| 🔎 **Lightbox** | Full-screen viewer with keyboard navigation, pinch-to-zoom and EXIF metadata panel |
+| ⭐ **Favorites** | Mark and unmark photos as favorites directly from Nextcloud |
+| ❌ **Delete** | Delete files from Immich (moved to trash if enabled) via lightbox or selection menu |
+| 💾 **Save to Nextcloud** | Select photos and videos and save the originals directly to your Nextcloud Files |g" width="80" alt="Immich Integration">
 
 # Immich Integration for Nextcloud
 
