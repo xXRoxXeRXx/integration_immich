@@ -99,6 +99,10 @@ export function downloadAssets(assetIds) {
 	return axios.post(`${baseUrl}/download`, { assetIds }, { responseType: 'blob' })
 }
 
+export function deleteAssets(assetIds) {
+	return axios.post(`${baseUrl}/assets/delete`, { assetIds })
+}
+
 export function getConfig() {
 	return axios.get(`${baseUrl}/config`)
 }

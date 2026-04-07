@@ -292,6 +292,58 @@ export const useImmichStore = defineStore('immich', {
 			}
 		},
 
+		removeAssetFromLightbox(assetId) {
+			const index = this.lightbox.assets.findIndex(a => a.id === assetId)
+			if (index === -1) return
+
+			// Remove from lightbox assets array
+			this.lightbox.assets.splice(index, 1)
+
+			// Also remove from all cached timeline/filtered/favorite data
+			this.removeAssetFromAllCaches(assetId)
+
+			// Adjust current index if needed
+			if (this.lightbox.currentIndex >= this.lightbox.assets.length) {
+				this.lightbox.currentIndex = Math.max(0, this.lightbox.assets.length - 1)
+			}
+		},
+
+		removeAssetFromAllCaches(assetId) {
+			// Remove from timeline assets
+			for (const bucket in this.timelineAssets) {
+				this.timelineAssets[bucket] = this.timelineAssets[bucket].filter(a => a.id !== assetId)
+			}
+
+			// Remove from filtered assets (photos/videos)
+			for (const type in this.filteredAssets) {
+				for (const bucket in this.filteredAssets[type]) {
+					this.filteredAssets[type][bucket] = this.filteredAssets[type][bucket].filter(a => a.id !== assetId)
+				}
+			}
+
+			// Remove from favorite assets
+			for (const bucket in this.favoriteAssets) {
+				this.favoriteAssets[bucket] = this.favoriteAssets[bucket].filter(a => a.id !== assetId)
+			}
+
+			// Remove from person bucket assets
+			for (const bucket in this.personBucketAssets) {
+				this.personBucketAssets[bucket] = this.personBucketAssets[bucket].filter(a => a.id !== assetId)
+			}
+
+			// Remove from album assets
+			if (this.currentAlbum && this.currentAlbum.assets) {
+				this.currentAlbum.assets = this.currentAlbum.assets.filter(a => a.id !== assetId)
+			}
+
+			// Remove from explore data
+			this.exploreData.forEach(group => {
+				if (group.assets) {
+					group.assets = group.assets.filter(a => a.id !== assetId)
+				}
+			})
+		},
+
 		// ---- Selection ----
 
 		enterSelectionMode() {

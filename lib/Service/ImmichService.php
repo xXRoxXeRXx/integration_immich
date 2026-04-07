@@ -229,6 +229,10 @@ class ImmichService {
         return $this->request('PUT', '/assets/' . $id, ['body' => $data]);
     }
 
+    public function deleteAssets(array $assetIds): void {
+        $this->request('DELETE', '/assets', ['body' => ['ids' => $assetIds]]);
+    }
+
     // ---- People ----
 
     public function getPeople(): array {

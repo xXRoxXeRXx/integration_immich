@@ -322,6 +322,38 @@ class AssetsController extends Controller {
     }
 
     #[NoAdminRequired]
+    public function deleteAssets(): JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(
+                ['error' => 'Immich is not configured'],
+                Http::STATUS_PRECONDITION_FAILED
+            );
+        }
+
+        $assetIds = $this->request->getParam('assetIds', []);
+        if (!is_array($assetIds)) {
+            $assetIds = [$assetIds];
+        }
+
+        if (empty($assetIds)) {
+            return new JSONResponse(['error' => 'assetIds must be a non-empty array'], Http::STATUS_BAD_REQUEST);
+        }
+
+        foreach ($assetIds as $id) {
+            if (!preg_match(ImmichService::UUID_PATTERN, (string)$id)) {
+                return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
+            }
+        }
+
+        try {
+            $this->immichService->deleteAssets(array_values(array_map('strval', $assetIds)));
+            return new JSONResponse(['success' => true]);
+        } catch (\Exception $e) {
+            return $this->errorResponse('delete assets', $e);
+        }
+    }
+
+    #[NoAdminRequired]
     public function saveToNextcloud(): JSONResponse {
         if (!$this->immichService->isConfigured()) {
             return new JSONResponse(

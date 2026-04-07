@@ -78,6 +78,9 @@
 				</div>
 			</div>
 		</template>
+
+		<!-- Selection Toolbar -->
+		<SelectionToolbar @assets-deleted="handleAssetsDeleted" />
 	</div>
 </template>
 
@@ -89,6 +92,7 @@ import { translate as t } from '@nextcloud/l10n'
 import { useImmichStore } from '../store/immich.js'
 import { getPersonThumbnailUrl } from '../services/api.js'
 import PhotoGrid from './PhotoGrid.vue'
+import SelectionToolbar from './SelectionToolbar.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import ArrowLeftIcon from 'vue-material-design-icons/ArrowLeft.vue'
 import AccountIcon from 'vue-material-design-icons/Account.vue'
@@ -265,6 +269,11 @@ function formatBucketDate(timeBucket) {
 
 function goBack() {
 	router.push({ name: 'people' })
+}
+
+function handleAssetsDeleted(deletedIds) {
+	// Assets are already removed from store by SelectionToolbar
+	// Nothing extra needed here
 }
 
 async function load() {

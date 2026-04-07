@@ -79,6 +79,21 @@
 						</svg>
 					</button>
 					<button
+						v-if="currentAsset"
+						class="ic-lb-btn"
+						:class="{ 'ic-lb-btn--loading': deletingAsset }"
+						:title="t('integration_immich', 'Delete')"
+						:disabled="deletingAsset"
+						@click.stop="deleteCurrent"
+					>
+						<svg v-if="!deletingAsset" viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6z" />
+						</svg>
+						<svg v-else viewBox="0 0 24 24" aria-hidden="true" class="ic-lb-spin">
+							<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" fill="currentColor" />
+						</svg>
+					</button>
+					<button
 						class="ic-lb-btn"
 						:class="{ 'ic-lb-btn--active': showInfo }"
 						:title="t('integration_immich', 'Info')"
@@ -241,7 +256,7 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { useImmichStore } from '../store/immich.js'
-import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset, createAlbum } from '../services/api.js'
+import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset, createAlbum, deleteAssets } from '../services/api.js'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 
@@ -250,6 +265,7 @@ const overlayEl = ref(null)
 const showInfo = ref(false)
 const fetchingInfo = ref(false)
 const downloadingAsset = ref(false)
+const deletingAsset = ref(false)
 const savingToNc = ref(false)
 const pickerOpen = ref(false)
 const showAlbumPanel = ref(false)
@@ -520,6 +536,41 @@ async function toggleFavorite() {
 		showError(t('integration_immich', 'Error: {msg}', { msg: e.message }))
 	} finally {
 		togglingFavorite.value = false
+	}
+}
+
+async function deleteCurrent() {
+	if (!currentAsset.value || deletingAsset.value) return
+
+	// Show confirmation dialog
+	const confirmed = await new Promise((resolve) => {
+		OC.dialogs.confirm(
+			t('integration_immich', 'Are you sure you want to delete this asset? If trash is enabled in Immich, it will be moved to trash, otherwise it will be permanently deleted.'),
+			t('integration_immich', 'Delete asset'),
+			(result) => resolve(result),
+			true
+		)
+	})
+
+	if (!confirmed) return
+
+	deletingAsset.value = true
+	const assetId = currentAsset.value.id
+	const wasLastAsset = assets.value.length === 1
+
+	try {
+		await deleteAssets([assetId])
+		store.removeAssetFromLightbox(assetId)
+		showSuccess(t('integration_immich', 'Asset deleted'))
+
+		// If this was the last asset, close the lightbox
+		if (wasLastAsset) {
+			close()
+		}
+	} catch (e) {
+		showError(t('integration_immich', 'Error deleting asset: {msg}', { msg: e.response?.data?.error || e.message }))
+	} finally {
+		deletingAsset.value = false
 	}
 }
 
