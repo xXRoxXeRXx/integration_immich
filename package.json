@@ -30,7 +30,7 @@
         "@nextcloud/browserslist-config": "^3.0.1",
         "@nextcloud/eslint-config": "^8.4.1",
         "@nextcloud/webpack-vue-config": "^7.0.0",
-        "eslint-webpack-plugin": "^5.0.3"
+        "eslint-webpack-plugin": "^6.0.0"
     },
     "browserslist": [
         "extends @nextcloud/browserslist-config"
