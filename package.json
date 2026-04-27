@@ -5,10 +5,10 @@
     "license": "AGPL-3.0-or-later",
     "private": true,
     "scripts": {
-        "build": "node build-l10n.mjs && webpack --progress",
-        "dev": "node build-l10n.mjs && webpack --progress",
-        "watch": "node build-l10n.mjs && webpack --watch --progress",
-        "serve": "node build-l10n.mjs && webpack serve --progress",
+        "build": "node build-l10n.mjs && webpack --node-env production --progress",
+        "dev": "node build-l10n.mjs && webpack --node-env development --progress",
+        "watch": "node build-l10n.mjs && webpack --node-env development --watch --progress",
+        "serve": "node build-l10n.mjs && webpack --node-env development serve --progress",
         "l10n": "node build-l10n.mjs"
     },
     "dependencies": {
@@ -30,9 +30,7 @@
         "@nextcloud/browserslist-config": "^3.0.1",
         "@nextcloud/eslint-config": "^8.4.1",
         "@nextcloud/webpack-vue-config": "^7.0.0",
-        "eslint-webpack-plugin": "^5.0.3",
-        "webpack": "^5.88.2",
-        "webpack-cli": "^6.0.1"
+        "eslint-webpack-plugin": "^5.0.3"
     },
     "browserslist": [
         "extends @nextcloud/browserslist-config"

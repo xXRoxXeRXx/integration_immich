@@ -34,8 +34,6 @@ jobs:
 
       - name: Build production JS
         run: npm run build
-        env:
-          NODE_ENV: production
 
       - name: Assemble release tar.gz
         run: |
