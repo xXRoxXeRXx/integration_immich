@@ -34,6 +34,10 @@ jobs:
         php-versions: ['8.2', '8.3', '8.4']
         databases: ['sqlite', 'mysql', 'pgsql']
         server-versions: ['stable30', 'stable31', 'stable32', 'stable33', 'master']
+        exclude:
+          # NC 30 does not support PHP 8.4
+          - php-versions: '8.4'
+            server-versions: 'stable30'
 
     name: php${{ matrix.php-versions }}-${{ matrix.databases }}-${{ matrix.server-versions }}
 
