@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-04-27
+
+### Fixed
+
+- Restored corrupted app icon `<img>` tag in README header
+
+### Security
+
+- `postcss` 8.5.8 → 8.5.12
+- `axios` 1.13.5 → 1.15.2
+- `dompurify` 3.3.3 → 3.4.1
+- `follow-redirects` 1.15.11 → 1.16.0
+- `fast-xml-parser` (transitive via `webdav`) updated to patched version
+
+### CI
+
+- Added PHP 8.4 to test matrix; excluded unsupported PHP 8.4 + NC stable30 combination (refs #39)
+
 ## [1.1.0] - 2026-04-07
 
 ### Added
