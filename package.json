@@ -27,7 +27,7 @@
         "vue-router": "^5.0.7"
     },
     "devDependencies": {
-        "@babel/core": "^7.22.9",
+        "@babel/core": "^7.29.7",
         "@nextcloud/browserslist-config": "^3.0.1",
         "@nextcloud/eslint-config": "^8.4.1",
         "@nextcloud/webpack-vue-config": "^7.0.0",
