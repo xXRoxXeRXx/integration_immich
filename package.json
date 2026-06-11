@@ -41,7 +41,7 @@
         "ts-loader": "^9.4.4",
         "vue-loader": "^17.4.2",
         "webpack": "^5.88.2",
-        "webpack-cli": "^6.0.1",
+        "webpack-cli": "^7.0.3",
         "webpack-dev-server": "^5.0.2"
     },
     "browserslist": [
