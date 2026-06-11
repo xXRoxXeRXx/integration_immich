@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.5] - 2026-06-11
+
+### Security
+
+- `axios` 1.15.2 → 1.17.0 via `overrides` — fixes GHSA-pjwm-pj3p-43mv, GHSA-898c-q2cr-xwhg, GHSA-654m-c8p4-x5fp and others
+- `shell-quote` 1.8.3 → 1.8.4 via `overrides` — fixes GHSA-w7jw-789q-3m8p (critical: newline injection)
+- `ws` updated — fixes GHSA-58qx-3vcg-4xpx (uninitialized memory disclosure)
+
+### Dependencies
+
+- `@nextcloud/vue` 9.7.0 → 9.8.1
+- `vue` 3.5.33 → 3.5.35
+- `vue-router` 5.0.7 → 5.1.0
+- `@babel/core` 7.22.9 → 7.29.7 (dev)
+- `node-polyfill-webpack-plugin` 4.0.0 → 4.1.0 (dev)
+- `sass` 1.64.2 → 1.100.0 (dev)
+- `sass-loader` 16.0.2 → 17.0.0 (dev)
+- `ts-loader` 9.4.4 → 9.6.0 (dev)
+- `webpack` 5.88.2 → 5.107.2 (dev)
+- `webpack-cli` 6.0.1 → 7.0.3 (dev)
+
+### Build
+
+- `webpack.config.js`: add `fullySpecified: false` rule for `.mjs`/`.js` to resolve Node polyfills (`buffer`, `process`) in ESM context introduced by `webpack 5.107` + `axios 1.17`
+
 ## [1.1.4] - 2026-05-25
 
 ### Fixed
