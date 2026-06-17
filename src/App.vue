@@ -224,7 +224,6 @@ watch(() => route.name, () => {
 	if (store.isSelectionMode) {
 		store.clearSelection()
 	}
-	mobileMenuOpen.value = false
 })
 
 async function saveToNextcloud() {
@@ -497,6 +496,19 @@ async function deleteSelectedAssets() {
 	align-items: center;
 	gap: 8px;
 	flex-shrink: 0;
+}
+
+/* Desktop: show inline secondary actions; mobile: collapse into overflow menu */
+.selection-actions-desktop {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+@media (max-width: 680px) {
+	.selection-actions-desktop {
+		display: none;
+	}
 }
 
 /* View container — fills remaining space below toolbar */
