@@ -19,12 +19,11 @@
 		<template v-else-if="store.currentAlbum">
 			<!-- Sticky Header -->
 			<div class="album-detail__header">
-				<NcButton variant="tertiary" @click="goBack">
-					<template #icon>
-						<ArrowLeftIcon :size="20" />
-					</template>
-					{{ t('integration_immich', 'Back') }}
-				</NcButton>
+				<!-- Breadcrumb navigation -->
+				<NcBreadcrumbs>
+					<NcBreadcrumb :name="t('integration_immich', 'Albums')" @click="goBack" />
+					<NcBreadcrumb :name="store.currentAlbum.albumName" :title="store.currentAlbum.albumName" />
+				</NcBreadcrumbs>
 				<div class="album-detail__title">
 					<h2>{{ store.currentAlbum.albumName }}</h2>
 					<span class="album-detail__count">
@@ -134,7 +133,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { NcButton, NcEmptyContent, NcLoadingIcon, NcDialog, NcTextField, NcActions, NcActionButton } from '@nextcloud/vue'
+import { NcButton, NcEmptyContent, NcLoadingIcon, NcDialog, NcTextField, NcActions, NcActionButton, NcBreadcrumbs, NcBreadcrumb } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { showSuccess, showError } from '@nextcloud/dialogs'
 import { useImmichStore } from '../store/immich.js'
@@ -142,7 +141,6 @@ import { addAssetsToAlbum as apiAddAssetsToAlbum, renameAlbum as apiRenameAlbum 
 import PhotoGrid from './PhotoGrid.vue'
 import AssetPickerModal from './AssetPickerModal.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
-import ArrowLeftIcon from 'vue-material-design-icons/ArrowLeft.vue'
 import ImageIcon from 'vue-material-design-icons/Image.vue'
 import ImagePlusIcon from 'vue-material-design-icons/ImagePlus.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
