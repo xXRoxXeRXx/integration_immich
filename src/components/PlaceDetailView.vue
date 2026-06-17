@@ -19,17 +19,13 @@
 		<template v-else>
 			<!-- Sticky header -->
 			<div class="place-detail__header">
-				<!-- Breadcrumb navigation -->
 				<NcBreadcrumbs>
 					<NcBreadcrumb :name="t('integration_immich', 'Explore')" @click="goBack" />
 					<NcBreadcrumb :name="props.value" :title="props.value" />
 				</NcBreadcrumbs>
-				<div class="place-detail__title">
-					<h2>{{ props.value }}</h2>
-					<span class="place-detail__count">
-						{{ t('integration_immich', '{count} photos', { count: filteredAssets.length }) }}
-					</span>
-				</div>
+				<span class="place-detail__count">
+					{{ t('integration_immich', '{count} photos', { count: filteredAssets.length }) }}
+				</span>
 			</div>
 
 			<NcEmptyContent v-if="filteredAssets.length === 0"
@@ -116,27 +112,17 @@ function goBack() {
 
 .place-detail__header {
 	display: flex;
-	align-items: center;
-	gap: 16px;
-	padding: 8px 16px;
+	flex-direction: column;
+	padding: 8px 16px 6px;
 	flex-shrink: 0;
 	border-bottom: 1px solid var(--color-border);
-}
-
-.place-detail__title {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-}
-
-.place-detail__title h2 {
-	margin: 0;
-	font-size: 20px;
 }
 
 .place-detail__count {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
+	padding-left: 4px;
+	margin-top: 2px;
 }
 
 .place-detail__scroll {
@@ -148,15 +134,11 @@ function goBack() {
 
 @media (max-width: 480px) {
 	.place-detail__header {
-		padding: 8px;
+		padding: 8px 8px 6px;
 	}
 
 	.place-detail__scroll {
 		padding: 8px;
-	}
-
-	.place-detail__title h2 {
-		font-size: 17px;
 	}
 }
 </style>

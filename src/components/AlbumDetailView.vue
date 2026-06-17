@@ -19,54 +19,54 @@
 		<template v-else-if="store.currentAlbum">
 			<!-- Sticky Header -->
 			<div class="album-detail__header">
-				<!-- Breadcrumb navigation -->
-				<NcBreadcrumbs>
-					<NcBreadcrumb :name="t('integration_immich', 'Albums')" @click="goBack" />
-					<NcBreadcrumb :name="store.currentAlbum.albumName" :title="store.currentAlbum.albumName" />
-				</NcBreadcrumbs>
-				<div class="album-detail__title">
-					<h2>{{ store.currentAlbum.albumName }}</h2>
-					<span class="album-detail__count">
-						{{ t('integration_immich', '{count} photos', { count: store.currentAlbum.assets?.length || 0 }) }}
-					</span>
-				</div>
+				<!-- Top row: Breadcrumb + action buttons -->
+				<div class="album-detail__header-row">
+					<NcBreadcrumbs>
+						<NcBreadcrumb :name="t('integration_immich', 'Albums')" @click="goBack" />
+						<NcBreadcrumb :name="store.currentAlbum.albumName" :title="store.currentAlbum.albumName" />
+					</NcBreadcrumbs>
 
-				<!-- Desktop: Buttons direkt sichtbar -->
-				<div class="album-detail__actions-desktop">
-					<NcButton variant="tertiary" @click="startRename">
-						<template #icon>
-							<PencilIcon :size="20" />
-						</template>
-						{{ t('integration_immich', 'Rename') }}
-					</NcButton>
-					<NcButton v-if="store.currentAlbum.assets && store.currentAlbum.assets.length > 0"
-						variant="secondary"
-						@click="showPicker = true">
-						<template #icon>
-							<ImagePlusIcon :size="20" />
-						</template>
-						{{ t('integration_immich', 'Add photos') }}
-					</NcButton>
-				</div>
-
-				<!-- Mobile: NcActions dropdown -->
-				<div class="album-detail__actions-mobile">
-					<NcActions :aria-label="t('integration_immich', 'More actions')">
-						<NcActionButton @click="startRename">
+					<!-- Desktop: Buttons direkt sichtbar -->
+					<div class="album-detail__actions-desktop">
+						<NcButton variant="tertiary" @click="startRename">
 							<template #icon>
 								<PencilIcon :size="20" />
 							</template>
 							{{ t('integration_immich', 'Rename') }}
-						</NcActionButton>
-						<NcActionButton v-if="store.currentAlbum.assets && store.currentAlbum.assets.length > 0"
+						</NcButton>
+						<NcButton v-if="store.currentAlbum.assets && store.currentAlbum.assets.length > 0"
+							variant="secondary"
 							@click="showPicker = true">
 							<template #icon>
 								<ImagePlusIcon :size="20" />
 							</template>
 							{{ t('integration_immich', 'Add photos') }}
-						</NcActionButton>
-					</NcActions>
+						</NcButton>
+					</div>
+
+					<!-- Mobile: NcActions dropdown -->
+					<div class="album-detail__actions-mobile">
+						<NcActions :aria-label="t('integration_immich', 'More actions')">
+							<NcActionButton @click="startRename">
+								<template #icon>
+									<PencilIcon :size="20" />
+								</template>
+								{{ t('integration_immich', 'Rename') }}
+							</NcActionButton>
+							<NcActionButton v-if="store.currentAlbum.assets && store.currentAlbum.assets.length > 0"
+								@click="showPicker = true">
+								<template #icon>
+									<ImagePlusIcon :size="20" />
+								</template>
+								{{ t('integration_immich', 'Add photos') }}
+							</NcActionButton>
+						</NcActions>
+					</div>
 				</div>
+				<!-- Photo count below breadcrumb -->
+				<span class="album-detail__count">
+					{{ t('integration_immich', '{count} photos', { count: store.currentAlbum.assets?.length || 0 }) }}
+				</span>
 			</div>
 
 			<!-- Rename Dialog -->
@@ -245,32 +245,23 @@ watch(() => props.id, () => {
 
 .album-detail__header {
 	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 8px 16px;
+	flex-direction: column;
+	padding: 8px 16px 6px;
 	flex-shrink: 0;
 	border-bottom: 1px solid var(--color-border);
 }
 
-.album-detail__title {
-	flex: 1;
-	min-width: 0;
+.album-detail__header-row {
 	display: flex;
-	flex-direction: column;
-	gap: 2px;
-}
-
-.album-detail__title h2 {
-	margin: 0;
-	font-size: 20px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	align-items: center;
+	gap: 8px;
 }
 
 .album-detail__count {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
+	padding-left: 4px;
+	margin-top: 2px;
 }
 
 .album-detail__scroll {
@@ -297,7 +288,7 @@ watch(() => props.id, () => {
 
 @media (max-width: 680px) {
 	.album-detail__header {
-		padding: 8px;
+		padding: 8px 8px 6px;
 	}
 
 	.album-detail__scroll {
@@ -310,10 +301,6 @@ watch(() => props.id, () => {
 
 	.album-detail__actions-mobile {
 		display: block;
-	}
-
-	.album-detail__title h2 {
-		font-size: 17px;
 	}
 }
 </style>

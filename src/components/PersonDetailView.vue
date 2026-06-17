@@ -20,22 +20,20 @@
 		<template v-else>
 			<!-- Sticky header with back button + person info -->
 			<div class="person-detail__header">
-				<!-- Breadcrumb navigation -->
-				<NcBreadcrumbs>
-					<NcBreadcrumb :name="t('integration_immich', 'People')" @click="goBack" />
-					<NcBreadcrumb :name="personName" :title="personName" />
-				</NcBreadcrumbs>
-				<div class="person-detail__title">
+				<!-- Top row: Breadcrumb + avatar right-aligned -->
+				<div class="person-detail__header-row">
+					<NcBreadcrumbs>
+						<NcBreadcrumb :name="t('integration_immich', 'People')" @click="goBack" />
+						<NcBreadcrumb :name="personName" :title="personName" />
+					</NcBreadcrumbs>
 					<img :src="getPersonThumbnailUrl(props.id)"
 						class="person-detail__avatar"
 						:alt="personName">
-					<div>
-						<h2>{{ personName }}</h2>
-						<span class="person-detail__count">
-							{{ t('integration_immich', '{count} photos', { count: totalCount }) }}
-						</span>
-					</div>
 				</div>
+				<!-- Photo count below breadcrumb -->
+				<span class="person-detail__count">
+					{{ t('integration_immich', '{count} photos', { count: totalCount }) }}
+				</span>
 			</div>
 
 			<NcEmptyContent v-if="store.personBuckets.length === 0 && !store.loading"
@@ -314,34 +312,32 @@ onBeforeUnmount(() => {
 
 .person-detail__header {
 	display: flex;
-	align-items: center;
-	gap: 16px;
-	padding: 8px 16px;
+	flex-direction: column;
+	padding: 8px 16px 6px;
 	flex-shrink: 0;
 	border-bottom: 1px solid var(--color-border);
 }
 
-.person-detail__title {
+.person-detail__header-row {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 8px;
 }
 
 .person-detail__avatar {
-	width: 48px;
-	height: 48px;
+	width: 40px;
+	height: 40px;
 	border-radius: 50%;
 	object-fit: cover;
-}
-
-.person-detail__title h2 {
-	margin: 0;
-	font-size: 20px;
+	flex-shrink: 0;
+	margin-left: auto;
 }
 
 .person-detail__count {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
+	padding-left: 4px;
+	margin-top: 2px;
 }
 
 .person-detail__scroll {
@@ -406,11 +402,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 480px) {
 	.person-detail__header {
-		padding: 8px;
-	}
-
-	.person-detail__title h2 {
-		font-size: 18px;
+		padding: 8px 8px 6px;
 	}
 
 	.person-detail__bucket {
