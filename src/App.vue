@@ -125,12 +125,11 @@
 				<div v-if="albums.length === 0" class="album-picker__empty">
 					{{ t('integration_immich', 'No albums available') }}
 				</div>
-				<div v-for="album in albums"
+				<NcListItem v-for="album in albums"
 					:key="album.id"
-					class="album-picker__item"
-					@click="addToAlbum(album.id)">
-					{{ album.albumName }}
-				</div>
+					:name="album.albumName"
+					compact
+					@click="addToAlbum(album.id)" />
 			</template>
 		</div>
 	</NcDialog>
@@ -155,7 +154,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { NcContent, NcAppContent, NcButton, NcLoadingIcon, NcDialog, NcActions, NcActionButton } from '@nextcloud/vue'
+import { NcContent, NcAppContent, NcButton, NcLoadingIcon, NcDialog, NcActions, NcActionButton, NcListItem } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { useImmichStore } from './store/immich.js'
@@ -534,16 +533,5 @@ async function deleteSelectedAssets() {
 	padding: 16px;
 	text-align: center;
 	color: var(--color-text-maxcontrast);
-}
-
-.album-picker__item {
-	padding: 12px 16px;
-	cursor: pointer;
-	border-radius: var(--border-radius);
-	font-size: 14px;
-}
-
-.album-picker__item:hover {
-	background-color: var(--color-background-hover);
 }
 </style>
