@@ -259,6 +259,23 @@
 					</template>
 				</div>
 			</Transition>
+
+		<!-- Delete confirmation dialog -->
+		<NcDialog v-if="showDeleteConfirm"
+			:name="t('integration_immich', 'Delete file')"
+			@closing="onLbDeleteDialogAction(false)">
+			<p style="padding: 8px 0">
+				{{ t('integration_immich', 'Are you sure you want to delete this file? If trash is enabled in Immich, it will be moved to trash, otherwise it will be permanently deleted.') }}
+			</p>
+			<template #actions>
+				<NcButton variant="tertiary" @click="onLbDeleteDialogAction(false)">
+					{{ t('integration_immich', 'Cancel') }}
+				</NcButton>
+				<NcButton variant="error" @click="onLbDeleteDialogAction(true)">
+					{{ t('integration_immich', 'Delete') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 		</div>
 	</Teleport>
 </template>
@@ -269,6 +286,7 @@ import { useImmichStore } from '../store/immich.js'
 import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset, createAlbum, deleteAssets } from '../services/api.js'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
+import { NcButton, NcDialog, NcLoadingIcon } from '@nextcloud/vue'
 
 const store = useImmichStore()
 const overlayEl = ref(null)
@@ -276,6 +294,8 @@ const showInfo = ref(false)
 const fetchingInfo = ref(false)
 const downloadingAsset = ref(false)
 const deletingAsset = ref(false)
+const showDeleteConfirm = ref(false)
+let pendingLbDeleteResolve = null
 const savingToNc = ref(false)
 const pickerOpen = ref(false)
 const showAlbumPanel = ref(false)
@@ -549,22 +569,18 @@ async function toggleFavorite() {
 	}
 }
 
+function onLbDeleteDialogAction(confirmed) {
+	showDeleteConfirm.value = false
+	pendingLbDeleteResolve?.(confirmed)
+	pendingLbDeleteResolve = null
+}
+
 async function deleteCurrent() {
 	if (!currentAsset.value || deletingAsset.value) return
 
-	// Show confirmation dialog
 	const confirmed = await new Promise((resolve) => {
-		OC.dialogs.confirm(
-			t('integration_immich', 'Are you sure you want to delete this file? If trash is enabled in Immich, it will be moved to trash, otherwise it will be permanently deleted.'),
-			t('integration_immich', 'Delete file'),
-			(result) => resolve(result),
-			true
-		)
-		// Ensure dialog appears above lightbox (lightbox has z-index 2000)
-		setTimeout(() => {
-			const dialog = document.querySelector('.oc-dialog-container')
-			if (dialog) dialog.style.zIndex = '10000'
-		}, 10)
+		pendingLbDeleteResolve = resolve
+		showDeleteConfirm.value = true
 	})
 
 	if (!confirmed) return
