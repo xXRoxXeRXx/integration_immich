@@ -242,20 +242,13 @@
 							</button>
 						</div>
 						<p v-if="albums.length === 0" class="ic-lb-info__empty">{{ t('integration_immich', 'No albums available') }}</p>
-						<div v-for="album in albums"
+						<NcListItem v-for="album in albums"
 							:key="album.id"
-							class="ic-lb-album-panel__item"
-							:class="{ 'ic-lb-album-panel__item--in-album': currentAssetAlbumIds.has(album.id) }"
-							:title="currentAssetAlbumIds.has(album.id) ? t('integration_immich', 'Already in this album') : ''"
-							@click.stop="currentAssetAlbumIds.has(album.id) ? null : addCurrentToAlbum(album.id)">
-							<svg v-if="currentAssetAlbumIds.has(album.id)"
-								viewBox="0 0 24 24"
-								style="width:14px;height:14px;fill:currentColor;flex-shrink:0;opacity:0.55"
-								aria-hidden="true">
-								<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-							</svg>
-							{{ album.albumName }}
-						</div>
+							:name="album.albumName"
+							:active="currentAssetAlbumIds.has(album.id)"
+							:aria-label="currentAssetAlbumIds.has(album.id) ? t('integration_immich', 'Already in this album') : album.albumName"
+							compact
+							@click.stop="currentAssetAlbumIds.has(album.id) ? null : addCurrentToAlbum(album.id)" />
 					</template>
 				</div>
 			</Transition>
@@ -286,7 +279,7 @@ import { useImmichStore } from '../store/immich.js'
 import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset, createAlbum, deleteAssets } from '../services/api.js'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { translate as t, getCanonicalLocale } from '@nextcloud/l10n'
-import { NcButton, NcDialog, NcLoadingIcon } from '@nextcloud/vue'
+import { NcButton, NcDialog, NcLoadingIcon, NcListItem } from '@nextcloud/vue'
 import { useFormatTime } from '@nextcloud/vue/composables/useFormatDateTime'
 import { logger } from '../services/logger.js'
 
@@ -1099,16 +1092,6 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 .ic-lb-album-panel__item--new:hover {
 	background: rgba(120,180,255,0.06);
 	color: rgba(160,210,255,1);
-}
-
-.ic-lb-album-panel__item--in-album {
-	opacity: 0.35;
-	cursor: default;
-}
-
-.ic-lb-album-panel__item--in-album:hover {
-	background: transparent;
-	color: rgba(255,255,255,0.82);
 }
 
 .ic-lb-album-panel__new-form {
