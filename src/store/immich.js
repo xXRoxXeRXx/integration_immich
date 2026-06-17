@@ -5,6 +5,10 @@
 import { defineStore } from 'pinia'
 import { translate as t } from '@nextcloud/l10n'
 import { getTimeline, getAlbums, getAlbum, getPeople, getMapMarkers, getExplore } from '../services/api.js'
+import { appStorage } from '../services/storage.js'
+
+const BUCKET_CACHE_KEY = 'timeline_buckets'
+const BUCKET_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 export const useImmichStore = defineStore('immich', {
 	state: () => ({
@@ -50,9 +54,26 @@ export const useImmichStore = defineStore('immich', {
 		async fetchTimelineBuckets() {
 			this.loading = true
 			this.error = null
+
+			// Populate from cache immediately for instant display (stale-while-revalidate)
+			try {
+				const cached = appStorage.getItem(BUCKET_CACHE_KEY)
+				if (cached) {
+					const { buckets, ts } = JSON.parse(cached)
+					if (Date.now() - ts < BUCKET_CACHE_TTL_MS && Array.isArray(buckets) && buckets.length > 0) {
+						this.timelineBuckets = buckets
+						this.loading = false
+					}
+				}
+			} catch { /* ignore malformed cache */ }
+
 			try {
 				const response = await getTimeline()
 				this.timelineBuckets = Array.isArray(response.data) ? response.data : []
+				// Persist fresh bucket list for next load
+				try {
+					appStorage.setItem(BUCKET_CACHE_KEY, JSON.stringify({ buckets: this.timelineBuckets, ts: Date.now() }))
+				} catch { /* storage full or unavailable — non-fatal */ }
 			} catch (e) {
 				const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout')
 				this.error = isTimeout
