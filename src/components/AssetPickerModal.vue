@@ -105,6 +105,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
+import { showError } from '@nextcloud/dialogs'
 import { getTimeline, getThumbnailUrl } from '../services/api.js'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import CheckAllIcon from 'vue-material-design-icons/CheckAll.vue'
@@ -234,6 +235,11 @@ async function loadBucket(timeBucket) {
 	try {
 		const res = await getTimeline({ timeBucket, size: 'MONTH' })
 		assetsCache.value = { ...assetsCache.value, [timeBucket]: Array.isArray(res.data) ? res.data : [] }
+	} catch (e) {
+		// Remove the failed bucket so re-scrolling back can retry it
+		const updated = { ...assetsCache.value }
+		delete updated[timeBucket]
+		assetsCache.value = updated
 	} finally {
 		loadingSet.value = new Set([...loadingSet.value].filter(b => b !== timeBucket))
 		activeRequests--
@@ -292,6 +298,8 @@ onMounted(async () => {
 		for (const i of windowIndices.value) {
 			loadBucket(buckets.value[i].timeBucket)
 		}
+	} catch (e) {
+		showError(t('integration_immich', 'Could not load photos'))
 	} finally {
 		initialLoading.value = false
 	}
