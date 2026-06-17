@@ -10,7 +10,6 @@
 			:class="{ 'ic-lb--info': showInfo, 'ic-lb--hidden': pickerOpen }"
 			ref="overlayEl"
 			tabindex="-1"
-			@keydown="onKey"
 			@click.self="close"
 		>
 			<!-- Top bar -->
@@ -244,6 +243,7 @@ import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '
 import { translate as t, getCanonicalLocale } from '@nextcloud/l10n'
 import { NcButton, NcDialog, NcLoadingIcon, NcListItem, NcTextField, NcIconSvgWrapper } from '@nextcloud/vue'
 import { useFormatTime } from '@nextcloud/vue/composables/useFormatDateTime'
+import { useHotKey } from '@nextcloud/vue/composables/useHotKey'
 import { logger } from '../services/logger.js'
 
 const store = useImmichStore()
@@ -675,14 +675,23 @@ function close() {
 	store.closeLightbox()
 }
 
-function onKey(e) {
-	if (e.key === 'Escape') {
-		if (creatingAlbum.value) { creatingAlbum.value = false; return }
-		if (zoomLevel.value > 1) { resetZoom(); return }
-		close()
-	} else if (e.key === 'ArrowLeft') navigate(-1)
-	else if (e.key === 'ArrowRight') navigate(1)
-}
+// Keyboard navigation via NC useHotKey (respects accessibility opt-out)
+useHotKey('Escape', () => {
+	if (!store.lightbox.visible) return
+	if (creatingAlbum.value) { creatingAlbum.value = false; return }
+	if (zoomLevel.value > 1) { resetZoom(); return }
+	close()
+}, { prevent: true, allowInModal: true })
+
+useHotKey('ArrowLeft', () => {
+	if (!store.lightbox.visible) return
+	navigate(-1)
+}, { prevent: true, allowInModal: true })
+
+useHotKey('ArrowRight', () => {
+	if (!store.lightbox.visible) return
+	navigate(1)
+}, { prevent: true, allowInModal: true })
 
 watch(() => store.lightbox.visible, (visible) => {
 	if (visible) {
