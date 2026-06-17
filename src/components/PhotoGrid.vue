@@ -42,12 +42,14 @@
 			</div>
 
 			<!-- Checkbox: always rendered when selectable, hint on hover, full in selection-mode -->
-			<div v-if="selectable"
+			<NcCheckboxRadioSwitch
+				v-if="selectable"
+				:model-value="store.selectedAssetIds.has(asset.id)"
+				:aria-label="t('integration_immich', 'Select photo')"
 				class="photo-grid__checkbox"
 				:class="{ 'photo-grid__checkbox--checked': store.selectedAssetIds.has(asset.id) }"
-				@click.stop="onCheckboxClick(asset)">
-				<CheckIcon v-if="store.selectedAssetIds.has(asset.id)" :size="13" />
-			</div>
+				@click.stop
+				@update:model-value="onCheckboxClick(asset)" />
 		</div>
 	</div>
 </template>
@@ -55,9 +57,9 @@
 <script setup>
 import { getThumbnailUrl } from '../services/api.js'
 import { useImmichStore } from '../store/immich.js'
-import { getCanonicalLocale } from '@nextcloud/l10n'
+import { getCanonicalLocale, translate as t } from '@nextcloud/l10n'
+import { NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import VideoIcon from 'vue-material-design-icons/Play.vue'
-import CheckIcon from 'vue-material-design-icons/Check.vue'
 import HeartIcon from 'vue-material-design-icons/Heart.vue'
 
 const props = defineProps({
@@ -253,23 +255,14 @@ function formatDate(asset) {
 /* ---- Checkbox ---- */
 .photo-grid__checkbox {
 	position: absolute;
-	top: 8px;
-	left: 8px;
-	width: 22px;
-	height: 22px;
-	border-radius: 50%;
-	border: 2px solid rgba(255,255,255,0.9);
-	background: rgba(0,0,0,0.25);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: #fff;
+	top: 4px;
+	left: 4px;
 	z-index: 2;
 	cursor: pointer;
 	/* hidden by default — shown on hover or in selection-mode */
 	opacity: 0;
 	transform: scale(0.7);
-	transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+	transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 /* Show hint on hover (non-selection-mode) */
@@ -285,8 +278,6 @@ function formatDate(asset) {
 }
 
 .photo-grid__checkbox--checked {
-	background: var(--color-primary) !important;
-	border-color: var(--color-primary) !important;
 	opacity: 1 !important;
 	transform: scale(1) !important;
 }
