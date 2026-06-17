@@ -231,6 +231,10 @@ class AlbumsController extends Controller {
                 );
             }
 
+            if (!preg_match(ImmichService::UUID_PATTERN, (string)$thumbnailAssetId)) {
+                return new JSONResponse(['error' => 'Invalid thumbnail asset ID'], Http::STATUS_INTERNAL_SERVER_ERROR);
+            }
+
             $result = $this->immichService->getAssetThumbnail($thumbnailAssetId);
             $response = new DataDownloadResponse(
                 $result['body'],
