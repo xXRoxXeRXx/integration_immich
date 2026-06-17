@@ -168,6 +168,22 @@
 			</template>
 		</div>
 	</NcDialog>
+
+	<NcDialog v-if="showDeleteConfirm"
+		:name="t('integration_immich', 'Delete files')"
+		@closing="onDeleteDialogAction(false)">
+		<p style="padding: 8px 0">
+			{{ t('integration_immich', 'Are you sure you want to delete {count} file(s)? If trash is enabled in Immich, they will be moved to trash, otherwise they will be permanently deleted.', { count: deleteConfirmCount }) }}
+		</p>
+		<template #actions>
+			<NcButton variant="tertiary" @click="onDeleteDialogAction(false)">
+				{{ t('integration_immich', 'Cancel') }}
+			</NcButton>
+			<NcButton variant="error" @click="onDeleteDialogAction(true)">
+				{{ t('integration_immich', 'Delete') }}
+			</NcButton>
+		</template>
+	</NcDialog>
 </template>
 
 <script setup>
@@ -198,6 +214,9 @@ const addingToAlbum = ref(false)
 const removingFromAlbum = ref(false)
 const togglingFavorite = ref(false)
 const deleting = ref(false)
+const showDeleteConfirm = ref(false)
+const deleteConfirmCount = ref(0)
+let pendingDeleteResolve = null
 const showAlbumPicker = ref(false)
 const albums = ref([])
 const loadingAlbums = ref(false)
@@ -421,21 +440,19 @@ async function toggleFavoritesSelection() {
 	}
 }
 
+function onDeleteDialogAction(confirmed) {
+	showDeleteConfirm.value = false
+	pendingDeleteResolve?.(confirmed)
+	pendingDeleteResolve = null
+}
+
 async function deleteSelectedAssets() {
 	if (store.selectedAssetIds.size === 0 || deleting.value) return
 
+	deleteConfirmCount.value = store.selectedAssetIds.size
 	const confirmed = await new Promise((resolve) => {
-		OC.dialogs.confirm(
-			t('integration_immich', 'Are you sure you want to delete {count} file(s)? If trash is enabled in Immich, they will be moved to trash, otherwise they will be permanently deleted.', { count: store.selectedAssetIds.size }),
-			t('integration_immich', 'Delete files'),
-			(result) => resolve(result),
-			true
-		)
-		// Ensure dialog appears above any overlays
-		setTimeout(() => {
-			const dialog = document.querySelector('.oc-dialog-container')
-			if (dialog) dialog.style.zIndex = '10000'
-		}, 10)
+		pendingDeleteResolve = resolve
+		showDeleteConfirm.value = true
 	})
 
 	if (!confirmed) return
