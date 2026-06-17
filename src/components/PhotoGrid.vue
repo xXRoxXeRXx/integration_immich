@@ -55,6 +55,7 @@
 <script setup>
 import { getThumbnailUrl } from '../services/api.js'
 import { useImmichStore } from '../store/immich.js'
+import { getCanonicalLocale } from '@nextcloud/l10n'
 import VideoIcon from 'vue-material-design-icons/Play.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import HeartIcon from 'vue-material-design-icons/Heart.vue'
@@ -102,9 +103,9 @@ function formatDate(asset) {
 	const raw = asset?.localDateTime || asset?.fileCreatedAt
 	if (!raw) return ''
 	try {
-		return new Date(raw).toLocaleDateString(undefined, {
+		return new Intl.DateTimeFormat(getCanonicalLocale(), {
 			day: '2-digit', month: 'short', year: 'numeric',
-		})
+		}).format(new Date(raw))
 	} catch { return '' }
 }
 </script>
