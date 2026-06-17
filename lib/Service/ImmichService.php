@@ -130,6 +130,43 @@ class ImmichService {
     }
 
     /**
+     * Validate the given credentials without reading from or writing to config.
+     * Used by ConfigController to test new credentials before persisting them,
+     * so a failed validation never overwrites a previously-working configuration.
+     */
+    public function validateConnectionWithCredentials(string $serverUrl, string $apiKey): array {
+        $client = $this->clientService->newClient();
+        $url = rtrim($serverUrl, '/') . '/api/auth/validateToken';
+
+        try {
+            $response = $client->post($url, [
+                'headers' => [
+                    'x-api-key' => $apiKey,
+                    'Accept'    => 'application/json',
+                ],
+                'http_errors' => false,
+                'timeout'     => 60,
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            if ($statusCode < 200 || $statusCode >= 300) {
+                return ['success' => false, 'error' => 'HTTP ' . $statusCode];
+            }
+
+            $decoded = json_decode($response->getBody(), true) ?? [];
+            $missingPermissions = $this->detectMissingPermissions($decoded);
+
+            return [
+                'success'             => true,
+                'data'                => $decoded,
+                'missing_permissions' => $missingPermissions,
+            ];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Compare the permissions granted to the API key against those required
      * by the integration. Returns a (possibly empty) list of missing permission strings.
      */
@@ -521,20 +558,31 @@ class ImmichService {
 
         try {
             $response = $client->get($url, [
-                'headers' => ['x-api-key' => $this->getApiKey()],
-                'timeout' => 60,
+                'headers'     => ['x-api-key' => $this->getApiKey()],
+                'timeout'     => 60,
+                'http_errors' => false,
             ]);
-            return [
-                'body' => $response->getBody(),
-                'contentType' => $response->getHeader('Content-Type'),
-            ];
         } catch (\Exception $e) {
             $this->logger->error('Immich binary request failed: ' . $e->getMessage(), [
-                'app' => Application::APP_ID,
+                'app'      => Application::APP_ID,
                 'endpoint' => $endpoint,
             ]);
             throw $e;
         }
+
+        $statusCode = $response->getStatusCode();
+        if ($statusCode < 200 || $statusCode >= 300) {
+            $this->logger->error('Immich binary request returned HTTP ' . $statusCode . ' for ' . $endpoint, [
+                'app'      => Application::APP_ID,
+                'endpoint' => $endpoint,
+            ]);
+            throw new \RuntimeException('Immich API error: HTTP ' . $statusCode);
+        }
+
+        return [
+            'body'        => $response->getBody(),
+            'contentType' => $response->getHeader('Content-Type'),
+        ];
     }
 
     private function requestBinaryPost(string $endpoint, array $body): array {
@@ -544,22 +592,33 @@ class ImmichService {
         try {
             $response = $client->post($url, [
                 'headers' => [
-                    'x-api-key' => $this->getApiKey(),
+                    'x-api-key'    => $this->getApiKey(),
                     'Content-Type' => 'application/json',
-                    'Accept' => 'application/octet-stream',
+                    'Accept'       => 'application/octet-stream',
                 ],
-                'body' => json_encode($body),
+                'body'        => json_encode($body),
+                'http_errors' => false,
             ]);
-            return [
-                'body' => $response->getBody(),
-                'contentType' => $response->getHeader('Content-Type') ?: 'application/zip',
-            ];
         } catch (\Exception $e) {
             $this->logger->error('Immich binary POST request failed: ' . $e->getMessage(), [
-                'app' => Application::APP_ID,
+                'app'      => Application::APP_ID,
                 'endpoint' => $endpoint,
             ]);
             throw $e;
         }
+
+        $statusCode = $response->getStatusCode();
+        if ($statusCode < 200 || $statusCode >= 300) {
+            $this->logger->error('Immich binary POST request returned HTTP ' . $statusCode . ' for ' . $endpoint, [
+                'app'      => Application::APP_ID,
+                'endpoint' => $endpoint,
+            ]);
+            throw new \RuntimeException('Immich API error: HTTP ' . $statusCode);
+        }
+
+        return [
+            'body'        => $response->getBody(),
+            'contentType' => $response->getHeader('Content-Type') ?: 'application/zip',
+        ];
     }
 }

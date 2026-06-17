@@ -44,19 +44,15 @@ class ConfigController extends Controller {
         $apiKey = $this->request->getParam('api_key');
         $validate = $this->request->getParam('validate', false);
 
-        if ($serverUrl !== null) {
-            try {
-                $this->immichService->setServerUrl($serverUrl);
-            } catch (\InvalidArgumentException $e) {
-                return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
-            }
-        }
-        if ($apiKey !== null && $apiKey !== '') {
-            $this->immichService->setApiKey($apiKey);
-        }
+        $doValidate = $validate === true || $validate === 'true' || $validate === '1';
 
-        if ($validate === true || $validate === 'true' || $validate === '1') {
-            $result = $this->immichService->validateConnection();
+        // Validate-first: test the new credentials before writing to config so that
+        // a failed validation never overwrites a previously-working configuration.
+        if ($doValidate) {
+            $urlToTest = $serverUrl !== null ? $serverUrl : $this->immichService->getServerUrl();
+            $keyToTest = ($apiKey !== null && $apiKey !== '') ? $apiKey : $this->immichService->getApiKey();
+
+            $result = $this->immichService->validateConnectionWithCredentials($urlToTest, $keyToTest);
             if (!$result['success']) {
                 $errorMsg = $result['error'] ?? 'unknown';
                 $this->logger->warning('Immich connection validation failed: ' . $errorMsg, [
@@ -75,7 +71,21 @@ class ConfigController extends Controller {
                     Http::STATUS_BAD_REQUEST
                 );
             }
+        }
 
+        // Only persist after successful validation (or when validation is not requested).
+        if ($serverUrl !== null) {
+            try {
+                $this->immichService->setServerUrl($serverUrl);
+            } catch (\InvalidArgumentException $e) {
+                return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            }
+        }
+        if ($apiKey !== null && $apiKey !== '') {
+            $this->immichService->setApiKey($apiKey);
+        }
+
+        if ($doValidate) {
             $missingPermissions = $result['missing_permissions'] ?? [];
             if (!empty($missingPermissions)) {
                 $this->logger->warning('Immich API key is missing required permissions: ' . implode(', ', $missingPermissions), [
