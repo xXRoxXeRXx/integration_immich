@@ -222,24 +222,17 @@
 							{{ t('integration_immich', 'New album') }}
 						</div>
 						<div v-else class="ic-lb-album-panel__new-form">
-							<input
+							<NcTextField
 								ref="newAlbumInputEl"
 								v-model="newAlbumName"
-								class="ic-lb-album-panel__new-input"
+								:label="t('integration_immich', 'Album name')"
 								:placeholder="t('integration_immich', 'Album name …')"
+								:show-trailing-button="!!newAlbumName.trim() && !creatingNewAlbum"
+								trailing-button-icon="arrowEnd"
+								:trailing-button-label="t('integration_immich', 'Create album')"
 								@keyup.enter="createAndAdd"
 								@keyup.escape="creatingAlbum = false"
-							>
-							<button class="ic-lb-album-panel__new-btn"
-								:disabled="!newAlbumName.trim() || creatingNewAlbum"
-								@click.stop="createAndAdd">
-								<svg v-if="!creatingNewAlbum" viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor" aria-hidden="true">
-									<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-								</svg>
-								<svg v-else viewBox="0 0 24 24" class="ic-lb-spin" style="width:16px;height:16px;fill:currentColor" aria-hidden="true">
-									<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" />
-								</svg>
-							</button>
+								@trailing-button-click="createAndAdd" />
 						</div>
 						<p v-if="albums.length === 0" class="ic-lb-info__empty">{{ t('integration_immich', 'No albums available') }}</p>
 						<NcListItem v-for="album in albums"
@@ -279,7 +272,7 @@ import { useImmichStore } from '../store/immich.js'
 import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset, createAlbum, deleteAssets } from '../services/api.js'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { translate as t, getCanonicalLocale } from '@nextcloud/l10n'
-import { NcButton, NcDialog, NcLoadingIcon, NcListItem } from '@nextcloud/vue'
+import { NcButton, NcDialog, NcLoadingIcon, NcListItem, NcTextField } from '@nextcloud/vue'
 import { useFormatTime } from '@nextcloud/vue/composables/useFormatDateTime'
 import { logger } from '../services/logger.js'
 
@@ -1095,58 +1088,6 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 }
 
 .ic-lb-album-panel__new-form {
-	display: flex;
-	gap: 6px;
 	padding: 4px 20px 14px;
-}
-
-.ic-lb-album-panel__new-input {
-	all: unset;
-	box-sizing: border-box;
-	flex: 1;
-	background: rgba(255,255,255,0.06);
-	border: 1px solid rgba(255,255,255,0.14);
-	border-radius: 8px;
-	padding: 8px 12px;
-	color: #fff;
-	font-size: 13px;
-	transition: border-color 0.15s, background 0.15s;
-}
-
-.ic-lb-album-panel__new-input::placeholder {
-	color: rgba(255,255,255,0.3);
-}
-
-.ic-lb-album-panel__new-input:focus {
-	border-color: rgba(120,180,255,0.5);
-	background: rgba(255,255,255,0.09);
-	outline: none;
-}
-
-.ic-lb-album-panel__new-btn {
-	all: unset;
-	box-sizing: border-box;
-	cursor: pointer;
-	width: 36px;
-	height: 36px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: rgba(120,180,255,0.15);
-	border: 1px solid rgba(120,180,255,0.25);
-	border-radius: 8px;
-	color: rgba(160,210,255,0.9);
-	transition: background 0.15s, border-color 0.15s;
-	flex-shrink: 0;
-}
-
-.ic-lb-album-panel__new-btn:hover:not(:disabled) {
-	background: rgba(120,180,255,0.25);
-	border-color: rgba(120,180,255,0.45);
-}
-
-.ic-lb-album-panel__new-btn:disabled {
-	opacity: 0.3;
-	cursor: default;
 }
 </style>
