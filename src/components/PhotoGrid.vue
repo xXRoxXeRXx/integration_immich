@@ -11,7 +11,7 @@
 				'photo-grid__item--selected': selectable && store.selectedAssetIds.has(asset.id),
 				'photo-grid__item--selection-mode': selectable && store.isSelectionMode,
 			}"
-			@click="handleClick(asset, index)">
+			@click="handleClick(asset, index, $event)">
 
 			<!-- Skeleton shown until image loads -->
 			<div class="photo-grid__skeleton" />
@@ -48,7 +48,6 @@
 				:aria-label="t('integration_immich', 'Select photo')"
 				class="photo-grid__checkbox"
 				:class="{ 'photo-grid__checkbox--checked': store.selectedAssetIds.has(asset.id) }"
-				@click.stop
 				@update:model-value="onCheckboxClick(asset)" />
 		</div>
 	</div>
@@ -76,7 +75,11 @@ const props = defineProps({
 const emit = defineEmits(['click'])
 const store = useImmichStore()
 
-function handleClick(asset, index) {
+function handleClick(asset, index, event) {
+	// If the click originated from the checkbox element, let onCheckboxClick handle it
+	// to avoid double-toggling (label click + bubbled parent click)
+	if (event?.target?.closest('.photo-grid__checkbox')) return
+
 	if (props.selectable && store.isSelectionMode) {
 		store.toggleAssetSelection(asset.id)
 	} else {
