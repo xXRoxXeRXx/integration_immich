@@ -285,8 +285,9 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useImmichStore } from '../store/immich.js'
 import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset, createAlbum, deleteAssets } from '../services/api.js'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, getCanonicalLocale } from '@nextcloud/l10n'
 import { NcButton, NcDialog, NcLoadingIcon } from '@nextcloud/vue'
+import { useFormatTime } from '@nextcloud/vue/composables/useFormatDateTime'
 import { logger } from '../services/logger.js'
 
 const store = useImmichStore()
@@ -434,14 +435,27 @@ function formatDate(asset) {
 	const raw = asset?.localDateTime || asset?.fileCreatedAt || asset?.exifInfo?.dateTimeOriginal
 	if (!raw) return ''
 	try {
-		return new Date(raw).toLocaleDateString(undefined, {
+		return new Intl.DateTimeFormat(getCanonicalLocale(), {
 			year: 'numeric', month: 'long', day: 'numeric',
 			hour: '2-digit', minute: '2-digit',
-		})
+		}).format(new Date(raw))
 	} catch { return '' }
 }
 
-const captionDate = computed(() => formatDate(currentAsset.value))
+// Reactive formatted date for the lightbox caption using NC locale
+const _captionTimestamp = computed(() => {
+	const asset = currentAsset.value
+	const raw = asset?.localDateTime || asset?.fileCreatedAt || asset?.exifInfo?.dateTimeOriginal
+	return raw ? new Date(raw) : new Date(0)
+})
+const _captionDateFormatted = useFormatTime(_captionTimestamp, {
+	format: { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' },
+})
+const captionDate = computed(() => {
+	const asset = currentAsset.value
+	const raw = asset?.localDateTime || asset?.fileCreatedAt || asset?.exifInfo?.dateTimeOriginal
+	return raw ? _captionDateFormatted.value : ''
+})
 
 const infoRows = computed(() => {
 	const asset = currentAsset.value
