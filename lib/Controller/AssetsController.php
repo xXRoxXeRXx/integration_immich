@@ -296,7 +296,7 @@ class AssetsController extends Controller {
                 // Single asset → GET /api/assets/{id}/original
                 $assetId = (string) $assetIds[0];
                 $asset = $this->immichService->getAsset($assetId);
-                $fileName = $asset['originalFileName'] ?? ($assetId . '.bin');
+                $fileName = basename($asset['originalFileName'] ?? ($assetId . '.bin'));
 
                 $result = $this->immichService->getAssetOriginal($assetId);
                 $response = new DataDownloadResponse(
@@ -401,7 +401,7 @@ class AssetsController extends Controller {
             try {
                 // Fetch metadata to get the original filename
                 $asset = $this->immichService->getAsset((string)$assetId);
-                $fileName = $asset['originalFileName'] ?? ($assetId . '.bin');
+                $fileName = basename($asset['originalFileName'] ?? ($assetId . '.bin'));
 
                 // Ensure unique filename in target folder
                 $fileName = $this->getUniqueFileName($targetNode, (string)$fileName);
