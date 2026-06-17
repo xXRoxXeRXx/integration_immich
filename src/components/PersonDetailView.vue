@@ -285,7 +285,12 @@ watch(scrollContainer, (el) => {
 	}
 })
 
-onMounted(load)
+onMounted(() => {
+	load()
+	if (store.people.length === 0) {
+		store.fetchPeople()
+	}
+})
 watch(() => props.id, load)
 
 onBeforeUnmount(() => {
