@@ -689,6 +689,7 @@ function close() {
 
 function onKey(e) {
 	if (e.key === 'Escape') {
+		if (creatingAlbum.value) { creatingAlbum.value = false; return }
 		if (zoomLevel.value > 1) { resetZoom(); return }
 		close()
 	} else if (e.key === 'ArrowLeft') navigate(-1)
