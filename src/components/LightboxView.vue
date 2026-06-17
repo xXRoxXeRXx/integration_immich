@@ -25,12 +25,8 @@
 						:disabled="savingToNc"
 						@click.stop="saveCurrentToNextcloud"
 					>
-						<svg v-if="!savingToNc" viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M15 9H5V5h10m-3 14a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3m5-16H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7z" />
-						</svg>
-						<svg v-else viewBox="0 0 24 24" aria-hidden="true" class="ic-lb-spin">
-							<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" />
-						</svg>
+						<NcLoadingIcon v-if="savingToNc" :size="20" />
+						<NcIconSvgWrapper v-else path="M15 9H5V5h10m-3 14a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3m5-16H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7z" />
 					</button>
 					<button
 						v-if="currentAsset"
@@ -40,12 +36,8 @@
 						:disabled="downloadingAsset"
 						@click.stop="downloadCurrent"
 					>
-						<svg v-if="!downloadingAsset" viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7z" />
-						</svg>
-						<svg v-else viewBox="0 0 24 24" aria-hidden="true" class="ic-lb-spin">
-							<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" />
-						</svg>
+						<NcLoadingIcon v-if="downloadingAsset" :size="20" />
+						<NcIconSvgWrapper v-else path="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7z" />
 					</button>
 					<button
 						v-if="currentAsset"
@@ -55,13 +47,11 @@
 						:disabled="togglingFavorite"
 						@click.stop="toggleFavorite"
 					>
-						<svg v-if="!togglingFavorite" viewBox="0 0 24 24" aria-hidden="true">
-							<path v-if="isFavorite" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54z" fill="currentColor" />
-							<path v-else d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z" fill="currentColor" />
-						</svg>
-						<svg v-else viewBox="0 0 24 24" aria-hidden="true" class="ic-lb-spin">
-							<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" fill="currentColor" />
-						</svg>
+						<NcLoadingIcon v-if="togglingFavorite" :size="20" />
+						<NcIconSvgWrapper v-else
+							:path="isFavorite
+								? 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54z'
+								: 'M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z'" />
 					</button>
 					<button
 						v-if="currentAsset"
@@ -71,12 +61,8 @@
 						:disabled="addingToAlbum"
 						@click.stop="toggleAlbumPanel()"
 					>
-						<svg v-if="!addingToAlbum" viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2m-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3z" />
-						</svg>
-						<svg v-else viewBox="0 0 24 24" aria-hidden="true" class="ic-lb-spin">
-							<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" />
-						</svg>
+						<NcLoadingIcon v-if="addingToAlbum" :size="20" />
+						<NcIconSvgWrapper v-else path="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2m-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3z" />
 					</button>
 					<button
 						v-if="currentAsset"
@@ -86,12 +72,8 @@
 						:disabled="deletingAsset"
 						@click.stop="deleteCurrent"
 					>
-						<svg v-if="!deletingAsset" viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6z" />
-						</svg>
-						<svg v-else viewBox="0 0 24 24" aria-hidden="true" class="ic-lb-spin">
-							<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" fill="currentColor" />
-						</svg>
+						<NcLoadingIcon v-if="deletingAsset" :size="20" />
+						<NcIconSvgWrapper v-else path="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6z" />
 					</button>
 					<button
 						class="ic-lb-btn"
@@ -99,14 +81,10 @@
 						:title="t('integration_immich', 'Info')"
 						@click.stop="showAlbumPanel = false; showInfo = !showInfo"
 					>
-						<svg viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M13 9h-2V7h2m0 10h-2v-6h2m-1-9A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z" />
-						</svg>
+						<NcIconSvgWrapper path="M13 9h-2V7h2m0 10h-2v-6h2m-1-9A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z" />
 					</button>
 					<button class="ic-lb-btn" :title="t('integration_immich', 'Close')" @click.stop="close">
-						<svg viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-						</svg>
+						<NcIconSvgWrapper path="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
 					</button>
 				</div>
 			</div>
@@ -183,9 +161,7 @@
 					</button>
 					<!-- Loading spinner while EXIF is being fetched -->
 					<div v-if="fetchingInfo" class="ic-lb-album-panel__loading">
-						<svg viewBox="0 0 24 24" class="ic-lb-spin ic-lb-album-panel__spinner" aria-hidden="true">
-							<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" fill="currentColor" />
-						</svg>
+						<NcLoadingIcon :size="24" />
 					</div>
 					<template v-else>
 						<div v-for="[label, val] in infoRows" :key="label" class="ic-lb-info__row">
@@ -201,24 +177,18 @@
 			<Transition name="ic-lb-slide">
 				<div v-if="showAlbumPanel" class="ic-lb-info ic-lb-album-panel" @click.stop>
 					<button class="ic-lb-panel-close" :title="t('integration_immich', 'Close')" @click.stop="showAlbumPanel = false">
-						<svg viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-						</svg>
+						<NcIconSvgWrapper path="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
 					</button>
 					<p class="ic-lb-album-panel__title">{{ t('integration_immich', 'Add to album') }}</p>
 					<div v-if="loadingAlbums" class="ic-lb-album-panel__loading">
-						<svg viewBox="0 0 24 24" class="ic-lb-spin ic-lb-album-panel__spinner" aria-hidden="true">
-							<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" fill="currentColor" />
-						</svg>
+						<NcLoadingIcon :size="24" />
 					</div>
 					<template v-else>
 						<!-- Neues Album erstellen -->
 						<div v-if="!creatingAlbum"
 							class="ic-lb-album-panel__item ic-lb-album-panel__item--new"
 							@click.stop="creatingAlbum = true">
-							<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor;flex-shrink:0" aria-hidden="true">
-								<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
-							</svg>
+							<NcIconSvgWrapper path="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" :size="16" />
 							{{ t('integration_immich', 'New album') }}
 						</div>
 						<div v-else class="ic-lb-album-panel__new-form">
@@ -272,7 +242,7 @@ import { useImmichStore } from '../store/immich.js'
 import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset, createAlbum, deleteAssets } from '../services/api.js'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { translate as t, getCanonicalLocale } from '@nextcloud/l10n'
-import { NcButton, NcDialog, NcLoadingIcon, NcListItem, NcTextField } from '@nextcloud/vue'
+import { NcButton, NcDialog, NcLoadingIcon, NcListItem, NcTextField, NcIconSvgWrapper } from '@nextcloud/vue'
 import { useFormatTime } from '@nextcloud/vue/composables/useFormatDateTime'
 import { logger } from '../services/logger.js'
 
@@ -800,14 +770,6 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	transition: color 0.15s, background 0.15s;
 }
 
-.ic-lb-btn svg {
-	width: 20px;
-	height: 20px;
-	fill: currentColor;
-	pointer-events: none;
-	display: block;
-}
-
 .ic-lb-btn:hover {
 	color: #fff;
 	background: rgba(255,255,255,0.08);
@@ -821,15 +783,6 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 .ic-lb-btn:disabled {
 	opacity: 0.3;
 	cursor: default;
-}
-
-@keyframes ic-lb-spin {
-	to { transform: rotate(360deg); }
-}
-
-.ic-lb-spin {
-	animation: ic-lb-spin 0.75s linear infinite;
-	transform-origin: center;
 }
 
 /* ---- Nav arrows ---- */
@@ -1049,11 +1002,6 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	display: flex;
 	justify-content: center;
 	padding: 32px 0;
-}
-
-.ic-lb-album-panel__spinner {
-	width: 24px;
-	height: 24px;
 }
 
 .ic-lb-album-panel__item {
