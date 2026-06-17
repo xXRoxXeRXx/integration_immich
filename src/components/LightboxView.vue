@@ -779,6 +779,21 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	transition: color 0.15s, background 0.15s;
 }
 
+/* NcIconSvgWrapper renders a <span> containing an <svg> — fix color + centering */
+.ic-lb-btn :deep(.icon-svg-wrapper) {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	line-height: 0;
+}
+
+.ic-lb-btn :deep(svg) {
+	fill: currentColor;
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+}
+
 .ic-lb-btn:hover {
 	color: #fff;
 	background: rgba(255,255,255,0.08);
