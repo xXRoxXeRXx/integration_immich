@@ -106,6 +106,7 @@ import { NcButton, NcLoadingIcon, NcModal } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { showError } from '@nextcloud/dialogs'
 import { getTimeline, getThumbnailUrl } from '../services/api.js'
+import { logger } from '../services/logger.js'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import CheckAllIcon from 'vue-material-design-icons/CheckAll.vue'
 import PlayIcon from 'vue-material-design-icons/Play.vue'
@@ -237,7 +238,8 @@ async function loadBucket(timeBucket) {
 		const res = await getTimeline({ timeBucket, size: 'MONTH' })
 		assetsCache.value = { ...assetsCache.value, [timeBucket]: Array.isArray(res.data) ? res.data : [] }
 	} catch (e) {
-		// Remove the failed bucket so re-scrolling back can retry it
+		// Log the technical error; remove the failed bucket so re-scrolling can retry
+		logger.error('Failed to load asset picker bucket: ' + timeBucket, { error: e })
 		const updated = { ...assetsCache.value }
 		delete updated[timeBucket]
 		assetsCache.value = updated

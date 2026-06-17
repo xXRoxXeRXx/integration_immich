@@ -287,6 +287,7 @@ import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToN
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import { NcButton, NcDialog, NcLoadingIcon } from '@nextcloud/vue'
+import { logger } from '../services/logger.js'
 
 const store = useImmichStore()
 const overlayEl = ref(null)
@@ -477,8 +478,9 @@ async function ensureExifInfo() {
 			// Use store action to avoid direct mutation
 			store.patchLightboxAsset(currentIndex.value, { ...asset, ...full })
 		}
-	} catch {
-		// silently ignore — info panel shows "Keine Metadaten"
+	} catch (e) {
+		// Log technical details; info panel shows "No metadata available" to the user
+		logger.error('Failed to fetch EXIF info for asset ' + asset.id, { error: e })
 	} finally {
 		fetchingInfo.value = false
 	}
