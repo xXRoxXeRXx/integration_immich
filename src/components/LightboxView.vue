@@ -779,18 +779,23 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	transition: color 0.15s, background 0.15s;
 }
 
-/* NcIconSvgWrapper renders a <span> containing an <svg> — fix color + centering */
-.ic-lb-btn :deep(.icon-svg-wrapper) {
+/* NcIconSvgWrapper renders a <span class="icon-vue"> — override its min-size and fix centering */
+.ic-lb-btn :deep(.icon-vue) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	min-width: unset;
+	min-height: unset;
 	line-height: 0;
 }
 
-.ic-lb-btn :deep(svg) {
+/* Ensure SVG inherits the button's white color and stays at 20px */
+.ic-lb-btn :deep(.icon-vue svg) {
 	fill: currentColor;
 	width: 20px;
 	height: 20px;
+	max-width: 20px;
+	max-height: 20px;
 	flex-shrink: 0;
 }
 
