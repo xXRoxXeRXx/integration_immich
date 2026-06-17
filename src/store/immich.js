@@ -378,6 +378,13 @@ export const useImmichStore = defineStore('immich', {
 			this.isSelectionMode = false
 		},
 
+		// ---- Cache invalidation ----
+
+		invalidateFavoriteCache() {
+			this.favoriteBuckets = []
+			this.favoriteAssets = {}
+		},
+
 		// ---- Asset patching ----
 
 		// Update isFavorite in-place across ALL loaded caches so the UI reflects

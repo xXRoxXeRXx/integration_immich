@@ -409,8 +409,7 @@ async function toggleFavoritesSelection() {
 			)
 		}
 		// Invalidate favorites cache and immediately reload if currently on favorites view
-		store.favoriteBuckets = []
-		store.favoriteAssets = {}
+		store.invalidateFavoriteCache()
 		if (route.name === 'favorites') {
 			await store.fetchFavoriteBuckets()
 		}
