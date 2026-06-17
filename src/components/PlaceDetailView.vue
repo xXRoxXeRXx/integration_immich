@@ -19,12 +19,11 @@
 		<template v-else>
 			<!-- Sticky header -->
 			<div class="place-detail__header">
-				<NcButton variant="tertiary" @click="goBack">
-					<template #icon>
-						<ArrowLeftIcon :size="20" />
-					</template>
-					{{ t('integration_immich', 'Back') }}
-				</NcButton>
+				<!-- Breadcrumb navigation -->
+				<NcBreadcrumbs>
+					<NcBreadcrumb :name="t('integration_immich', 'Explore')" @click="goBack" />
+					<NcBreadcrumb :name="props.value" :title="props.value" />
+				</NcBreadcrumbs>
 				<div class="place-detail__title">
 					<h2>{{ props.value }}</h2>
 					<span class="place-detail__count">
@@ -54,12 +53,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { NcButton, NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
+import { NcEmptyContent, NcLoadingIcon, NcBreadcrumbs, NcBreadcrumb } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { useImmichStore } from '../store/immich.js'
 import PhotoGrid from './PhotoGrid.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
-import ArrowLeftIcon from 'vue-material-design-icons/ArrowLeft.vue'
 import MapMarkerIcon from 'vue-material-design-icons/MapMarker.vue'
 
 const props = defineProps({

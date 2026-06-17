@@ -1,5 +1,5 @@
 <!--
-  - SPDX-FileCopyrightText: 2026 Marcel Meyer <gh@grenzallee.eu>
+  - SPDX-FileCopyright: 2026 Marcel Meyer <gh@grenzallee.eu>
   - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <template>
@@ -20,12 +20,11 @@
 		<template v-else>
 			<!-- Sticky header with back button + person info -->
 			<div class="person-detail__header">
-				<NcButton variant="tertiary" @click="goBack">
-					<template #icon>
-						<ArrowLeftIcon :size="20" />
-					</template>
-					{{ t('integration_immich', 'Back') }}
-				</NcButton>
+				<!-- Breadcrumb navigation -->
+				<NcBreadcrumbs>
+					<NcBreadcrumb :name="t('integration_immich', 'People')" @click="goBack" />
+					<NcBreadcrumb :name="personName" :title="personName" />
+				</NcBreadcrumbs>
 				<div class="person-detail__title">
 					<img :src="getPersonThumbnailUrl(props.id)"
 						class="person-detail__avatar"
@@ -84,13 +83,12 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { NcButton, NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
+import { NcEmptyContent, NcLoadingIcon, NcBreadcrumbs, NcBreadcrumb } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { useImmichStore } from '../store/immich.js'
 import { getPersonThumbnailUrl } from '../services/api.js'
 import PhotoGrid from './PhotoGrid.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
-import ArrowLeftIcon from 'vue-material-design-icons/ArrowLeft.vue'
 import AccountIcon from 'vue-material-design-icons/Account.vue'
 
 const props = defineProps({
