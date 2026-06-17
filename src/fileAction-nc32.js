@@ -13,6 +13,7 @@ import { generateUrl } from '@nextcloud/router'
 import { translate as t } from '@nextcloud/l10n'
 import axios from '@nextcloud/axios'
 import { showSuccess, showError } from '@nextcloud/dialogs'
+import { showBatchProgress } from './services/uploadProgress.js'
 
 const immichSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>'
 
@@ -57,6 +58,8 @@ registerFileAction(new FileAction({
 	async execBatch(nodes, view, dir) {
 		const CONCURRENCY = 3
 		const results = new Array(nodes.length).fill(null)
+		let completed = 0
+		const progress = showBatchProgress(nodes.length)
 
 		let index = 0
 		async function runWorker() {
@@ -68,11 +71,14 @@ registerFileAction(new FileAction({
 				} catch {
 					results[i] = false
 				}
+				completed++
+				progress.update(completed)
 			}
 		}
 
 		const workers = Array.from({ length: Math.min(CONCURRENCY, nodes.length) }, runWorker)
 		await Promise.all(workers)
+		progress.close()
 
 		const successCount = results.filter(Boolean).length
 		const failCount = results.length - successCount
