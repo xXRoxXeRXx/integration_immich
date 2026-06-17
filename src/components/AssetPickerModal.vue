@@ -3,14 +3,14 @@
   - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <template>
-	<Teleport to="body">
-		<div class="asset-picker-overlay" @click.self="$emit('cancel')">
-		<div class="asset-picker-modal">
-			<!-- Header -->
-			<div class="asset-picker-modal__header">
-				<h3 class="asset-picker-modal__title">
-					{{ t('integration_immich', 'Select photos for "{name}"', { name: albumName }) }}
-				</h3>
+	<NcModal
+		:name="modalTitle"
+		:show="true"
+		size="large"
+		@close="$emit('cancel')">
+		<template #default>
+			<!-- Sub-title / selection count -->
+			<div class="asset-picker-modal__subheader">
 				<span class="asset-picker-modal__hint">
 					{{ selectedIds.size > 0
 						? t('integration_immich', '{count} selected', { count: selectedIds.size })
@@ -96,14 +96,13 @@
 					{{ t('integration_immich', 'Add ({count})', { count: selectedIds.size }) }}
 				</NcButton>
 			</div>
-		</div>
-	</div>
-	</Teleport>
+		</template>
+	</NcModal>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
+import { NcButton, NcLoadingIcon, NcModal } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { showError } from '@nextcloud/dialogs'
 import { getTimeline, getThumbnailUrl } from '../services/api.js'
@@ -118,6 +117,8 @@ const props = defineProps({
 })
 
 defineEmits(['confirm', 'cancel'])
+
+const modalTitle = computed(() => t('integration_immich', 'Select photos for "{name}"', { name: props.albumName }))
 
 // --- Selection state (local, no global store) ---
 const selectedIds = ref(new Set())
@@ -312,40 +313,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.asset-picker-overlay {
-	position: fixed;
-	inset: 0;
-	z-index: 9999;
-	background: rgba(0, 0, 0, 0.65);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.asset-picker-modal {
-	background: var(--color-main-background);
-	border-radius: 12px;
-	display: flex;
-	flex-direction: column;
-	width: min(90vw, 960px);
-	height: min(85vh, 720px);
-	overflow: hidden;
-	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-}
-
-.asset-picker-modal__header {
-	display: flex;
-	align-items: baseline;
-	gap: 12px;
-	padding: 16px 24px;
-	border-bottom: 1px solid var(--color-border);
-	flex-shrink: 0;
-}
-
-.asset-picker-modal__title {
-	margin: 0;
-	font-size: 18px;
-	font-weight: 600;
+.asset-picker-modal__subheader {
+	padding: 4px 0 12px;
 }
 
 .asset-picker-modal__hint {
