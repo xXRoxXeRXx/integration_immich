@@ -303,11 +303,13 @@ function evictDistantBuckets(currentIndices) {
 		currentIndices.map(i => buckets.value[i].timeBucket),
 	)
 
+	let remaining = loadedKeys.length
 	// Evict buckets that are loaded but far from current view
 	for (const key of loadedKeys) {
+		if (remaining <= MAX_LOADED_BUCKETS) break
 		if (visibleKeys.has(key)) continue
-		if (loadedKeys.length <= MAX_LOADED_BUCKETS) break
 		unloadBucket(key)
+		remaining--
 	}
 }
 
