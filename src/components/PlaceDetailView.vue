@@ -81,7 +81,12 @@ function fieldToKey(field) {
 
 const filteredAssets = computed(() => {
 	const key = fieldToKey(props.field)
-	return store.mapMarkers.filter(m => m[key] === props.value)
+	return store.mapMarkers.filter(m => {
+		// Support both flat top-level key (m.city) and nested path (m.exifInfo?.city)
+		if (m[key] !== undefined) return m[key] === props.value
+		const nested = props.field.split('.').reduce((obj, part) => obj?.[part], m)
+		return nested === props.value
+	})
 })
 
 const loadingMarkers = ref(false)
