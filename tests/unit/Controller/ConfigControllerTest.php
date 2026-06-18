@@ -93,7 +93,9 @@ class ConfigControllerTest extends TestCase {
 			['validate', false, true],
 		]);
 
-		$this->immichService->method('validateConnection')->willReturn(['success' => true, 'data' => []]);
+		$this->immichService->method('getServerUrl')->willReturn('https://photos.example.com');
+		$this->immichService->method('getApiKey')->willReturn('my-api-key');
+		$this->immichService->method('validateConnectionWithCredentials')->willReturn(['success' => true, 'data' => []]);
 
 		$response = $this->controller->setConfig();
 
@@ -108,7 +110,9 @@ class ConfigControllerTest extends TestCase {
 			['validate', false, true],
 		]);
 
-		$this->immichService->method('validateConnection')->willReturn(['success' => false, 'error' => 'Connection refused']);
+		$this->immichService->method('getServerUrl')->willReturn('https://photos.example.com');
+		$this->immichService->method('getApiKey')->willReturn('my-api-key');
+		$this->immichService->method('validateConnectionWithCredentials')->willReturn(['success' => false, 'error' => 'Connection refused']);
 
 		$response = $this->controller->setConfig();
 
