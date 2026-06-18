@@ -38,6 +38,9 @@ jobs:
           # NC 30 does not support PHP 8.4
           - php-versions: '8.4'
             server-versions: 'stable30'
+          # NC master requires PHP 8.3+
+          - php-versions: '8.2'
+            server-versions: 'master'
 
     name: php${{ matrix.php-versions }}-${{ matrix.databases }}-${{ matrix.server-versions }}
 
