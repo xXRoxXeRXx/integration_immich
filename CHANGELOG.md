@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.6] - 2026-06-18
+
+### Fixed
+
+- App: removed undefined `mobileMenuOpen` ref in route-change watcher — prevented `ReferenceError` on navigation
+- App: restored responsive CSS for `selection-actions-desktop` — secondary action buttons now hidden on mobile (≤ 680 px) so the overflow menu is correctly prioritised
+- PhotoGrid: fixed selection double-toggle on checkbox click — `handleClick` now ignores clicks originating from the checkbox element to prevent simultaneous firing of both handlers
+- PhotoGrid: replaced `box-shadow: inset` selection border with `::after` pseudo-element for reliable rendering across all browsers and virtual-scroll contexts
+- Store: `toggleAssetSelection` now mutates the `Set` in-place (`add`/`delete`) instead of replacing it — ensures Vue 3 reactive tracking fires correctly for all consumers including virtualised grids
+- LightboxView: replaced `NcIconSvgWrapper` with inline SVGs in all toolbar buttons and nav arrows — fixes icon colour (`fill: #fff`) and centering (`NcIconSvgWrapper` imposed 44 px min-size overriding button layout)
+- LightboxView: toolbar buttons, nav arrows and panel close button now have `background: transparent` — removes unintended hover/focus box drawn by Nextcloud button styles
+- DetailViews (Album, Explore, People): removed redundant `<h2>` title duplicating the breadcrumb label; photo count is now placed directly below the breadcrumb with consistent spacing
+- PersonDetailView: face avatar repositioned to the right end of the breadcrumb row
+
 ## [1.1.5] - 2026-06-11
 
 ### Security
