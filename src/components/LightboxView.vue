@@ -961,19 +961,18 @@ watch([() => store.lightbox.visible, currentIndex], ([visible]) => {
 	align-items: center;
 	justify-content: center;
 	border-radius: 8px;
-	color: rgba(255,255,255,0.6);
-	transition: color 0.15s, background 0.15s;
+	background: transparent !important;
+	transition: opacity 0.15s;
 }
 
 .ic-lb-panel-close:hover {
-	color: #fff;
-	background: rgba(255,255,255,0.1);
+	opacity: 0.65;
 }
 
 .ic-lb-panel-close svg {
 	width: 18px;
 	height: 18px;
-	fill: currentColor;
+	fill: #fff !important;
 	pointer-events: none;
 	display: block;
 }

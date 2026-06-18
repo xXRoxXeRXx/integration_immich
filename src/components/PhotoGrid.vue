@@ -138,9 +138,7 @@ function formatDate(asset) {
 	border-radius: 6px;
 	cursor: pointer;
 	background: var(--color-background-dark);
-	/* smooth selection border */
-	box-shadow: inset 0 0 0 0px var(--color-primary);
-	transition: box-shadow 0.15s ease, transform 0.18s ease;
+	transition: transform 0.18s ease;
 }
 
 .photo-grid__item:hover {
@@ -148,9 +146,15 @@ function formatDate(asset) {
 	z-index: 1;
 }
 
-/* Selected: inset border + slight scale */
-.photo-grid__item--selected {
-	box-shadow: inset 0 0 0 3px var(--color-primary);
+/* Selected: inset border via ::after — more reliable than box-shadow with overflow:hidden */
+.photo-grid__item--selected::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border: 3px solid var(--color-primary);
+	border-radius: 6px;
+	pointer-events: none;
+	z-index: 3;
 }
 
 /* ---- Skeleton ---- */

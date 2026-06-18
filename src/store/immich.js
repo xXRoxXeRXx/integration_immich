@@ -385,13 +385,11 @@ export const useImmichStore = defineStore('immich', {
 		},
 
 		toggleAssetSelection(id) {
-			const updated = new Set(this.selectedAssetIds)
-			if (updated.has(id)) {
-				updated.delete(id)
+			if (this.selectedAssetIds.has(id)) {
+				this.selectedAssetIds.delete(id)
 			} else {
-				updated.add(id)
+				this.selectedAssetIds.add(id)
 			}
-			this.selectedAssetIds = updated
 		},
 
 		clearSelection() {
