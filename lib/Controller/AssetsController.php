@@ -60,12 +60,13 @@ class AssetsController extends Controller {
             $timeBucket = $this->request->getParam('timeBucket');
             $size = $this->request->getParam('size', 'MONTH');
             $personId = $this->request->getParam('personId');
+            $albumId = $this->request->getParam('albumId');
             $assetType = $this->request->getParam('assetType');
             $isFavoriteParam = $this->request->getParam('isFavorite');
             $isFavorite = $isFavoriteParam === 'true';
 
             if ($timeBucket) {
-                $data = $this->immichService->getTimelineBucket($timeBucket, $size, $personId, null, $isFavorite);
+                $data = $this->immichService->getTimelineBucket($timeBucket, $size, $personId, $albumId, null, $isFavorite);
                 // Immich timeline/bucket does not support assetType filtering.
                 // Immich returns isImage (bool) instead of a type field — filter in PHP.
                 if ($assetType === 'IMAGE') {
@@ -80,7 +81,7 @@ class AssetsController extends Controller {
                     ));
                 }
             } else {
-                $data = $this->immichService->getTimelineBuckets($size, $personId, null, $isFavorite);
+                $data = $this->immichService->getTimelineBuckets($size, $personId, $albumId, null, $isFavorite);
             }
 
             return new JSONResponse($data);
@@ -246,6 +247,35 @@ class AssetsController extends Controller {
             return new JSONResponse($markers);
         } catch (\Exception $e) {
             return $this->errorResponse('map markers', $e);
+        }
+    }
+
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function searchLocation(): JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(
+                ['error' => 'Immich is not configured'],
+                Http::STATUS_PRECONDITION_FAILED
+            );
+        }
+
+        $field = $this->request->getParam('field', '');
+        $value = $this->request->getParam('value', '');
+        if ($field === '' || $value === '') {
+            return new JSONResponse(['error' => 'field and value are required'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $allowedFields = ['exifInfo.city', 'exifInfo.country', 'exifInfo.state', 'city', 'country', 'state'];
+        if (!in_array($field, $allowedFields, true)) {
+            return new JSONResponse(['error' => 'Invalid field'], Http::STATUS_BAD_REQUEST);
+        }
+
+        try {
+            $data = $this->immichService->searchByLocation($field, $value);
+            return new JSONResponse($data);
+        } catch (\Exception $e) {
+            return $this->errorResponse('search location', $e);
         }
     }
 

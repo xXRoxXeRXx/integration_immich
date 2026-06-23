@@ -83,6 +83,10 @@ export function getMapMarkers() {
 	return axios.get(`${baseUrl}/map/markers`)
 }
 
+export function searchByLocation(field, value) {
+	return axios.get(`${baseUrl}/search/location`, { params: { field, value } })
+}
+
 export function getExplore() {
 	return axios.get(`${baseUrl}/explore`)
 }

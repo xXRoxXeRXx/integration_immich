@@ -3,7 +3,7 @@
   - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <template>
-	<div class="photo-grid">
+	<div class="photo-grid" :class="{ 'photo-grid--masonry': layout === 'masonry' }">
 		<div v-for="(asset, index) in assets"
 			:key="asset.id"
 			class="photo-grid__item"
@@ -11,6 +11,7 @@
 				'photo-grid__item--selected': selectable && store.selectedAssetIds.has(asset.id),
 				'photo-grid__item--selection-mode': selectable && store.isSelectionMode,
 			}"
+			:style="layout === 'masonry' ? { '--item-ratio': String(getItemRatio(asset)) } : {}"
 			@click="handleClick(asset, index, $event)">
 
 			<!-- Skeleton shown until image loads -->
@@ -70,10 +71,28 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
+	layout: {
+		type: String,
+		default: 'grid', // 'grid' | 'masonry'
+	},
 })
 
 const emit = defineEmits(['click'])
 const store = useImmichStore()
+
+/**
+ * Returns the aspect ratio (width / height) for a given asset.
+ *
+ * Sources tried in order:
+ *  1. asset.ratio  — present in TimeBucketAssetResponseDto (timeline / person buckets)
+ *  2. asset.width / asset.height — present in AssetResponseDto (album detail, single-asset endpoints)
+ *  3. 1.0 — square fallback when no dimension data is available (e.g. map markers)
+ */
+function getItemRatio(asset) {
+	if (asset.ratio > 0) return asset.ratio
+	if (asset.width > 0 && asset.height > 0) return asset.width / asset.height
+	return 1
+}
 
 function handleClick(asset, index, event) {
 	// If the click originated from the checkbox element, let onCheckboxClick handle it
@@ -287,5 +306,36 @@ function formatDate(asset) {
 .photo-grid__checkbox--checked {
 	opacity: 1 !important;
 	transform: scale(1) !important;
+}
+
+/* ===================== Masonry layout ===================== */
+.photo-grid--masonry {
+	display: block;
+	column-width: 180px; /* matches grid minmax(180px, 1fr) */
+	column-gap: 3px;
+}
+
+@media (max-width: 480px) {
+	.photo-grid--masonry {
+		column-count: 2;
+		column-width: auto;
+	}
+}
+
+/*
+ * Masonry items use the actual aspect ratio from the API (width/height),
+ * instead of the forced 1:1 square used in grid mode.
+ * --item-ratio is set as an inline CSS variable per item in the template.
+ */
+.photo-grid--masonry .photo-grid__item {
+	aspect-ratio: var(--item-ratio, 1);
+	break-inside: avoid;
+	margin-bottom: 3px;
+	/* Disable the scale-on-hover transform in masonry to avoid column layout artifacts */
+	transition: none;
+}
+
+.photo-grid--masonry .photo-grid__item:hover {
+	transform: none;
 }
 </style>

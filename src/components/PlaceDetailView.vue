@@ -4,7 +4,7 @@
 -->
 <template>
 	<div class="place-detail">
-		<NcLoadingIcon v-if="loadingMarkers"
+		<NcLoadingIcon v-if="store.loading && store.placeAssets.length === 0"
 			:size="64"
 			class="place-detail__loading" />
 
@@ -23,12 +23,30 @@
 					<NcBreadcrumb :name="t('integration_immich', 'Explore')" @click="goBack" />
 					<NcBreadcrumb :name="props.value" :title="props.value" />
 				</NcBreadcrumbs>
-				<span class="place-detail__count">
-					{{ t('integration_immich', '{count} photos', { count: filteredAssets.length }) }}
-				</span>
+				<div class="place-detail__meta-row">
+					<span class="place-detail__count">
+						{{ t('integration_immich', '{count} photos', { count: store.placeAssets.length }) }}
+					</span>
+					<div class="place-detail__layout-toggle">
+						<button
+							class="place-detail__layout-btn"
+							:class="{ 'place-detail__layout-btn--active': store.gridLayout === 'grid' }"
+							:title="t('integration_immich', 'Square grid')"
+							@click="store.setGridLayout('grid')">
+							<ViewGridIcon :size="16" />
+						</button>
+						<button
+							class="place-detail__layout-btn"
+							:class="{ 'place-detail__layout-btn--active': store.gridLayout === 'masonry' }"
+							:title="t('integration_immich', 'Masonry grid')"
+							@click="store.setGridLayout('masonry')">
+							<ViewQuiltIcon :size="16" />
+						</button>
+					</div>
+				</div>
 			</div>
 
-			<NcEmptyContent v-if="filteredAssets.length === 0"
+			<NcEmptyContent v-if="store.placeAssets.length === 0 && !store.loading"
 				:name="t('integration_immich', 'No photos')"
 				:description="t('integration_immich', 'No photos found for this location.')">
 				<template #icon>
@@ -38,16 +56,17 @@
 
 			<div v-else class="place-detail__scroll">
 				<PhotoGrid
-					:assets="filteredAssets"
+					:assets="store.placeAssets"
 					:selectable="true"
-				@click="(_, idx) => store.openLightbox(filteredAssets, idx)" />
+					:layout="store.gridLayout"
+				@click="(_, idx) => store.openLightbox(store.placeAssets, idx)" />
 			</div>
 		</template>
 	</div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NcEmptyContent, NcLoadingIcon, NcBreadcrumbs, NcBreadcrumb } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
@@ -55,6 +74,8 @@ import { useImmichStore } from '../store/immich.js'
 import PhotoGrid from './PhotoGrid.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import MapMarkerIcon from 'vue-material-design-icons/MapMarker.vue'
+import ViewGridIcon from 'vue-material-design-icons/ViewGrid.vue'
+import ViewQuiltIcon from 'vue-material-design-icons/ViewQuilt.vue'
 
 const props = defineProps({
 	field: { type: String, required: true },   // e.g. "exifInfo.city"
@@ -64,33 +85,15 @@ const props = defineProps({
 const store = useImmichStore()
 const router = useRouter()
 
-function fieldToKey(field) {
-	const map = {
-		'exifInfo.city': 'city',
-		'exifInfo.country': 'country',
-		'exifInfo.state': 'state',
-	}
-	return map[field] ?? field.split('.').pop()
+function load() {
+	store.fetchPlaceAssets(props.field, props.value)
 }
 
-const filteredAssets = computed(() => {
-	const key = fieldToKey(props.field)
-	return store.mapMarkers.filter(m => {
-		// Support both flat top-level key (m.city) and nested path (m.exifInfo?.city)
-		if (m[key] !== undefined) return m[key] === props.value
-		const nested = props.field.split('.').reduce((obj, part) => obj?.[part], m)
-		return nested === props.value
-	})
+onMounted(() => {
+	load()
 })
 
-const loadingMarkers = ref(false)
-onMounted(async () => {
-	if (store.mapMarkers.length === 0) {
-		loadingMarkers.value = true
-		await store.fetchMapMarkers()
-		loadingMarkers.value = false
-	}
-})
+watch(() => [props.field, props.value], load)
 
 function goBack() {
 	router.push({ name: 'explore' })
@@ -123,6 +126,43 @@ function goBack() {
 	color: var(--color-text-maxcontrast);
 	padding-left: 4px;
 	margin-top: 2px;
+}
+
+.place-detail__meta-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 2px;
+}
+
+.place-detail__layout-toggle {
+	margin-left: auto;
+	display: flex;
+	gap: 2px;
+}
+
+.place-detail__layout-btn {
+	all: unset;
+	box-sizing: border-box;
+	width: 28px;
+	height: 28px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	color: var(--color-text-maxcontrast);
+	transition: color 0.15s ease, background 0.15s ease;
+}
+
+.place-detail__layout-btn:hover {
+	color: var(--color-main-text);
+	background: var(--color-background-hover);
+}
+
+.place-detail__layout-btn--active {
+	color: var(--color-primary);
+	background: var(--color-primary-element-light);
 }
 
 .place-detail__scroll {
