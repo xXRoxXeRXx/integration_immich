@@ -40,6 +40,7 @@
 							class="person-detail__layout-btn"
 							:class="{ 'person-detail__layout-btn--active': store.gridLayout === 'grid' }"
 							:title="t('integration_immich', 'Square grid')"
+							:aria-label="t('integration_immich', 'Square grid')"
 							@click="store.setGridLayout('grid')">
 							<ViewGridIcon :size="16" />
 						</button>
@@ -47,6 +48,7 @@
 							class="person-detail__layout-btn"
 							:class="{ 'person-detail__layout-btn--active': store.gridLayout === 'masonry' }"
 							:title="t('integration_immich', 'Masonry grid')"
+							:aria-label="t('integration_immich', 'Masonry grid')"
 							@click="store.setGridLayout('masonry')">
 							<ViewQuiltIcon :size="16" />
 						</button>
@@ -166,7 +168,10 @@ function estimateBucketHeightMasonry(count, assets = null) {
 		for (const asset of assets) {
 			const ratio = (asset.ratio > 0) ? asset.ratio : MASONRY_DEFAULT_RATIO
 			const itemHeight = colWidth / ratio
-			const minIdx = columnHeights.indexOf(Math.min(...columnHeights))
+			let minIdx = 0
+			for (let i = 1; i < columnHeights.length; i++) {
+				if (columnHeights[i] < columnHeights[minIdx]) minIdx = i
+			}
 			columnHeights[minIdx] += itemHeight + GRID_GAP
 		}
 		return HEADER_HEIGHT + Math.max(...columnHeights)
@@ -488,6 +493,11 @@ onBeforeUnmount(() => {
 .person-detail__layout-btn:hover {
 	color: var(--color-main-text);
 	background: var(--color-background-hover);
+}
+
+.person-detail__layout-btn:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
 }
 
 .person-detail__layout-btn--active {

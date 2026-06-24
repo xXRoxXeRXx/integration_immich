@@ -32,6 +32,7 @@
 							class="place-detail__layout-btn"
 							:class="{ 'place-detail__layout-btn--active': store.gridLayout === 'grid' }"
 							:title="t('integration_immich', 'Square grid')"
+							:aria-label="t('integration_immich', 'Square grid')"
 							@click="store.setGridLayout('grid')">
 							<ViewGridIcon :size="16" />
 						</button>
@@ -39,6 +40,7 @@
 							class="place-detail__layout-btn"
 							:class="{ 'place-detail__layout-btn--active': store.gridLayout === 'masonry' }"
 							:title="t('integration_immich', 'Masonry grid')"
+							:aria-label="t('integration_immich', 'Masonry grid')"
 							@click="store.setGridLayout('masonry')">
 							<ViewQuiltIcon :size="16" />
 						</button>
@@ -158,6 +160,11 @@ function goBack() {
 .place-detail__layout-btn:hover {
 	color: var(--color-main-text);
 	background: var(--color-background-hover);
+}
+
+.place-detail__layout-btn:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
 }
 
 .place-detail__layout-btn--active {

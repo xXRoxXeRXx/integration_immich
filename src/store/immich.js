@@ -292,7 +292,9 @@ export const useImmichStore = defineStore('immich', {
 			this.albumBucketAssets = {}
 			try {
 				const response = await getTimeline({ albumId })
-				this.albumBuckets = Array.isArray(response.data) ? response.data : []
+				if (this.currentAlbumId === albumId) {
+					this.albumBuckets = Array.isArray(response.data) ? response.data : []
+				}
 			} catch (e) {
 				const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout')
 				this.error = isTimeout
@@ -307,7 +309,9 @@ export const useImmichStore = defineStore('immich', {
 			if (this.albumBucketAssets[timeBucket]) return
 			try {
 				const response = await getTimeline({ albumId, timeBucket })
-				this.albumBucketAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
+				if (this.currentAlbumId === albumId) {
+					this.albumBucketAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
+				}
 			} catch (e) {
 				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
 				this.error = e.response?.data?.error || e.message

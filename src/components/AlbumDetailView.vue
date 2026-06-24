@@ -1,5 +1,7 @@
 <!--
-  - SPDX-FileCopyrightText: 2026 Marcel Meyer <gh@grenzallee.eu>
+  - SPDX-FileCopyrightText: 202					<NcButton v-if="totalCount > 0"
+						variant="secondary"
+						@click="showPicker = true">arcel Meyer <gh@grenzallee.eu>
   - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <template>
@@ -73,6 +75,7 @@
 							class="album-detail__layout-btn"
 							:class="{ 'album-detail__layout-btn--active': store.gridLayout === 'grid' }"
 							:title="t('integration_immich', 'Square grid')"
+							:aria-label="t('integration_immich', 'Square grid')"
 							@click="store.setGridLayout('grid')">
 							<ViewGridIcon :size="16" />
 						</button>
@@ -80,6 +83,7 @@
 							class="album-detail__layout-btn"
 							:class="{ 'album-detail__layout-btn--active': store.gridLayout === 'masonry' }"
 							:title="t('integration_immich', 'Masonry grid')"
+							:aria-label="t('integration_immich', 'Masonry grid')"
 							@click="store.setGridLayout('masonry')">
 							<ViewQuiltIcon :size="16" />
 						</button>
@@ -253,7 +257,10 @@ function estimateBucketHeightMasonry(count, assets = null) {
 		for (const asset of assets) {
 			const ratio = (asset.ratio > 0) ? asset.ratio : MASONRY_DEFAULT_RATIO
 			const itemHeight = colWidth / ratio
-			const minIdx = columnHeights.indexOf(Math.min(...columnHeights))
+			let minIdx = 0
+			for (let i = 1; i < columnHeights.length; i++) {
+				if (columnHeights[i] < columnHeights[minIdx]) minIdx = i
+			}
 			columnHeights[minIdx] += itemHeight + GRID_GAP
 		}
 		return HEADER_HEIGHT + Math.max(...columnHeights)
@@ -472,6 +479,9 @@ onMounted(() => {
 
 watch(() => props.id, () => {
 	if (scrollContainer.value) scrollContainer.value.scrollTop = 0
+	scrollTop.value = 0
+	pendingQueue.length = 0
+	activeRequests = 0
 	load()
 })
 
@@ -549,6 +559,11 @@ onBeforeUnmount(() => {
 .album-detail__layout-btn:hover {
 	color: var(--color-main-text);
 	background: var(--color-background-hover);
+}
+
+.album-detail__layout-btn:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
 }
 
 .album-detail__layout-btn--active {
