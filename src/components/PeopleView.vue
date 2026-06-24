@@ -102,9 +102,9 @@ onMounted(() => {
 }
 
 .people-view__face {
-	width: 96px;
-	height: 96px;
-	border-radius: 50%;
+	width: 120px;
+	height: 120px;
+	border-radius: 12px;
 	overflow: hidden;
 	background: var(--color-background-dark);
 }
@@ -113,6 +113,7 @@ onMounted(() => {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
+	object-position: center top;
 }
 
 .people-view__name {
@@ -121,7 +122,7 @@ onMounted(() => {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	max-width: 120px;
+	max-width: 130px;
 	color: var(--color-main-text);
 }
 
@@ -131,12 +132,12 @@ onMounted(() => {
 	}
 
 	.people-view__face {
-		width: 72px;
-		height: 72px;
+		width: 96px;
+		height: 96px;
 	}
 
 	.people-view__name {
-		max-width: 90px;
+		max-width: 100px;
 	}
 }
 </style>
