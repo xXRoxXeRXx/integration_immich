@@ -166,21 +166,19 @@ const deleting = ref(false)
 
 /**
  * Returns true if the currently authenticated Immich user is the owner of the
- * given album. We search the albumUsers array for an entry matching the current
- * user and check their role.
- * Fallback: if the user cannot be found in albumUsers (older Immich versions or
- * empty array), or if currentUserId is not yet known, we use album.shared as a
- * heuristic – unshared albums always belong to the current user.
+ * given album.
+ * Important: Immich does NOT put the owner into albumUsers – that array only
+ * contains users the album was shared WITH. The owner is identified via
+ * album.ownerId / album.owner.id.
  */
 function isOwnedByMe(album) {
-	// When user identity is unknown, use album.shared as a safe heuristic:
-	// shared albums are not owned by the current user; unshared ones are.
 	if (!store.currentUserId) return !album.shared
+	// Check ownerId directly – the owner is never in albumUsers
+	if (album.ownerId === store.currentUserId || album.owner?.id === store.currentUserId) return true
+	// Fallback: check albumUsers in case API behaviour ever changes
 	const myEntry = album.albumUsers?.find(u => u.user?.id === store.currentUserId)
 	if (myEntry !== undefined) return myEntry.role === 'owner'
-	// User not found in albumUsers (empty array or old Immich API):
-	// unshared albums are always owned by the current user.
-	return !album.shared
+	return false
 }
 
 /**
@@ -188,8 +186,10 @@ function isOwnedByMe(album) {
  */
 function myRoleIn(album) {
 	if (!store.currentUserId) return null
+	// Owner is never in albumUsers – return null (no shared-role badge for own albums)
+	if (album.ownerId === store.currentUserId || album.owner?.id === store.currentUserId) return null
 	const entry = album.albumUsers?.find(u => u.user?.id === store.currentUserId)
-	if (!entry || entry.role === 'owner') return null
+	if (!entry) return null
 	return entry.role
 }
 

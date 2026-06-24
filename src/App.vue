@@ -200,14 +200,15 @@ const selectedAllFavorited = computed(() => {
 const isAlbumDetailView = computed(() => route.name === 'album-detail')
 
 // Role of the current user in the currently open album (for album-detail view).
-// When the user identity is not yet known (or /me failed) we use album.shared as a
-// heuristic: shared albums are treated as viewer-only; unshared albums are owned.
+// Important: Immich does NOT put the owner into albumUsers – check ownerId first.
 const currentAlbumMyRole = computed(() => {
-	const sharedFallback = store.currentAlbum?.shared ? 'viewer' : 'owner'
-	if (!store.currentUserId || !store.currentAlbum?.albumUsers) return sharedFallback
-	const entry = store.currentAlbum.albumUsers.find(u => u.user?.id === store.currentUserId)
+	if (!store.currentUserId || !store.currentAlbum) return 'viewer'
+	// Owner is never in albumUsers – check ownerId/owner.id directly
+	if (store.currentAlbum.ownerId === store.currentUserId
+		|| store.currentAlbum.owner?.id === store.currentUserId) return 'owner'
+	const entry = store.currentAlbum.albumUsers?.find(u => u.user?.id === store.currentUserId)
 	if (entry !== undefined) return entry.role
-	return sharedFallback
+	return 'viewer'
 })
 const currentAlbumCanEdit = computed(() =>
 	currentAlbumMyRole.value === 'owner' || currentAlbumMyRole.value === 'editor'

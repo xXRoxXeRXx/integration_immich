@@ -210,20 +210,18 @@ const renaming = ref(false)
 
 /**
  * The current Immich user's role in this album.
- * We find the entry whose user.id matches the logged-in user.
- * Fallback uses album.shared as a heuristic: shared albums → viewer,
- * unshared → owner.  This also covers older Immich versions where albumUsers
- * may be empty, and the case where /users/me has not yet resolved.
+ * Important: Immich does NOT put the owner into albumUsers – that array only
+ * contains users the album was shared WITH. The owner is identified via
+ * album.ownerId / album.owner.id.
  */
 const myRole = computed(() => {
-	// Use album.shared as a heuristic when user identity is not yet resolved:
-	// shared albums → viewer, unshared → owner. This is also the final fallback
-	// when the user is not found in albumUsers (older Immich API / empty array).
-	const sharedFallback = store.currentAlbum?.shared ? 'viewer' : 'owner'
-	if (!store.currentUserId || !store.currentAlbum?.albumUsers) return sharedFallback
-	const entry = store.currentAlbum.albumUsers.find(u => u.user?.id === store.currentUserId)
+	if (!store.currentUserId || !store.currentAlbum) return 'viewer'
+	// Owner is never in albumUsers – check ownerId/owner.id directly
+	if (store.currentAlbum.ownerId === store.currentUserId
+		|| store.currentAlbum.owner?.id === store.currentUserId) return 'owner'
+	const entry = store.currentAlbum.albumUsers?.find(u => u.user?.id === store.currentUserId)
 	if (entry !== undefined) return entry.role
-	return sharedFallback
+	return 'viewer'
 })
 
 const canEdit  = computed(() => myRole.value === 'owner' || myRole.value === 'editor')
