@@ -104,7 +104,7 @@ onMounted(() => {
 .people-view__face {
 	width: 120px;
 	height: 120px;
-	border-radius: 12px;
+	border-radius: 8px;
 	overflow: hidden;
 	background: var(--color-background-dark);
 }
