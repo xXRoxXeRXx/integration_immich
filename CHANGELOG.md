@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-06-24
+
+### Added
+
+- AlbumsView: role badge for shared albums — albums shared with you show a "Shared (Editor)" or "Shared (Viewer)" badge next to the photo count
+- AlbumDetailView: role-based buttons — Rename and Add photos buttons are hidden for viewers; Delete album button is hidden for non-owners
+- App: "Remove from album" action hidden for viewers; "Add to album" action hidden inside album detail view for viewers
+- Translations (de, fr, nl, es-ES, pt): added "Shared with me", "Shared ({role})", "Editor", "Viewer" and plural forms for photo-count strings
+
+### Fixed
+
+- Albums shared with the current user (editor / viewer role) were not shown — only owned albums were displayed (fixes #20)
+- `ImmichService::getAlbums()` now fetches owned and shared albums in two separate API calls and merges/deduplicates by ID
+
+---
+
 ## [1.2.0] - 2026-06-24
 
 ### Added
