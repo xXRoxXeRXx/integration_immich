@@ -33,7 +33,7 @@
 				<!-- Photo count + layout toggle below breadcrumb -->
 				<div class="person-detail__meta-row">
 					<span class="person-detail__count">
-						{{ t('integration_immich', '{count} photos', { count: totalCount }) }}
+						{{ n('integration_immich', '{count} photo', '{count} photos', totalCount, { count: totalCount }) }}
 					</span>
 					<div class="person-detail__layout-toggle">
 						<button
@@ -103,7 +103,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NcEmptyContent, NcLoadingIcon, NcBreadcrumbs, NcBreadcrumb } from '@nextcloud/vue'
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { useImmichStore } from '../store/immich.js'
 import { getPersonThumbnailUrl } from '../services/api.js'
 import PhotoGrid from './PhotoGrid.vue'

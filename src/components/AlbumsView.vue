@@ -54,11 +54,17 @@
 						<h3 class="albums-view__name">
 							{{ album.albumName }}
 						</h3>
-						<span class="albums-view__count">
-							{{ t('integration_immich', '{count} photos', { count: album.assetCount || 0 }) }}
-						</span>
+						<div class="albums-view__meta">
+							<span class="albums-view__count">
+								{{ n('integration_immich', '{count} photo', '{count} photos', album.assetCount || 0, { count: album.assetCount || 0 }) }}
+							</span>
+							<span v-if="myRoleIn(album)" class="albums-view__count">
+								{{ t('integration_immich', 'Shared ({role})', { role: roleLabels[myRoleIn(album)] ?? myRoleIn(album) }) }}
+							</span>
+						</div>
 					</div>
-					<button class="albums-view__delete-btn"
+					<button v-if="isOwnedByMe(album)"
+						class="albums-view__delete-btn"
 						:title="t('integration_immich', 'Delete album')"
 						@click.stop="confirmDelete(album)">
 						<TrashIcon :size="18" />
@@ -137,7 +143,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { NcEmptyContent, NcLoadingIcon, NcButton, NcDialog, NcTextField } from '@nextcloud/vue'
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { showSuccess, showError } from '@nextcloud/dialogs'
 import { useImmichStore } from '../store/immich.js'
 import { getAlbumThumbnailUrl, createAlbum as apiCreateAlbum, deleteAlbum as apiDeleteAlbum } from '../services/api.js'
@@ -157,6 +163,40 @@ const newAlbumName = ref('')
 const creating = ref(false)
 const albumToDelete = ref(null)
 const deleting = ref(false)
+
+/**
+ * Returns true if the currently authenticated Immich user is the owner of the
+ * given album.
+ * Important: Immich does NOT put the owner into albumUsers – that array only
+ * contains users the album was shared WITH. The owner is identified via
+ * album.ownerId / album.owner.id.
+ */
+function isOwnedByMe(album) {
+	if (!store.currentUserId) return !album.shared
+	// Check ownerId directly – the owner is never in albumUsers
+	if (album.ownerId === store.currentUserId || album.owner?.id === store.currentUserId) return true
+	// Fallback: check albumUsers in case API behaviour ever changes
+	const myEntry = album.albumUsers?.find(u => u.user?.id === store.currentUserId)
+	if (myEntry !== undefined) return myEntry.role === 'owner'
+	return false
+}
+
+/**
+ * Returns the current user's role in a shared album, or null for own albums.
+ */
+function myRoleIn(album) {
+	if (!store.currentUserId) return null
+	// Owner is never in albumUsers – return null (no shared-role badge for own albums)
+	if (album.ownerId === store.currentUserId || album.owner?.id === store.currentUserId) return null
+	const entry = album.albumUsers?.find(u => u.user?.id === store.currentUserId)
+	if (!entry) return null
+	return entry.role
+}
+
+const roleLabels = {
+	editor: t('integration_immich', 'Editor'),
+	viewer: t('integration_immich', 'Viewer'),
+}
 
 function openAlbum(id) {
 	router.push({ name: 'album-detail', params: { id } })
@@ -314,9 +354,19 @@ onMounted(() => {
 	text-overflow: ellipsis;
 }
 
+.albums-view__meta {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+}
+
 .albums-view__count {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .albums-view__dialog-body {

@@ -30,13 +30,13 @@
 
 					<!-- Desktop: Buttons direkt sichtbar -->
 					<div class="album-detail__actions-desktop">
-						<NcButton variant="tertiary" @click="startRename">
+						<NcButton v-if="canAdmin" variant="tertiary" @click="startRename">
 							<template #icon>
 								<PencilIcon :size="20" />
 							</template>
 							{{ t('integration_immich', 'Rename') }}
 						</NcButton>
-						<NcButton v-if="store.currentAlbum.assets && store.currentAlbum.assets.length > 0"
+						<NcButton v-if="canEdit && store.currentAlbum.assets && store.currentAlbum.assets.length > 0"
 							variant="secondary"
 							@click="showPicker = true">
 							<template #icon>
@@ -49,13 +49,13 @@
 					<!-- Mobile: NcActions dropdown -->
 					<div class="album-detail__actions-mobile">
 						<NcActions :aria-label="t('integration_immich', 'More actions')">
-							<NcActionButton @click="startRename">
+							<NcActionButton v-if="canAdmin" @click="startRename">
 								<template #icon>
 									<PencilIcon :size="20" />
 								</template>
 								{{ t('integration_immich', 'Rename') }}
 							</NcActionButton>
-							<NcActionButton v-if="totalCount > 0"
+							<NcActionButton v-if="canEdit && totalCount > 0"
 								@click="showPicker = true">
 								<template #icon>
 									<ImagePlusIcon :size="20" />
@@ -68,7 +68,7 @@
 				<!-- Photo count + layout toggle below breadcrumb -->
 				<div class="album-detail__meta-row">
 					<span class="album-detail__count">
-						{{ t('integration_immich', '{count} photos', { count: totalCount }) }}
+						{{ n('integration_immich', '{count} photo', '{count} photos', totalCount, { count: totalCount }) }}
 					</span>
 					<div class="album-detail__layout-toggle">
 						<button
@@ -125,7 +125,7 @@
 					<ImageIcon :size="64" />
 				</template>
 				<template #action>
-					<NcButton variant="primary" @click="showPicker = true">
+					<NcButton v-if="canEdit" variant="primary" @click="showPicker = true">
 						<template #icon>
 							<ImagePlusIcon :size="20" />
 						</template>
@@ -179,7 +179,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NcButton, NcEmptyContent, NcLoadingIcon, NcDialog, NcTextField, NcActions, NcActionButton, NcBreadcrumbs, NcBreadcrumb } from '@nextcloud/vue'
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { showSuccess, showError } from '@nextcloud/dialogs'
 import { useImmichStore } from '../store/immich.js'
 import { addAssetsToAlbum as apiAddAssetsToAlbum, renameAlbum as apiRenameAlbum } from '../services/api.js'
@@ -207,6 +207,25 @@ const addingAssets = ref(false)
 const showRenameDialog = ref(false)
 const renameValue = ref('')
 const renaming = ref(false)
+
+/**
+ * The current Immich user's role in this album.
+ * Important: Immich does NOT put the owner into albumUsers – that array only
+ * contains users the album was shared WITH. The owner is identified via
+ * album.ownerId / album.owner.id.
+ */
+const myRole = computed(() => {
+	if (!store.currentUserId || !store.currentAlbum) return 'viewer'
+	// Owner is never in albumUsers – check ownerId/owner.id directly
+	if (store.currentAlbum.ownerId === store.currentUserId
+		|| store.currentAlbum.owner?.id === store.currentUserId) return 'owner'
+	const entry = store.currentAlbum.albumUsers?.find(u => u.user?.id === store.currentUserId)
+	if (entry !== undefined) return entry.role
+	return 'viewer'
+})
+
+const canEdit  = computed(() => myRole.value === 'owner' || myRole.value === 'editor')
+const canAdmin = computed(() => myRole.value === 'owner')
 
 // --- Constants (same pattern as PersonDetailView) ---
 const HEADER_HEIGHT = 40
@@ -438,7 +457,7 @@ async function addAssetsToAlbum(assetIds) {
 		const failed = results.length - succeeded
 		showPicker.value = false
 		if (failed === 0) {
-			showSuccess(t('integration_immich', '{count} photos added to album', { count: succeeded }))
+			showSuccess(n('integration_immich', '{count} photo added to album', '{count} photos added to album', succeeded, { count: succeeded }))
 		} else if (succeeded > 0) {
 			showError(t('integration_immich', '{succeeded} added, {failed} failed', { succeeded, failed }))
 		} else {

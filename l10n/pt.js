@@ -142,7 +142,14 @@ OC.L10N.register(
     "{count} asset(s) removed from album": "{count} item(ns) removido(s) do álbum",
     "{succeeded} removed, {failed} failed": "{succeeded} removido(s), {failed} falha(s)",
     "Error removing from album": "Erro ao remover do álbum",
-    "Error removing: {msg}": "Erro ao remover: {msg}"
+    "Error removing: {msg}": "Erro ao remover: {msg}",
+    "Shared with me": "Compartilhado comigo",
+    "Shared ({role})": "Compartilhado ({role})",
+    "Editor": "Editor",
+    "Viewer": "Visualizador",
+    "_{count} photo_::_{count} photos_": ["{count} foto","{count} fotos"],
+    "_{count} photo added to album_::_{count} photos added to album_": ["{count} foto adicionada ao álbum","{count} fotos adicionadas ao álbum"],
+    "_{count} photo with location_::_{count} photos with location_": ["{count} foto com localização","{count} fotos com localização"]
   },
   "nplurals=2; plural=(n > 1);"
 );

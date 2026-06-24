@@ -141,7 +141,14 @@
     "{count} asset(s) removed from album": "{count} Asset(s) aus Album entfernt",
     "{succeeded} removed, {failed} failed": "{succeeded} entfernt, {failed} fehlgeschlagen",
     "Error removing from album": "Fehler beim Entfernen aus Album",
-    "Error removing: {msg}": "Fehler beim Entfernen: {msg}"
+    "Error removing: {msg}": "Fehler beim Entfernen: {msg}",
+    "Shared with me": "Mit mir geteilt",
+    "Shared ({role})": "Geteilt ({role})",
+    "Editor": "Bearbeiter",
+    "Viewer": "Betrachter",
+    "_{count} photo_::_{count} photos_": ["{count} Bild", "{count} Bilder"],
+    "_{count} photo added to album_::_{count} photos added to album_": ["{count} Bild zum Album hinzugefügt", "{count} Bilder zum Album hinzugefügt"],
+    "_{count} photo with location_::_{count} photos with location_": ["{count} Foto mit Standort", "{count} Fotos mit Standort"]
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }

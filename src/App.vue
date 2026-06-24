@@ -64,7 +64,7 @@
 									</template>
 									{{ t('integration_immich', 'Download') }}
 								</NcActionButton>
-								<NcActionButton v-if="isAlbumDetailView"
+								<NcActionButton v-if="isAlbumDetailView && currentAlbumCanEdit"
 									type="error"
 									:disabled="store.selectedAssetIds.size === 0 || removingFromAlbum"
 									@click="removeFromCurrentAlbum">
@@ -73,7 +73,7 @@
 									</template>
 									{{ t('integration_immich', 'Remove from album') }}
 								</NcActionButton>
-								<NcActionButton v-else
+								<NcActionButton v-else-if="!isAlbumDetailView"
 									:disabled="store.selectedAssetIds.size === 0 || addingToAlbum"
 									@click="showAlbumPicker = true">
 									<template #icon>
@@ -152,7 +152,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { NcContent, NcAppContent, NcButton, NcLoadingIcon, NcDialog, NcActions, NcActionButton, NcListItem } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
@@ -199,6 +199,21 @@ const selectedAllFavorited = computed(() => {
 // True when we are inside an album detail view → album button becomes "remove"
 const isAlbumDetailView = computed(() => route.name === 'album-detail')
 
+// Role of the current user in the currently open album (for album-detail view).
+// Important: Immich does NOT put the owner into albumUsers – check ownerId first.
+const currentAlbumMyRole = computed(() => {
+	if (!store.currentUserId || !store.currentAlbum) return 'viewer'
+	// Owner is never in albumUsers – check ownerId/owner.id directly
+	if (store.currentAlbum.ownerId === store.currentUserId
+		|| store.currentAlbum.owner?.id === store.currentUserId) return 'owner'
+	const entry = store.currentAlbum.albumUsers?.find(u => u.user?.id === store.currentUserId)
+	if (entry !== undefined) return entry.role
+	return 'viewer'
+})
+const currentAlbumCanEdit = computed(() =>
+	currentAlbumMyRole.value === 'owner' || currentAlbumMyRole.value === 'editor'
+)
+
 const pageTitles = {
 	'timeline': t('integration_immich', 'All media'),
 	'photos': t('integration_immich', 'Photos'),
@@ -224,6 +239,11 @@ watch(() => route.name, () => {
 	if (store.isSelectionMode) {
 		store.clearSelection()
 	}
+})
+
+// Fetch the current Immich user once on startup so album ownership checks work
+onMounted(() => {
+	store.fetchCurrentUser()
 })
 
 async function saveToNextcloud() {

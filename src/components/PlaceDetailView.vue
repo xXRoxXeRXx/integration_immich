@@ -25,7 +25,7 @@
 				</NcBreadcrumbs>
 				<div class="place-detail__meta-row">
 					<span class="place-detail__count">
-						{{ t('integration_immich', '{count} photos', { count: store.placeAssets.length }) }}
+						{{ n('integration_immich', '{count} photo', '{count} photos', store.placeAssets.length, { count: store.placeAssets.length }) }}
 					</span>
 					<div class="place-detail__layout-toggle">
 						<button
@@ -71,7 +71,7 @@
 import { onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NcEmptyContent, NcLoadingIcon, NcBreadcrumbs, NcBreadcrumb } from '@nextcloud/vue'
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { useImmichStore } from '../store/immich.js'
 import PhotoGrid from './PhotoGrid.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'

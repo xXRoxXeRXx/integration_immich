@@ -16,6 +16,7 @@ return [
         // Admin Config
         ['name' => 'config#setConfig', 'url' => '/api/v1/config', 'verb' => 'PUT'],
         ['name' => 'config#getConfig', 'url' => '/api/v1/config', 'verb' => 'GET'],
+        ['name' => 'config#me',        'url' => '/api/v1/me',     'verb' => 'GET'],
 
         // Assets / Timeline
         ['name' => 'assets#timeline',        'url' => '/api/v1/timeline',                    'verb' => 'GET'],
