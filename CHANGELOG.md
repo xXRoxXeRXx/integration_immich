@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-24
+
+### Added
+
+- TimelineView: masonry grid layout toggle — photos are displayed in a balanced column-based mosaic, preserving aspect ratios
+- TimelineView, AlbumDetailView, PersonDetailView, PlaceDetailView: layout toggle button with `aria-label` and `:focus-visible` outline for full keyboard/screen-reader accessibility
+- AlbumDetailView: timeline bucket lazy-loading — album photos are now fetched in time-based batches (same virtual-scroll pattern as the main timeline)
+- AlbumDetailView: desktop "Add photos" button now shown as long as the album has photos (uses total count from buckets, not the eagerly loaded `assets` array)
+- PlaceDetailView: place/location asset search results view
+
+### Fixed
+
+- Store: race condition in `fetchAlbumBuckets` / `fetchAlbumBucketAssets` — stale responses from a previous album can no longer overwrite the cache of the currently viewed album
+- AlbumDetailView: scroll state (`scrollTop`, `pendingQueue`, `activeRequests`) is now fully reset when navigating to a different album, preventing wrong virtual-scroll window indices
+- TimelineView, AlbumDetailView, PersonDetailView: `estimateBucketHeightMasonry` — replaced O(n²) `indexOf(Math.min(...spread))` with a simple O(n) `for`-loop for minimum-column lookup
+
+### Security / Dependencies
+
+- `vue` 3.5.37 → 3.5.38
+- `sass` 1.100.0 → 1.101.0
+- `form-data` 4.0.5 → 4.0.6 (fixes field-name/filename injection via CR/LF)
+- `launch-editor` 2.13.2 → 2.14.1
+- `dompurify` 3.4.9 → 3.4.11 (fixes leaky config for hooks via `setConfig`)
+- `ts-loader` 9.6.0 → 9.6.2
+- `@babel/core` 7.29.7 → 8.0.1 (major — removed unused `useBuiltIns`, no breaking impact on this project)
+- `actions/checkout` GitHub Action v6 → v7
+
+### Tests
+
+- `AssetsController`: added 7 PHPUnit tests covering all code paths of the new `searchLocation()` endpoint (field validation, value validation, allowed-field whitelist, service exception propagation)
+
+---
+
 ## [1.1.6] - 2026-06-18
 
 ### Fixed
