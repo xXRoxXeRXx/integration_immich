@@ -199,11 +199,15 @@ const selectedAllFavorited = computed(() => {
 // True when we are inside an album detail view → album button becomes "remove"
 const isAlbumDetailView = computed(() => route.name === 'album-detail')
 
-// Role of the current user in the currently open album (for album-detail view)
+// Role of the current user in the currently open album (for album-detail view).
+// When the user identity is not yet known (or /me failed) we use album.shared as a
+// heuristic: shared albums are treated as viewer-only; unshared albums are owned.
 const currentAlbumMyRole = computed(() => {
-	if (!store.currentUserId || !store.currentAlbum?.albumUsers) return 'owner'
+	const sharedFallback = store.currentAlbum?.shared ? 'viewer' : 'owner'
+	if (!store.currentUserId || !store.currentAlbum?.albumUsers) return sharedFallback
 	const entry = store.currentAlbum.albumUsers.find(u => u.user?.id === store.currentUserId)
-	return entry?.role ?? 'viewer'
+	if (entry !== undefined) return entry.role
+	return sharedFallback
 })
 const currentAlbumCanEdit = computed(() =>
 	currentAlbumMyRole.value === 'owner' || currentAlbumMyRole.value === 'editor'

@@ -169,12 +169,13 @@ const deleting = ref(false)
  * given album. We search the albumUsers array for an entry matching the current
  * user and check their role.
  * Fallback: if the user cannot be found in albumUsers (older Immich versions or
- * empty array), we use album.shared as a hint – unshared albums always belong
- * to the current user.
- * Falls back to true when the user id is not yet known so the button stays visible.
+ * empty array), or if currentUserId is not yet known, we use album.shared as a
+ * heuristic – unshared albums always belong to the current user.
  */
 function isOwnedByMe(album) {
-	if (!store.currentUserId) return true
+	// When user identity is unknown, use album.shared as a safe heuristic:
+	// shared albums are not owned by the current user; unshared ones are.
+	if (!store.currentUserId) return !album.shared
 	const myEntry = album.albumUsers?.find(u => u.user?.id === store.currentUserId)
 	if (myEntry !== undefined) return myEntry.role === 'owner'
 	// User not found in albumUsers (empty array or old Immich API):

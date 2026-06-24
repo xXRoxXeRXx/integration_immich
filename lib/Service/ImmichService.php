@@ -325,13 +325,15 @@ class ImmichService {
         // behaviour of the official Immich web client.
         $shared = $this->request('GET', '/albums', ['query' => ['shared' => 'true']]);
 
-        // Merge and deduplicate by album id so that albums the user both owns
-        // AND has shared with others appear only once.
+        // Merge and deduplicate by album id using a hash set (associative array)
+        // to avoid O(n*m) cost of in_array() and handle missing 'id' gracefully.
         $merged = $owned;
-        $seenIds = array_column($owned, 'id');
+        $seenIds = array_fill_keys(array_filter(array_column($owned, 'id')), true);
         foreach ($shared as $album) {
-            if (!in_array($album['id'], $seenIds, true)) {
+            $albumId = $album['id'] ?? null;
+            if ($albumId !== null && !isset($seenIds[$albumId])) {
                 $merged[] = $album;
+                $seenIds[$albumId] = true;
             }
         }
 

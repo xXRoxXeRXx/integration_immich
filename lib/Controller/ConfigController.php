@@ -118,7 +118,9 @@ class ConfigController extends Controller {
         }
         try {
             $user = $this->immichService->getMe();
-            return new JSONResponse($user);
+            // The frontend only needs the user id for ownership/permission checks.
+            // Returning the full payload would expose unnecessary user data.
+            return new JSONResponse(['id' => $user['id'] ?? null]);
         } catch (\Exception $e) {
             $this->logger->error('Immich /users/me request failed: ' . $e->getMessage(), [
                 'app' => \OCA\IntegrationImmich\AppInfo\Application::APP_ID,
