@@ -35,7 +35,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { useImmichStore } from '../store/immich.js'
 import { getThumbnailUrl } from '../services/api.js'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
@@ -75,7 +75,7 @@ const infoText = computed(() => {
 			{ total, shown },
 		)
 	}
-	return t('integration_immich', '{count} photos with location', { count: total })
+	return n('integration_immich', '{count} photo with location', '{count} photos with location', total, { count: total })
 })
 
 async function initMap() {

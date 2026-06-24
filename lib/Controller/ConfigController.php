@@ -102,4 +102,32 @@ class ConfigController extends Controller {
 
         return new JSONResponse(['success' => true]);
     }
+
+    /**
+     * Returns the Immich user profile of the currently authenticated API-key owner.
+     * The frontend uses this to determine album ownership (show/hide the delete button).
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function me(): JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(
+                ['error' => 'Immich is not configured'],
+                Http::STATUS_PRECONDITION_FAILED
+            );
+        }
+        try {
+            $user = $this->immichService->getMe();
+            return new JSONResponse($user);
+        } catch (\Exception $e) {
+            $this->logger->error('Immich /users/me request failed: ' . $e->getMessage(), [
+                'app' => \OCA\IntegrationImmich\AppInfo\Application::APP_ID,
+                'exception' => $e,
+            ]);
+            return new JSONResponse(
+                ['error' => 'An internal error occurred'],
+                Http::STATUS_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
 }

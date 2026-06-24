@@ -312,12 +312,41 @@ class ImmichService {
     }
 
     public function getAlbums(string $assetId = ''): array {
-        $options = $assetId !== '' ? ['query' => ['assetId' => $assetId]] : [];
-        return $this->request('GET', '/albums', $options);
+        // When filtering by asset, a single call is sufficient.
+        if ($assetId !== '') {
+            return $this->request('GET', '/albums', ['query' => ['assetId' => $assetId]]);
+        }
+
+        // Fetch albums owned by the user.
+        $owned = $this->request('GET', '/albums', []);
+
+        // Fetch albums shared with the user (owned by someone else).
+        // Immich returns different sets for these two calls — mirroring the
+        // behaviour of the official Immich web client.
+        $shared = $this->request('GET', '/albums', ['query' => ['shared' => 'true']]);
+
+        // Merge and deduplicate by album id so that albums the user both owns
+        // AND has shared with others appear only once.
+        $merged = $owned;
+        $seenIds = array_column($owned, 'id');
+        foreach ($shared as $album) {
+            if (!in_array($album['id'], $seenIds, true)) {
+                $merged[] = $album;
+            }
+        }
+
+        return $merged;
     }
 
     public function getAlbum(string $id): array {
         return $this->request('GET', '/albums/' . $id);
+    }
+
+    /**
+     * Returns the Immich user profile of the currently authenticated API key owner.
+     */
+    public function getMe(): array {
+        return $this->request('GET', '/users/me');
     }
 
     public function createAlbum(string $albumName, array $assetIds = []): array {

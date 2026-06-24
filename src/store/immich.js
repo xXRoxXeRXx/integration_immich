@@ -4,7 +4,7 @@
  */
 import { defineStore } from 'pinia'
 import { translate as t } from '@nextcloud/l10n'
-import { getTimeline, getAlbums, getAlbum, getPeople, getMapMarkers, searchByLocation, getExplore } from '../services/api.js'
+import { getTimeline, getAlbums, getAlbum, getPeople, getMapMarkers, searchByLocation, getExplore, getMe } from '../services/api.js'
 import { appStorage } from '../services/storage.js'
 
 const BUCKET_CACHE_KEY = 'timeline_buckets'
@@ -57,6 +57,8 @@ export const useImmichStore = defineStore('immich', {
 		isSelectionMode: false,
 		// Layout preference ('grid' | 'masonry') — persisted in localStorage
 		gridLayout: appStorage.getItem(LAYOUT_STORAGE_KEY) ?? 'grid',
+		// Current Immich user — used to determine album ownership
+		currentUserId: null,
 	}),
 
 	actions: {
@@ -227,6 +229,18 @@ export const useImmichStore = defineStore('immich', {
 				this.error = e.response?.data?.error || e.message
 			} finally {
 				this.loading = false
+			}
+		},
+
+		// ---- Current Immich user ----
+
+		async fetchCurrentUser() {
+			try {
+				const response = await getMe()
+				this.currentUserId = response.data?.id ?? null
+			} catch {
+				// Non-fatal — album ownership checks will simply not work
+				this.currentUserId = null
 			}
 		},
 

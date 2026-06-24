@@ -15,6 +15,10 @@ export function getAlbums(params = {}) {
 	return axios.get(`${baseUrl}/albums`, { params })
 }
 
+export function getMe() {
+	return axios.get(`${baseUrl}/me`)
+}
+
 export function getAlbum(id) {
 	return axios.get(`${baseUrl}/albums/${id}/show`)
 }
