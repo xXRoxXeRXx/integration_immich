@@ -378,10 +378,11 @@ onBeforeUnmount(() => {
 }
 
 .person-detail__avatar {
-	width: 40px;
-	height: 40px;
-	border-radius: 50%;
+	width: 48px;
+	height: 48px;
+	border-radius: 8px;
 	object-fit: cover;
+	object-position: center top;
 	flex-shrink: 0;
 	margin-left: auto;
 }
