@@ -196,10 +196,13 @@ class ImmichService {
         return $missing;
     }
 
-    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null, ?string $assetType = null, bool $isFavorite = false): array {
+    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false): array {
         $query = ['size' => $size];
         if ($personId !== null && $personId !== '') {
             $query['personId'] = $personId;
+        }
+        if ($albumId !== null && $albumId !== '') {
+            $query['albumId'] = $albumId;
         }
         if ($assetType !== null && $assetType !== '') {
             $query['assetType'] = $assetType;
@@ -210,7 +213,7 @@ class ImmichService {
         return $this->request('GET', '/timeline/buckets', ['query' => $query]);
     }
 
-    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null, ?string $assetType = null, bool $isFavorite = false): array {
+    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false): array {
         // Immich v2 requires ISO-8601 format (YYYY-MM-DDTHH:MM:SS.000Z) for timeBucket.
         // Older API responses returned short dates (YYYY-MM-DD); normalize them here.
         if (strlen($timeBucket) === 10) {
@@ -219,6 +222,9 @@ class ImmichService {
         $query = ['timeBucket' => $timeBucket, 'size' => $size];
         if ($personId !== null && $personId !== '') {
             $query['personId'] = $personId;
+        }
+        if ($albumId !== null && $albumId !== '') {
+            $query['albumId'] = $albumId;
         }
         if ($assetType !== null && $assetType !== '') {
             $query['assetType'] = $assetType;
@@ -395,6 +401,33 @@ class ImmichService {
         return $this->request('GET', '/map/markers', [
             'query' => ['isArchived' => 'false'],
         ]);
+    }
+
+    /**
+     * Search assets by location field (city / country / state).
+     * Uses Immich's POST /search/metadata to return AssetResponseDto objects
+     * with width + height — which getItemRatio() in the frontend can use for masonry.
+     */
+    public function searchByLocation(string $field, string $value): array {
+        // Map frontend field paths (e.g. "exifInfo.city") to MetadataSearchDto keys.
+        $fieldMap = [
+            'exifInfo.city'    => 'city',
+            'exifInfo.country' => 'country',
+            'exifInfo.state'   => 'state',
+            'city'             => 'city',
+            'country'          => 'country',
+            'state'            => 'state',
+        ];
+        $key = $fieldMap[$field] ?? $field;
+
+        $body = [
+            $key         => $value,
+            'isArchived' => false,
+            'size'       => 1000,
+        ];
+
+        $result = $this->request('POST', '/search/metadata', ['body' => $body]);
+        return $result['assets']['items'] ?? [];
     }
 
     // ---- Explore ----

@@ -150,6 +150,107 @@ class AssetsControllerTest extends TestCase {
 		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
 	}
 
+	// --- searchLocation() ---
+
+	public function testSearchLocationReturns412WhenNotConfigured(): void {
+		$this->immichService->method('isConfigured')->willReturn(false);
+
+		$response = $this->controller->searchLocation();
+
+		$this->assertEquals(Http::STATUS_PRECONDITION_FAILED, $response->getStatus());
+		$this->assertArrayHasKey('error', $response->getData());
+	}
+
+	public function testSearchLocationReturns400WhenFieldMissing(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['field', '', ''],
+			['value', '', 'Berlin'],
+		]);
+
+		$response = $this->controller->searchLocation();
+
+		$this->assertEquals(Http::STATUS_BAD_REQUEST, $response->getStatus());
+		$this->assertArrayHasKey('error', $response->getData());
+	}
+
+	public function testSearchLocationReturns400WhenValueMissing(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['field', '', 'city'],
+			['value', '', ''],
+		]);
+
+		$response = $this->controller->searchLocation();
+
+		$this->assertEquals(Http::STATUS_BAD_REQUEST, $response->getStatus());
+		$this->assertArrayHasKey('error', $response->getData());
+	}
+
+	public function testSearchLocationReturns400OnInvalidField(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['field', '', 'exifInfo.make'],
+			['value', '', 'Sony'],
+		]);
+
+		$response = $this->controller->searchLocation();
+
+		$this->assertEquals(Http::STATUS_BAD_REQUEST, $response->getStatus());
+		$data = $response->getData();
+		$this->assertArrayHasKey('error', $data);
+		$this->assertEquals('Invalid field', $data['error']);
+	}
+
+	/**
+	 * @dataProvider allowedLocationFieldsProvider
+	 */
+	public function testSearchLocationSucceedsForAllowedFields(string $field): void {
+		$assets = [['id' => 'uuid-1', 'city' => 'Berlin']];
+
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['field', '', $field],
+			['value', '', 'Berlin'],
+		]);
+		$this->immichService
+			->expects($this->once())
+			->method('searchByLocation')
+			->with($field, 'Berlin')
+			->willReturn($assets);
+
+		$response = $this->controller->searchLocation();
+
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
+		$this->assertCount(1, $response->getData());
+	}
+
+	public static function allowedLocationFieldsProvider(): array {
+		return [
+			['exifInfo.city'],
+			['exifInfo.country'],
+			['exifInfo.state'],
+			['city'],
+			['country'],
+			['state'],
+		];
+	}
+
+	public function testSearchLocationPropagatesServiceException(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['field', '', 'city'],
+			['value', '', 'Berlin'],
+		]);
+		$this->immichService
+			->method('searchByLocation')
+			->willThrowException(new \Exception('Connection failed'));
+
+		$response = $this->controller->searchLocation();
+
+		$this->assertGreaterThanOrEqual(400, $response->getStatus());
+	}
+
 	// --- mapMarkers() ---
 
 	public function testMapMarkersReturns412WhenNotConfigured(): void {

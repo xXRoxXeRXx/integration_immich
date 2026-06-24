@@ -4,11 +4,12 @@
  */
 import { defineStore } from 'pinia'
 import { translate as t } from '@nextcloud/l10n'
-import { getTimeline, getAlbums, getAlbum, getPeople, getMapMarkers, getExplore } from '../services/api.js'
+import { getTimeline, getAlbums, getAlbum, getPeople, getMapMarkers, searchByLocation, getExplore } from '../services/api.js'
 import { appStorage } from '../services/storage.js'
 
 const BUCKET_CACHE_KEY = 'timeline_buckets'
 const BUCKET_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const LAYOUT_STORAGE_KEY = 'grid_layout'
 
 export const useImmichStore = defineStore('immich', {
 	state: () => ({
@@ -30,8 +31,16 @@ export const useImmichStore = defineStore('immich', {
 		currentPersonId: null,
 		personBuckets: [],
 		personBucketAssets: {},
+		// Album detail — lazy-loaded buckets
+		currentAlbumId: null,
+		albumBuckets: [],
+		albumBucketAssets: {},
 		// Map
 		mapMarkers: [],
+		// Place detail — full asset objects (with width/height) from metadata search
+		placeAssets: [],
+		currentPlaceField: null,
+		currentPlaceValue: null,
 		// Explore
 		exploreData: [],
 		// UI
@@ -46,9 +55,18 @@ export const useImmichStore = defineStore('immich', {
 		// Selection
 		selectedAssetIds: new Set(),
 		isSelectionMode: false,
+		// Layout preference ('grid' | 'masonry') — persisted in localStorage
+		gridLayout: appStorage.getItem(LAYOUT_STORAGE_KEY) ?? 'grid',
 	}),
 
 	actions: {
+		// ---- Layout ----
+
+		setGridLayout(layout) {
+			this.gridLayout = layout
+			appStorage.setItem(LAYOUT_STORAGE_KEY, layout)
+		},
+
 		// ---- Timeline ----
 
 		async fetchTimelineBuckets() {
@@ -264,6 +282,46 @@ export const useImmichStore = defineStore('immich', {
 			delete this.personBucketAssets[timeBucket]
 		},
 
+		// ---- Album detail (lazy buckets) ----
+
+		async fetchAlbumBuckets(albumId) {
+			this.loading = true
+			this.error = null
+			this.currentAlbumId = albumId
+			this.albumBuckets = []
+			this.albumBucketAssets = {}
+			try {
+				const response = await getTimeline({ albumId })
+				if (this.currentAlbumId === albumId) {
+					this.albumBuckets = Array.isArray(response.data) ? response.data : []
+				}
+			} catch (e) {
+				const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout')
+				this.error = isTimeout
+					? t('integration_immich', 'Request timed out — Immich may be slow or unreachable. Check your server connection.')
+					: (e.response?.data?.error || e.message)
+			} finally {
+				this.loading = false
+			}
+		},
+
+		async fetchAlbumBucketAssets(albumId, timeBucket) {
+			if (this.albumBucketAssets[timeBucket]) return
+			try {
+				const response = await getTimeline({ albumId, timeBucket })
+				if (this.currentAlbumId === albumId) {
+					this.albumBucketAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
+				}
+			} catch (e) {
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
+				this.error = e.response?.data?.error || e.message
+			}
+		},
+
+		unloadAlbumBucketAsset(timeBucket) {
+			delete this.albumBucketAssets[timeBucket]
+		},
+
 		// ---- Map ----
 
 		async fetchMapMarkers() {
@@ -274,6 +332,27 @@ export const useImmichStore = defineStore('immich', {
 				this.mapMarkers = Array.isArray(response.data) ? response.data : []
 			} catch (e) {
 				this.error = e.response?.data?.error || e.message
+			} finally {
+				this.loading = false
+			}
+		},
+
+		// ---- Place detail ----
+
+		async fetchPlaceAssets(field, value) {
+			this.loading = true
+			this.error = null
+			this.currentPlaceField = field
+			this.currentPlaceValue = value
+			this.placeAssets = []
+			try {
+				const response = await searchByLocation(field, value)
+				this.placeAssets = Array.isArray(response.data) ? response.data : []
+			} catch (e) {
+				const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout')
+				this.error = isTimeout
+					? t('integration_immich', 'Request timed out — Immich may be slow or unreachable. Check your server connection.')
+					: (e.response?.data?.error || e.message)
 			} finally {
 				this.loading = false
 			}
@@ -365,10 +444,18 @@ export const useImmichStore = defineStore('immich', {
 				this.personBucketAssets[bucket] = this.personBucketAssets[bucket].filter(a => a.id !== assetId)
 			}
 
-			// Remove from album assets
+			// Remove from album bucket assets
+			for (const bucket in this.albumBucketAssets) {
+				this.albumBucketAssets[bucket] = this.albumBucketAssets[bucket].filter(a => a.id !== assetId)
+			}
+
+			// Remove from currentAlbum flat assets (used by AssetPicker)
 			if (this.currentAlbum && this.currentAlbum.assets) {
 				this.currentAlbum.assets = this.currentAlbum.assets.filter(a => a.id !== assetId)
 			}
+
+			// Remove from place assets
+			this.placeAssets = this.placeAssets.filter(a => a.id !== assetId)
 
 			// Remove from explore data
 			this.exploreData.forEach(group => {
@@ -437,10 +524,16 @@ export const useImmichStore = defineStore('immich', {
 			for (const key of Object.keys(this.personBucketAssets)) {
 				patchList(this.personBucketAssets[key])
 			}
-			// Album detail
+			// Album bucket detail
+			for (const key of Object.keys(this.albumBucketAssets)) {
+				patchList(this.albumBucketAssets[key])
+			}
+			// Album flat assets (used by AssetPicker)
 			if (this.currentAlbum?.assets) {
 				patchList(this.currentAlbum.assets)
 			}
+			// Place detail
+			patchList(this.placeAssets)
 			// Lightbox assets
 			patchList(this.lightbox.assets)
 		},
@@ -469,10 +562,16 @@ export const useImmichStore = defineStore('immich', {
 			for (const assets of Object.values(state.personBucketAssets)) {
 				for (const a of assets) map[a.id] = a
 			}
-			// Album detail
+			// Album bucket detail
+			for (const assets of Object.values(state.albumBucketAssets)) {
+				for (const a of assets) map[a.id] = a
+			}
+			// Album flat assets (AssetPicker)
 			if (state.currentAlbum?.assets) {
 				for (const a of state.currentAlbum.assets) map[a.id] = a
 			}
+			// Place detail
+			for (const a of state.placeAssets) map[a.id] = a
 			return map
 		},
 	},

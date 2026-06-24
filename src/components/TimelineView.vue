@@ -33,6 +33,25 @@
 			<div class="timeline-view__sticky-date">
 				<span class="timeline-view__sticky-label">{{ currentBucketLabel }}</span>
 				<span class="timeline-view__sticky-count">{{ currentBucketCount }}</span>
+				<!-- Layout toggle: square grid vs. masonry -->
+				<div class="timeline-view__layout-toggle">
+					<button
+						class="timeline-view__layout-btn"
+						:class="{ 'timeline-view__layout-btn--active': store.gridLayout === 'grid' }"
+						:title="t('integration_immich', 'Square grid')"
+						:aria-label="t('integration_immich', 'Square grid')"
+						@click="setLayout('grid')">
+						<ViewGridIcon :size="16" />
+					</button>
+					<button
+						class="timeline-view__layout-btn"
+						:class="{ 'timeline-view__layout-btn--active': store.gridLayout === 'masonry' }"
+						:title="t('integration_immich', 'Masonry grid')"
+						:aria-label="t('integration_immich', 'Masonry grid')"
+						@click="setLayout('masonry')">
+						<ViewQuiltIcon :size="16" />
+					</button>
+				</div>
 			</div>
 			<!-- Scroll-to-top button -->
 			<Transition name="timeline-fab">
@@ -58,6 +77,7 @@
 					<PhotoGrid v-else-if="assetsCache[buckets[index].timeBucket]"
 						:assets="assetsCache[buckets[index].timeBucket]"
 						:selectable="true"
+						:layout="store.gridLayout"
 					@click="(_, idx) => openLightboxFromBucket(idx, index)" />
 					<div v-else
 						class="timeline-view__bucket-placeholder"
@@ -76,6 +96,8 @@ import { useImmichStore } from '../store/immich.js'
 import PhotoGrid from './PhotoGrid.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import ImageIcon from 'vue-material-design-icons/Image.vue'
+import ViewGridIcon from 'vue-material-design-icons/ViewGrid.vue'
+import ViewQuiltIcon from 'vue-material-design-icons/ViewQuilt.vue'
 
 const props = defineProps({
 	assetType: { type: String, default: null },
@@ -108,6 +130,9 @@ const GRID_GAP = 3
 const BUCKET_PADDING_TOP = 15
 const BUCKET_PADDING_LR = 32 // 16px left + 16px right
 
+// Default assumed aspect ratio for masonry height estimation of unloaded buckets.
+const MASONRY_DEFAULT_RATIO = 1.0
+
 // --- Reactive state ---
 const scrollContainer = ref(null)
 const scrollTop = ref(0)
@@ -120,6 +145,11 @@ const pendingQueue = []
 // AbortController per timeBucket for in-flight requests
 const abortControllers = new Map()
 
+// --- Layout toggle ---
+function setLayout(layout) {
+	store.setGridLayout(layout)
+}
+
 // --- Height estimation ---
 // Derives column count and row height from the actual container width, matching
 // the CSS grid in PhotoGrid.vue (auto-fill, minmax(180px, 1fr), gap: 3px, aspect-ratio:1).
@@ -131,10 +161,46 @@ function estimateBucketHeight(count) {
 	return BUCKET_PADDING_TOP + rows * colWidth + (rows - 1) * GRID_GAP
 }
 
+// Estimates masonry bucket height.
+// When asset data is already loaded, simulates the CSS columns placement using
+// actual aspect ratios for an accurate result. Falls back to MASONRY_DEFAULT_RATIO
+// for unloaded buckets (placeholder height before data arrives).
+function estimateBucketHeightMasonry(count, assets = null) {
+	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)
+	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
+	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
+
+	if (assets && assets.length > 0) {
+		// Simulate actual masonry column placement for accurate height estimation
+		const columnHeights = new Array(cols).fill(0)
+		for (const asset of assets) {
+			const ratio = (asset.ratio > 0) ? asset.ratio : MASONRY_DEFAULT_RATIO
+			const itemHeight = colWidth / ratio
+			let minIdx = 0
+			for (let i = 1; i < columnHeights.length; i++) {
+				if (columnHeights[i] < columnHeights[minIdx]) minIdx = i
+			}
+			columnHeights[minIdx] += itemHeight + GRID_GAP
+		}
+		return BUCKET_PADDING_TOP + Math.max(...columnHeights)
+	}
+
+	// No asset data yet: estimate with default ratio
+	const itemHeight = colWidth / MASONRY_DEFAULT_RATIO
+	const rows = Math.ceil(count / cols)
+	return BUCKET_PADDING_TOP + rows * (itemHeight + GRID_GAP)
+}
+
 // Track actual measured heights (initially estimated)
 const bucketHeights = computed(() => {
-	// containerWidth is read inside estimateBucketHeight, establishing reactivity.
-	return buckets.value.map(b => estimateBucketHeight(b.count))
+	// containerWidth and gridLayout are reactive dependencies, triggering recompute
+	// when the layout is toggled or the viewport is resized.
+	return buckets.value.map(b => {
+		if (store.gridLayout === 'masonry') {
+			return estimateBucketHeightMasonry(b.count, assetsCache.value[b.timeBucket])
+		}
+		return estimateBucketHeight(b.count)
+	})
 })
 
 // Cumulative offsets for each bucket
@@ -481,11 +547,48 @@ function scrollToTop() {
 	z-index: 10;
 	padding: 7px 16px;
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	gap: 8px;
 	background: var(--color-main-background);
 	pointer-events: none;
 	border-bottom: 1px solid var(--color-border-dark);
+}
+
+/* ---- Layout toggle ---- */
+.timeline-view__layout-toggle {
+	margin-left: auto;
+	pointer-events: auto; /* re-enable clicks, parent has pointer-events: none */
+	display: flex;
+	gap: 2px;
+}
+
+.timeline-view__layout-btn {
+	all: unset;
+	box-sizing: border-box;
+	width: 28px;
+	height: 28px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	color: var(--color-text-maxcontrast);
+	transition: color 0.15s ease, background 0.15s ease;
+}
+
+.timeline-view__layout-btn:hover {
+	color: var(--color-main-text);
+	background: var(--color-background-hover);
+}
+
+.timeline-view__layout-btn:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+
+.timeline-view__layout-btn--active {
+	color: var(--color-primary);
+	background: var(--color-primary-element-light);
 }
 
 .timeline-view__sticky-label {

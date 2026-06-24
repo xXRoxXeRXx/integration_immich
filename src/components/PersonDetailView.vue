@@ -30,10 +30,30 @@
 						class="person-detail__avatar"
 						:alt="personName">
 				</div>
-				<!-- Photo count below breadcrumb -->
-				<span class="person-detail__count">
-					{{ t('integration_immich', '{count} photos', { count: totalCount }) }}
-				</span>
+				<!-- Photo count + layout toggle below breadcrumb -->
+				<div class="person-detail__meta-row">
+					<span class="person-detail__count">
+						{{ t('integration_immich', '{count} photos', { count: totalCount }) }}
+					</span>
+					<div class="person-detail__layout-toggle">
+						<button
+							class="person-detail__layout-btn"
+							:class="{ 'person-detail__layout-btn--active': store.gridLayout === 'grid' }"
+							:title="t('integration_immich', 'Square grid')"
+							:aria-label="t('integration_immich', 'Square grid')"
+							@click="store.setGridLayout('grid')">
+							<ViewGridIcon :size="16" />
+						</button>
+						<button
+							class="person-detail__layout-btn"
+							:class="{ 'person-detail__layout-btn--active': store.gridLayout === 'masonry' }"
+							:title="t('integration_immich', 'Masonry grid')"
+							:aria-label="t('integration_immich', 'Masonry grid')"
+							@click="store.setGridLayout('masonry')">
+							<ViewQuiltIcon :size="16" />
+						</button>
+					</div>
+				</div>
 			</div>
 
 			<NcEmptyContent v-if="store.personBuckets.length === 0 && !store.loading"
@@ -67,6 +87,7 @@
 						<PhotoGrid v-else-if="store.personBucketAssets[store.personBuckets[index].timeBucket]"
 							:assets="store.personBucketAssets[store.personBuckets[index].timeBucket]"
 							:selectable="true"
+							:layout="store.gridLayout"
 						@click="(_, idx) => openLightboxFromBucket(idx, index)" />
 						<div v-else
 							class="person-detail__bucket-placeholder"
@@ -88,6 +109,8 @@ import { getPersonThumbnailUrl } from '../services/api.js'
 import PhotoGrid from './PhotoGrid.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import AccountIcon from 'vue-material-design-icons/Account.vue'
+import ViewGridIcon from 'vue-material-design-icons/ViewGrid.vue'
+import ViewQuiltIcon from 'vue-material-design-icons/ViewQuilt.vue'
 
 const props = defineProps({
 	id: { type: String, required: true },
@@ -104,6 +127,7 @@ const BUCKET_PADDING_LR = 32 // .person-detail__bucket padding: 15px 16px → 16
 const OVERSCAN = 800
 const MAX_CONCURRENT = 2
 const MAX_LOADED_BUCKETS = 12
+const MASONRY_DEFAULT_RATIO = 1.0
 
 // --- Reactive state ---
 const scrollContainer = ref(null)
@@ -134,8 +158,37 @@ function estimateBucketHeight(count) {
 	return HEADER_HEIGHT + rows * colWidth + (rows - 1) * GRID_GAP
 }
 
+function estimateBucketHeightMasonry(count, assets = null) {
+	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)
+	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
+	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
+
+	if (assets && assets.length > 0) {
+		const columnHeights = new Array(cols).fill(0)
+		for (const asset of assets) {
+			const ratio = (asset.ratio > 0) ? asset.ratio : MASONRY_DEFAULT_RATIO
+			const itemHeight = colWidth / ratio
+			let minIdx = 0
+			for (let i = 1; i < columnHeights.length; i++) {
+				if (columnHeights[i] < columnHeights[minIdx]) minIdx = i
+			}
+			columnHeights[minIdx] += itemHeight + GRID_GAP
+		}
+		return HEADER_HEIGHT + Math.max(...columnHeights)
+	}
+
+	const itemHeight = colWidth / MASONRY_DEFAULT_RATIO
+	const rows = Math.ceil(count / cols)
+	return HEADER_HEIGHT + rows * (itemHeight + GRID_GAP)
+}
+
 const bucketHeights = computed(() =>
-	store.personBuckets.map(b => estimateBucketHeight(b.count)),
+	store.personBuckets.map(b => {
+		if (store.gridLayout === 'masonry') {
+			return estimateBucketHeightMasonry(b.count, store.personBucketAssets[b.timeBucket])
+		}
+		return estimateBucketHeight(b.count)
+	}),
 )
 
 const bucketOffsets = computed(() => {
@@ -333,11 +386,17 @@ onBeforeUnmount(() => {
 	margin-left: auto;
 }
 
+.person-detail__meta-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 2px;
+}
+
 .person-detail__count {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
 	padding-left: 4px;
-	margin-top: 2px;
 }
 
 .person-detail__scroll {
@@ -352,7 +411,7 @@ onBeforeUnmount(() => {
 	z-index: 10;
 	padding: 7px 16px;
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	gap: 8px;
 	background: var(--color-main-background);
 	pointer-events: none;
@@ -408,5 +467,41 @@ onBeforeUnmount(() => {
 	.person-detail__bucket {
 		padding: 0 8px;
 	}
+}
+
+/* ---- Layout toggle (shared style pattern) ---- */
+.person-detail__layout-toggle {
+	margin-left: auto;
+	display: flex;
+	gap: 2px;
+}
+
+.person-detail__layout-btn {
+	all: unset;
+	box-sizing: border-box;
+	width: 28px;
+	height: 28px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	color: var(--color-text-maxcontrast);
+	transition: color 0.15s ease, background 0.15s ease;
+}
+
+.person-detail__layout-btn:hover {
+	color: var(--color-main-text);
+	background: var(--color-background-hover);
+}
+
+.person-detail__layout-btn:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+
+.person-detail__layout-btn--active {
+	color: var(--color-primary);
+	background: var(--color-primary-element-light);
 }
 </style>

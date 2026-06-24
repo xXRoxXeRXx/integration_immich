@@ -28,6 +28,7 @@ return [
         ['name' => 'assets#original',        'url' => '/api/v1/assets/{id}/original',        'verb' => 'GET'],
         ['name' => 'assets#videoStream',     'url' => '/api/v1/assets/{id}/video',           'verb' => 'GET'],
         ['name' => 'assets#mapMarkers',      'url' => '/api/v1/map/markers',                 'verb' => 'GET'],
+        ['name' => 'assets#searchLocation',  'url' => '/api/v1/search/location',             'verb' => 'GET'],
         ['name' => 'assets#explore',         'url' => '/api/v1/explore',                     'verb' => 'GET'],
 
         // Albums
