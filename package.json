@@ -30,7 +30,7 @@
     "devDependencies": {
         "@babel/core": "^8.0.1",
         "@nextcloud/browserslist-config": "^3.0.1",
-        "@nextcloud/eslint-config": "^8.4.1",
+        "@nextcloud/eslint-config": "^9.0.0",
         "@nextcloud/webpack-vue-config": "^7.0.0",
         "babel-loader": "^10.0.0",
         "css-loader": "^7.1.1",
