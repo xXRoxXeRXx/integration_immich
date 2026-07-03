@@ -171,7 +171,7 @@ const deleting = ref(false)
  * v3: ownerId/owner were removed; the owner is now in albumUsers with role 'owner'.
  */
 function isOwnedByMe(album) {
-	if (!store.currentUserId) return !album.shared
+	if (!store.currentUserId) return false
 	// v2: check ownerId / owner.id directly
 	if (album.ownerId === store.currentUserId || album.owner?.id === store.currentUserId) return true
 	// v3 (and v2 fallback): owner appears in albumUsers with role 'owner'

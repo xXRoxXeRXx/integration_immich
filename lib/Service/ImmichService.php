@@ -550,20 +550,30 @@ class ImmichService {
             ['name' => 'deviceId',      'contents' => 'nextcloud-integration'],
         ];
 
-        $response = $client->post($url, [
-            'headers' => [
-                'x-api-key' => $this->getApiKey(),
-                'Accept'    => 'application/json',
-            ],
-            'multipart'   => $multipart,
-            'http_errors' => false,
-            'timeout'     => 60,
-        ]);
+        try {
+            $response = $client->post($url, [
+                'headers' => [
+                    'x-api-key' => $this->getApiKey(),
+                    'Accept'    => 'application/json',
+                ],
+                'multipart'   => $multipart,
+                'http_errors' => false,
+                'timeout'     => 60,
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('Immich upload transport error: ' . $e->getMessage(), [
+                'app'       => Application::APP_ID,
+                'exception' => $e,
+            ]);
+            throw $e;
+        }
 
         $statusCode = $response->getStatusCode();
         if ($statusCode < 200 || $statusCode >= 300) {
+            $body = (string) $response->getBody();
             $this->logger->error('Immich upload returned HTTP ' . $statusCode, [
-                'app' => Application::APP_ID,
+                'app'          => Application::APP_ID,
+                'responseBody' => $body,
             ]);
             throw new \RuntimeException('Immich upload failed: HTTP ' . $statusCode);
         }

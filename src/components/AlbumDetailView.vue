@@ -1,14 +1,5 @@
 <!--
-  - SPDX-FileCopyrightText: 202							<NcButton v-if="canEdit && totalCount > 0"
-						variant="secondary"
-						@click="showPicker = true">
-						<template #icon>
-							<ImagePlusIcon :size="20" />
-						</template>
-						{{ t('integration_immich', 'Add photos') }}
-					</NcButton>tton v-if="totalCount > 0"
-						variant="secondary"
-						@click="showPicker = true">arcel Meyer <gh@grenzallee.eu>
+  - SPDX-FileCopyrightText: 2026 Marcel Meyer <gh@grenzallee.eu>
   - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <template>
@@ -43,7 +34,7 @@
 							</template>
 							{{ t('integration_immich', 'Rename') }}
 						</NcButton>
-						<NcButton v-if="canEdit && store.currentAlbum.assets && store.currentAlbum.assets.length > 0"
+						<NcButton v-if="canEdit && totalCount > 0"
 							variant="secondary"
 							@click="showPicker = true">
 							<template #icon>
