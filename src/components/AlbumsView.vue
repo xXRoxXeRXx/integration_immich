@@ -167,15 +167,14 @@ const deleting = ref(false)
 /**
  * Returns true if the currently authenticated Immich user is the owner of the
  * given album.
- * Important: Immich does NOT put the owner into albumUsers – that array only
- * contains users the album was shared WITH. The owner is identified via
- * album.ownerId / album.owner.id.
+ * v2: owner is identified via album.ownerId / album.owner.id (never in albumUsers).
+ * v3: ownerId/owner were removed; the owner is now in albumUsers with role 'owner'.
  */
 function isOwnedByMe(album) {
 	if (!store.currentUserId) return !album.shared
-	// Check ownerId directly – the owner is never in albumUsers
+	// v2: check ownerId / owner.id directly
 	if (album.ownerId === store.currentUserId || album.owner?.id === store.currentUserId) return true
-	// Fallback: check albumUsers in case API behaviour ever changes
+	// v3 (and v2 fallback): owner appears in albumUsers with role 'owner'
 	const myEntry = album.albumUsers?.find(u => u.user?.id === store.currentUserId)
 	if (myEntry !== undefined) return myEntry.role === 'owner'
 	return false
@@ -186,10 +185,12 @@ function isOwnedByMe(album) {
  */
 function myRoleIn(album) {
 	if (!store.currentUserId) return null
-	// Owner is never in albumUsers – return null (no shared-role badge for own albums)
+	// v2: owner is identified via ownerId / owner.id – never in albumUsers
 	if (album.ownerId === store.currentUserId || album.owner?.id === store.currentUserId) return null
 	const entry = album.albumUsers?.find(u => u.user?.id === store.currentUserId)
 	if (!entry) return null
+	// v3: owner is now included in albumUsers with role 'owner' – suppress badge for own albums
+	if (entry.role === 'owner') return null
 	return entry.role
 }
 

@@ -1,5 +1,12 @@
 <!--
-  - SPDX-FileCopyrightText: 202					<NcButton v-if="totalCount > 0"
+  - SPDX-FileCopyrightText: 202							<NcButton v-if="canEdit && totalCount > 0"
+						variant="secondary"
+						@click="showPicker = true">
+						<template #icon>
+							<ImagePlusIcon :size="20" />
+						</template>
+						{{ t('integration_immich', 'Add photos') }}
+					</NcButton>tton v-if="totalCount > 0"
 						variant="secondary"
 						@click="showPicker = true">arcel Meyer <gh@grenzallee.eu>
   - SPDX-License-Identifier: AGPL-3.0-or-later
@@ -210,15 +217,15 @@ const renaming = ref(false)
 
 /**
  * The current Immich user's role in this album.
- * Important: Immich does NOT put the owner into albumUsers – that array only
- * contains users the album was shared WITH. The owner is identified via
- * album.ownerId / album.owner.id.
+ * v2: owner is identified via album.ownerId / album.owner.id (never in albumUsers).
+ * v3: ownerId/owner were removed; the owner is now in albumUsers with role 'owner'.
  */
 const myRole = computed(() => {
 	if (!store.currentUserId || !store.currentAlbum) return 'viewer'
-	// Owner is never in albumUsers – check ownerId/owner.id directly
+	// v2: check ownerId / owner.id directly
 	if (store.currentAlbum.ownerId === store.currentUserId
 		|| store.currentAlbum.owner?.id === store.currentUserId) return 'owner'
+	// v3 (and v2 fallback): role is in albumUsers
 	const entry = store.currentAlbum.albumUsers?.find(u => u.user?.id === store.currentUserId)
 	if (entry !== undefined) return entry.role
 	return 'viewer'
@@ -254,9 +261,18 @@ const totalCount = computed(() =>
 )
 
 // IDs der bereits im Album enthaltenen Assets → werden im Picker grau markiert
-const existingAssetIds = computed(() =>
-	new Set((store.currentAlbum?.assets ?? []).map(a => a.id))
-)
+// v2: album.assets was part of AlbumResponseDto (removed in v3).
+// v3 fallback: collect IDs from the already-loaded album timeline bucket assets.
+const existingAssetIds = computed(() => {
+	if (store.currentAlbum?.assets) {
+		return new Set(store.currentAlbum.assets.map(a => a.id))
+	}
+	const ids = new Set()
+	for (const assets of Object.values(store.albumBucketAssets)) {
+		for (const a of assets) ids.add(a.id)
+	}
+	return ids
+})
 
 function estimateBucketHeight(count) {
 	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)

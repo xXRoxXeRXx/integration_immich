@@ -318,12 +318,16 @@ class ImmichService {
         }
 
         // Fetch albums owned by the user.
-        $owned = $this->request('GET', '/albums', []);
+        // v3 added `isOwned` as a dedicated boolean filter; v2 had `shared`/`isShared`.
+        // Sending all three params is safe: each version reads what it knows and ignores the rest.
+        //   v2: reads `shared=false` to get owned-only albums
+        //   v3: reads `isOwned=true`  to get owned-only albums
+        $owned = $this->request('GET', '/albums', ['query' => ['shared' => 'false', 'isOwned' => 'true']]);
 
         // Fetch albums shared with the user (owned by someone else).
-        // Immich returns different sets for these two calls — mirroring the
-        // behaviour of the official Immich web client.
-        $shared = $this->request('GET', '/albums', ['query' => ['shared' => 'true']]);
+        //   v2 reads `shared=true`   and silently ignores `isShared`
+        //   v3 reads `isShared=true` and silently ignores `shared`
+        $shared = $this->request('GET', '/albums', ['query' => ['shared' => 'true', 'isShared' => 'true']]);
 
         // Merge and deduplicate by album id using a hash set (associative array)
         // to avoid O(n*m) cost of in_array() and handle missing 'id' gracefully.
@@ -455,6 +459,11 @@ class ImmichService {
             $key         => $value,
             'isArchived' => false,
             'size'       => 1000,
+            // v3 changed the default for omitted `visibility` from 'timeline' to 'all'.
+            // Explicitly set 'timeline' here so archived/locked assets are excluded on both
+            // v2 and v3. v2 ignores unknown POST-body fields (Zod strips them silently),
+            // so sending this on v2 is safe — no version detection needed.
+            'visibility' => 'timeline',
         ];
 
         $result = $this->request('POST', '/search/metadata', ['body' => $body]);
@@ -464,8 +473,13 @@ class ImmichService {
     // ---- Explore ----
 
     public function getExplore(): array {
-        // Immich v2.x does not expose /explore.
-        // Build explore sections by grouping map markers by city and country.
+        // GET /map/markers is stable in both v2 and v3 (history: added v1, stable v2).
+        // Response shape: [{id, lat, lon, city, state, country}, …] – unchanged in v3.
+        //
+        // GET /search/explore was considered but only returns `exifInfo.city` and
+        // `createdAt` sections. The `createdAt` items are not geographic and break
+        // the place-detail routing in ExploreView.vue, so we keep the map-markers
+        // approach which provides proper city + country sections.
         try {
             $markers = $this->request('GET', '/map/markers', [
                 'query' => ['isArchived' => 'false'],
@@ -475,16 +489,17 @@ class ImmichService {
                 return [];
             }
 
-            $cities = [];
+            $cities    = [];
             $countries = [];
 
             foreach ($markers as $marker) {
-                $id = $marker['id'] ?? null;
+                $id      = $marker['id']      ?? null;
+                $city    = $marker['city']    ?? null;
+                $country = $marker['country'] ?? null;
+
                 if (!$id) {
                     continue;
                 }
-                $city = $marker['city'] ?? null;
-                $country = $marker['country'] ?? null;
 
                 if ($city !== null && $city !== '' && !isset($cities[$city])) {
                     $cities[$city] = ['value' => $city, 'data' => ['id' => $id]];
@@ -504,7 +519,7 @@ class ImmichService {
 
             return $result;
         } catch (\Exception $e) {
-            $this->logger->warning('Explore via map markers failed: ' . $e->getMessage(), [
+            $this->logger->warning('Immich /map/markers request failed: ' . $e->getMessage(), [
                 'app' => Application::APP_ID,
             ]);
             return [];
@@ -520,23 +535,38 @@ class ImmichService {
         string $createdAt,
         string $modifiedAt,
     ): array {
-        $deviceAssetId = $fileName . '-' . bin2hex(random_bytes(8));
         $client = $this->clientService->newClient();
         $url = $this->getServerUrl() . '/api/assets';
+
+        $multipart = [
+            ['name' => 'assetData', 'contents' => $fileContent, 'filename' => $fileName, 'headers' => ['Content-Type' => $mimeType]],
+            ['name' => 'fileCreatedAt', 'contents' => $createdAt],
+            ['name' => 'fileModifiedAt', 'contents' => $modifiedAt],
+            // v2 required deviceAssetId and deviceId; v3 removed them from its DTO but
+            // uses Zod without `.strict()`, so unknown multipart fields are silently
+            // stripped rather than rejected. Sending them is therefore safe on v3 too —
+            // no version detection needed.
+            ['name' => 'deviceAssetId', 'contents' => $fileName . '-' . bin2hex(random_bytes(8))],
+            ['name' => 'deviceId',      'contents' => 'nextcloud-integration'],
+        ];
 
         $response = $client->post($url, [
             'headers' => [
                 'x-api-key' => $this->getApiKey(),
-                'Accept' => 'application/json',
+                'Accept'    => 'application/json',
             ],
-            'multipart' => [
-                ['name' => 'assetData', 'contents' => $fileContent, 'filename' => $fileName, 'headers' => ['Content-Type' => $mimeType]],
-                ['name' => 'deviceAssetId', 'contents' => $deviceAssetId],
-                ['name' => 'deviceId', 'contents' => 'nextcloud-integration'],
-                ['name' => 'fileCreatedAt', 'contents' => $createdAt],
-                ['name' => 'fileModifiedAt', 'contents' => $modifiedAt],
-            ],
+            'multipart'   => $multipart,
+            'http_errors' => false,
+            'timeout'     => 60,
         ]);
+
+        $statusCode = $response->getStatusCode();
+        if ($statusCode < 200 || $statusCode >= 300) {
+            $this->logger->error('Immich upload returned HTTP ' . $statusCode, [
+                'app' => Application::APP_ID,
+            ]);
+            throw new \RuntimeException('Immich upload failed: HTTP ' . $statusCode);
+        }
 
         $decoded = json_decode($response->getBody(), true);
         return is_array($decoded) ? $decoded : ['status' => 'unknown', 'raw' => (string)$response->getBody()];
