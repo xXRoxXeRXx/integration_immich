@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-07-06
+
+### Fixed
+
+- AlbumDetailView: 'Add photos' button now correctly hidden for album viewers (was visible regardless of role)
+- AlbumsView: suppress 'Shared (Owner)' badge on own albums when using Immich v3 (owner now appears in `albumUsers` with `role: 'owner'`)
+- AlbumDetailView: `existingAssetIds` falls back to already-loaded bucket assets on Immich v3 (where `album.assets` was removed), so the photo picker can still grey-out duplicates
+- `ImmichService::getAlbums()`: send both v2 (`shared`) and v3 (`isOwned`/`isShared`) filter params so owned and shared albums are fetched correctly on both Immich versions
+- `ImmichService::searchByLocation()`: explicitly set `visibility: 'timeline'` to exclude archived/locked assets on Immich v3 (v3 changed the default from `'timeline'` to `'all'`)
+- `ImmichService::uploadAsset()`: add `http_errors: false` + explicit HTTP status check with response body logging; transport errors are now caught and logged with full context
+
+### Security / Dependencies
+
+- `webpack` 5.107.2 → 5.108.1
+- `webpack-cli` 7.0.3 → 7.1.0
+- `@nextcloud/eslint-config` 8.4.2 → 9.0.0
+
+---
+
 ## [1.3.0] - 2026-06-24
 
 ### Added
