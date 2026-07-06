@@ -220,6 +220,9 @@ class AlbumsController extends Controller {
             $album = $this->immichService->getAlbum($id);
             $thumbnailAssetId = $album['albumThumbnailAssetId'] ?? null;
 
+            // Immich v3 removed the `assets` array from AlbumResponseDto,
+            // so the fallback below only works on v2. On v3 the primary
+            // albumThumbnailAssetId field is always set when an album is non-empty.
             if (!$thumbnailAssetId && !empty($album['assets'])) {
                 $thumbnailAssetId = $album['assets'][0]['id'];
             }

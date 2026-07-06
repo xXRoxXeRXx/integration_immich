@@ -200,12 +200,14 @@ const selectedAllFavorited = computed(() => {
 const isAlbumDetailView = computed(() => route.name === 'album-detail')
 
 // Role of the current user in the currently open album (for album-detail view).
-// Important: Immich does NOT put the owner into albumUsers – check ownerId first.
+// v2: owner is identified via ownerId / owner.id (never in albumUsers).
+// v3: ownerId/owner were removed; the owner is now in albumUsers with role 'owner'.
 const currentAlbumMyRole = computed(() => {
 	if (!store.currentUserId || !store.currentAlbum) return 'viewer'
-	// Owner is never in albumUsers – check ownerId/owner.id directly
+	// v2: check ownerId / owner.id directly
 	if (store.currentAlbum.ownerId === store.currentUserId
 		|| store.currentAlbum.owner?.id === store.currentUserId) return 'owner'
+	// v3 (and v2 fallback): role is in albumUsers
 	const entry = store.currentAlbum.albumUsers?.find(u => u.user?.id === store.currentUserId)
 	if (entry !== undefined) return entry.role
 	return 'viewer'
