@@ -38,7 +38,8 @@ Timeline, albums, people, map, explore — all seamlessly integrated.
 | --- | --- |
 | 🖼️ **Timeline** | Lazy-loaded photo & video timeline, grouped by date with smooth infinite scroll |
 | 📁 **Albums** | Browse all your Immich albums with cover thumbnails, create, rename and delete albums |
-| 👤 **People** | Face recognition — explore your library by recognized person |
+| �️ **Folders** | Browse your library by original file-system folder structure (requires *Folder view* enabled in Immich settings) |
+| �👤 **People** | Face recognition — explore your library by recognized person |
 | 🗺️ **Map** | Interactive map of all geotagged photos with cluster markers |
 | 🔍 **Explore** | Browse by city, country, state, object or tag |
 | 🔎 **Lightbox** | Full-screen viewer with keyboard navigation, pinch-to-zoom and EXIF metadata panel |
@@ -109,6 +110,7 @@ When creating an API key in Immich (*Account Settings → API Keys → New API k
 | `albumAsset.delete` | Remove assets from albums |
 | `person.read` | List recognized people and their thumbnails |
 | `map.read` | Load map markers for the Map view |
+| `folder.read` | Browse the folder structure in the Folders view (requires *Administration → Features → Folder view* enabled in Immich) |
 
 > **Tip:** Immich lets you create multiple API keys with different scopes. Creating a dedicated key for the Nextcloud integration (with only the permissions above) is recommended over using a full-access key.
 >
