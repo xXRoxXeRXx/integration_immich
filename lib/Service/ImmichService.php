@@ -109,6 +109,7 @@ class ImmichService {
         'albumAsset.delete',
         'person.read',
         'map.read',
+        'folder.read',
     ];
 
     public function validateConnection(): array {
@@ -524,6 +525,25 @@ class ImmichService {
             ]);
             return [];
         }
+    }
+
+    // ---- Folders ----
+
+    /**
+     * Returns all unique folder paths that contain at least one asset.
+     * Example result: ["/DCIM/Camera", "/DCIM/WhatsApp", "/Photos/2024"]
+     */
+    public function getUniqueFolderPaths(): array {
+        $result = $this->request('GET', '/view/folder/unique-paths');
+        return is_array($result) ? $result : [];
+    }
+
+    /**
+     * Returns all assets whose original path matches $path exactly.
+     */
+    public function getFolderAssets(string $path): array {
+        $result = $this->request('GET', '/view/folder', ['query' => ['path' => $path]]);
+        return is_array($result) ? $result : [];
     }
 
     // ---- Upload ----

@@ -40,6 +40,13 @@
 					<FolderIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
+			<NcAppNavigationItem :name="t('integration_immich', 'Folders')"
+				:to="{ name: 'folders' }"
+				:active="$route.name === 'folders'">
+				<template #icon>
+					<FolderTreeIcon :size="20" />
+				</template>
+			</NcAppNavigationItem>
 			<NcAppNavigationItem :name="t('integration_immich', 'People')"
 				:to="{ name: 'people' }"
 				:active="$route.name === 'people' || $route.name === 'person-detail'">
@@ -88,6 +95,7 @@ import PhotosIcon from 'vue-material-design-icons/ImageOutline.vue'
 import VideoIcon from 'vue-material-design-icons/PlayCircleOutline.vue'
 import HeartIcon from 'vue-material-design-icons/HeartOutline.vue'
 import FolderIcon from 'vue-material-design-icons/ViewGalleryOutline.vue'
+import FolderTreeIcon from 'vue-material-design-icons/FolderOutline.vue'
 import AccountGroupIcon from 'vue-material-design-icons/FaceWomanShimmerOutline.vue'
 import MapIcon from 'vue-material-design-icons/MapOutline.vue'
 import CompassIcon from 'vue-material-design-icons/Telescope.vue'

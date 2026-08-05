@@ -99,6 +99,10 @@ export function uploadFile(fileId) {
 	return axios.post(`${baseUrl}/upload`, { fileId })
 }
 
+export function getFolderContent(path = '/') {
+	return axios.get(`${baseUrl}/folders/content`, { params: { path } })
+}
+
 export function saveAssetsToNextcloud(assetIds, path) {
 	return axios.post(`${baseUrl}/assets/save`, { assetIds, path })
 }

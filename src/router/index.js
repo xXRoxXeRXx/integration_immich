@@ -11,6 +11,7 @@ import PersonDetailView from '../components/PersonDetailView.vue'
 import MapView from '../components/MapView.vue'
 import ExploreView from '../components/ExploreView.vue'
 import PlaceDetailView from '../components/PlaceDetailView.vue'
+import FoldersView from '../components/FoldersView.vue'
 
 const routes = [
 	{ path: '/', name: 'timeline', component: TimelineView },
@@ -24,6 +25,7 @@ const routes = [
 	{ path: '/map', name: 'map', component: MapView },
 	{ path: '/explore', name: 'explore', component: ExploreView },
 	{ path: '/explore/:field/:value', name: 'place-detail', component: PlaceDetailView, props: true },
+	{ path: '/folders', name: 'folders', component: FoldersView },
 ]
 
 const router = createRouter({

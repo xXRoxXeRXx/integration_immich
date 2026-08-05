@@ -47,6 +47,9 @@ return [
         ['name' => 'people#assets', 'url' => '/api/v1/people/{id}/assets', 'verb' => 'GET'],
         ['name' => 'people#thumbnail', 'url' => '/api/v1/people/{id}/thumbnail', 'verb' => 'GET'],
 
+        // Folders
+        ['name' => 'folders#content', 'url' => '/api/v1/folders/content', 'verb' => 'GET'],
+
         // Upload NC → Immich
         ['name' => 'upload#upload', 'url' => '/api/v1/upload', 'verb' => 'POST'],
     ],
