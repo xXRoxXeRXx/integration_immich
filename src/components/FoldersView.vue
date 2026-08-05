@@ -68,7 +68,11 @@
 						<div v-for="folder in store.folderSubdirs"
 							:key="folder.id || folder.name"
 							class="folders-view__item"
-							@click="navigateTo(joinPath(store.currentFolderPath, folder.name))">
+						role="button"
+						tabindex="0"
+						@click="navigateTo(joinPath(store.currentFolderPath, folder.name))"
+						@keydown.enter.prevent="navigateTo(joinPath(store.currentFolderPath, folder.name))"
+						@keydown.space.prevent="navigateTo(joinPath(store.currentFolderPath, folder.name))">
 							<div class="folders-view__folder-icon">
 								<FolderIcon :size="48" />
 							</div>

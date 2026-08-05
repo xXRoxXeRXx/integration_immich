@@ -50,8 +50,9 @@ class FoldersController extends Controller {
 
         $path = (string) $this->request->getParam('path', '/');
 
-        // Reject path traversal attempts
-        if (str_contains($path, '..')) {
+        // Reject ".." only when it appears as its own path segment
+        // (e.g. /foo/../bar), so legitimate names like "foo..bar" remain valid.
+        if (preg_match('#(^|/)\.\.(/|$)#', $path) === 1) {
             return new JSONResponse(['error' => 'Invalid path'], Http::STATUS_BAD_REQUEST);
         }
 
