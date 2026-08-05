@@ -12,6 +12,7 @@ namespace OCA\IntegrationImmich\Service;
 
 use OCA\IntegrationImmich\AppInfo\Application;
 use OCP\Http\Client\IClientService;
+use OCP\ICacheFactory;
 use OCP\IConfig;
 use OCP\IUserSession;
 use OCP\Security\ICrypto;
@@ -27,12 +28,16 @@ class ImmichService {
     /** Max monthly buckets fetched in a single bulk person-assets request (~2 years). */
     private const MAX_PERSON_BUCKETS = 24;
 
+    /** TTL (seconds) for caching /view/folder/unique-paths per user. */
+    private const UNIQUE_PATHS_CACHE_TTL = 300;
+
     public function __construct(
         private IClientService $clientService,
         private IConfig $config,
         private IUserSession $userSession,
         private LoggerInterface $logger,
         private ICrypto $crypto,
+        private ICacheFactory $cacheFactory,
     ) {
     }
 
@@ -109,6 +114,7 @@ class ImmichService {
         'albumAsset.delete',
         'person.read',
         'map.read',
+        'folder.read',
     ];
 
     public function validateConnection(): array {
@@ -524,6 +530,35 @@ class ImmichService {
             ]);
             return [];
         }
+    }
+
+    // ---- Folders ----
+
+    /**
+     * Returns all unique folder paths that contain at least one asset.
+     * Result is cached per user for UNIQUE_PATHS_CACHE_TTL seconds to avoid
+     * fetching potentially large lists on every folder navigation request.
+     * Example result: ["/DCIM/Camera", "/DCIM/WhatsApp", "/Photos/2024"]
+     */
+    public function getUniqueFolderPaths(): array {
+        $cache    = $this->cacheFactory->createLocal(Application::APP_ID);
+        $cacheKey = 'unique_paths_' . $this->getUserId();
+        $cached   = $cache->get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+        $result = $this->request('GET', '/view/folder/unique-paths');
+        $paths  = is_array($result) ? $result : [];
+        $cache->set($cacheKey, $paths, self::UNIQUE_PATHS_CACHE_TTL);
+        return $paths;
+    }
+
+    /**
+     * Returns all assets whose original path matches $path exactly.
+     */
+    public function getFolderAssets(string $path): array {
+        $result = $this->request('GET', '/view/folder', ['query' => ['path' => $path]]);
+        return is_array($result) ? $result : [];
     }
 
     // ---- Upload ----

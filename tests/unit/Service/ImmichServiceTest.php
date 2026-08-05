@@ -7,6 +7,7 @@ namespace OCA\IntegrationImmich\Tests\Unit\Service;
 use OCA\IntegrationImmich\AppInfo\Application;
 use OCA\IntegrationImmich\Service\ImmichService;
 use OCP\Http\Client\IClientService;
+use OCP\ICacheFactory;
 use OCP\IConfig;
 use OCP\IUser;
 use OCP\IUserSession;
@@ -42,6 +43,7 @@ class ImmichServiceTest extends TestCase {
 			$this->userSession,
 			$this->createMock(LoggerInterface::class),
 			$this->crypto,
+			$this->createMock(ICacheFactory::class),
 		);
 	}
 
@@ -132,6 +134,7 @@ class ImmichServiceTest extends TestCase {
 			$this->userSession,
 			$this->createMock(\Psr\Log\LoggerInterface::class),
 			$this->crypto,
+			$this->createMock(ICacheFactory::class),
 		);
 
 		$result = $service->validateConnection();

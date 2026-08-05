@@ -4,7 +4,7 @@
  */
 import { defineStore } from 'pinia'
 import { translate as t } from '@nextcloud/l10n'
-import { getTimeline, getAlbums, getAlbum, getPeople, getMapMarkers, searchByLocation, getExplore, getMe } from '../services/api.js'
+import { getTimeline, getAlbums, getAlbum, getPeople, getMapMarkers, searchByLocation, getExplore, getMe, getFolderContent } from '../services/api.js'
 import { appStorage } from '../services/storage.js'
 
 const BUCKET_CACHE_KEY = 'timeline_buckets'
@@ -43,6 +43,11 @@ export const useImmichStore = defineStore('immich', {
 		currentPlaceValue: null,
 		// Explore
 		exploreData: [],
+		// Folders
+		currentFolderPath: '/',
+		folderBasePath: '/',
+		folderSubdirs: [],
+		folderAssets: [],
 		// UI
 		loading: false,
 		error: null,
@@ -380,6 +385,30 @@ export const useImmichStore = defineStore('immich', {
 			try {
 				const response = await getExplore()
 				this.exploreData = Array.isArray(response.data) ? response.data : []
+			} catch (e) {
+				this.error = e.response?.data?.error || e.message
+			} finally {
+				this.loading = false
+			}
+		},
+
+		// ---- Folders ----
+
+		async fetchFolderContent(path = '/') {
+			this.loading = true
+			this.error = null
+			this.currentFolderPath = path
+			this.folderSubdirs = []
+			this.folderAssets = []
+			try {
+				const response = await getFolderContent(path)
+				const data = response.data || {}
+				this.folderSubdirs = Array.isArray(data.folders) ? data.folders : []
+				this.folderAssets = Array.isArray(data.assets) ? data.assets : []
+				// Controller may return the auto-detected base path and the effective
+				// path it actually used (e.g. when the caller passed '/')
+				if (data.basePath) this.folderBasePath = data.basePath
+				if (data.currentPath) this.currentFolderPath = data.currentPath
 			} catch (e) {
 				this.error = e.response?.data?.error || e.message
 			} finally {
