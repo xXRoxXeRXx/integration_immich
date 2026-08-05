@@ -134,6 +134,7 @@ class ImmichServiceTest extends TestCase {
 			$this->userSession,
 			$this->createMock(\Psr\Log\LoggerInterface::class),
 			$this->crypto,
+			$this->createMock(ICacheFactory::class),
 		);
 
 		$result = $service->validateConnection();
