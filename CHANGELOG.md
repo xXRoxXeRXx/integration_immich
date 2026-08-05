@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-05
+
+### Added
+
+- **Folders view** — browse your Immich library by original file-system folder structure ([#75](https://github.com/xXRoxXeRXx/integration_immich/issues/75))
+  - Automatically skips to the real content root (e.g. `/upload/library/<user>`) instead of starting at `/`
+  - Breadcrumb navigation, subfolder grid, photo grid with grid/masonry layout toggle and lightbox support
+  - Keyboard-accessible subfolder tiles (`role="button"`, Enter/Space navigation)
+  - `folder.read` permission added to the required API-key permissions list
+  - Translations: de, fr, es-ES, nl, pt
+
+---
+
 ## [1.3.2] - 2026-08-05
 
 ### Security / Dependencies
