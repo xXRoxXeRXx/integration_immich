@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-08-05
+
+### Security / Dependencies
+
+- `fast-uri` 3.1.3 → 3.1.5 (GHSA-v2hh-gcrm-f6hx, GHSA-7p8r-x3mc-p8w7)
+- `brace-expansion` 2.1.1 → 2.1.4 / 5.0.7 → 5.0.9 (CVE-2026-13149 / GHSA-mh99-v99m-4gvg)
+- `postcss` 8.5.16 → 8.5.25
+- `dompurify` 3.4.11 → 3.4.13
+- `fast-xml-parser` 5.9.3 → 5.10.1
+- `pinia` 3.0.4 → 4.0.2
+- `vue` 3.5.39 → 3.5.40
+- `vue-router` 5.1.0 → 5.2.0
+- `@nextcloud/vue` 9.8.2 → 9.9.0
+- `@nextcloud/dialogs` 7.4.0 → 7.4.1
+- `@nextcloud/eslint-config` 9.0.0 → 9.0.1
+- `sass` 1.101.0 → 1.102.0
+- `webpack` 5.108.4 → 5.109.2
+- `webpack-dev-server` 5.2.6 → 6.0.0
+- `actions/setup-node` v6 → v7
+
+---
+
 ## [1.3.1] - 2026-07-06
 
 ### Fixed
