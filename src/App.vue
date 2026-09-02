@@ -31,6 +31,8 @@
 						<div class="view-toolbar__selection-actions">
 							<!-- Primary action: always visible -->
 							<NcButton variant="primary"
+								:title="t('integration_immich', 'Save to Nextcloud')"
+								:aria-label="t('integration_immich', 'Save to Nextcloud')"
 								:disabled="store.selectedAssetIds.size === 0 || saving"
 								@click="saveToNextcloud">
 								<template #icon>
@@ -528,7 +530,27 @@ async function deleteSelectedAssets() {
 }
 
 @media (max-width: 680px) {
+	.view-toolbar {
+		flex-wrap: wrap;
+		row-gap: 4px;
+	}
+
+	.view-toolbar__selection-count {
+		flex: 1 1 100%;
+	}
+
+	.view-toolbar__selection-actions {
+		flex: 1 1 100%;
+		justify-content: flex-end;
+	}
+
 	.selection-actions-desktop {
+		display: none;
+	}
+}
+
+@media (max-width: 480px) {
+	.selection-btn-label {
 		display: none;
 	}
 }
