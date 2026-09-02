@@ -27,6 +27,12 @@
 					<span class="place-detail__count">
 						{{ n('integration_immich', '{count} photo', '{count} photos', store.placeAssets.length, { count: store.placeAssets.length }) }}
 					</span>
+					<button class="place-detail__select-all"
+						:title="t('integration_immich', 'Select all photos')"
+						:aria-label="t('integration_immich', 'Select all photos')"
+						@click="store.toggleAssetsSelection(store.placeAssets.map(asset => asset.id))">
+						<CheckboxMultipleOutlineIcon :size="18" />
+					</button>
 					<div class="place-detail__layout-toggle">
 						<button
 							class="place-detail__layout-btn"
@@ -78,6 +84,7 @@ import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import MapMarkerIcon from 'vue-material-design-icons/MapMarker.vue'
 import ViewGridIcon from 'vue-material-design-icons/ViewGrid.vue'
 import ViewQuiltIcon from 'vue-material-design-icons/ViewQuilt.vue'
+import CheckboxMultipleOutlineIcon from 'vue-material-design-icons/CheckboxMultipleOutline.vue'
 
 const props = defineProps({
 	field: { type: String, required: true },   // e.g. "exifInfo.city"
@@ -136,6 +143,22 @@ function goBack() {
 	gap: 8px;
 	margin-top: 2px;
 }
+
+.place-detail__select-all {
+	all: unset;
+	box-sizing: border-box;
+	width: 28px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 6px;
+	cursor: pointer;
+	color: var(--color-text-maxcontrast);
+}
+
+.place-detail__select-all:hover { color: var(--color-main-text); background: var(--color-background-hover); }
+.place-detail__select-all:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
 .place-detail__layout-toggle {
 	margin-left: auto;

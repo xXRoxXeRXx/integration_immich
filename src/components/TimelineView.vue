@@ -71,6 +71,17 @@
 					:key="buckets[index].timeBucket"
 					class="timeline-view__bucket"
 					:style="{ transform: `translateY(${bucketOffsets[index]}px)` }">
+					<div class="timeline-view__bucket-header">
+						<span class="timeline-view__bucket-label">{{ formatBucketDate(buckets[index].timeBucket) }}</span>
+						<span class="timeline-view__bucket-count">{{ buckets[index].count }}</span>
+						<button
+							class="timeline-view__select-bucket"
+							:title="t('integration_immich', 'Select all photos in this month')"
+							:aria-label="t('integration_immich', 'Select all photos in this month')"
+							@click.stop="selectBucket(index)">
+							<CheckboxMultipleOutlineIcon :size="18" />
+						</button>
+					</div>
 					<NcLoadingIcon v-if="loadingSet.has(buckets[index].timeBucket)"
 						:size="32"
 						class="timeline-view__bucket-loading" />
@@ -98,6 +109,7 @@ import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import ImageIcon from 'vue-material-design-icons/Image.vue'
 import ViewGridIcon from 'vue-material-design-icons/ViewGrid.vue'
 import ViewQuiltIcon from 'vue-material-design-icons/ViewQuilt.vue'
+import CheckboxMultipleOutlineIcon from 'vue-material-design-icons/CheckboxMultipleOutline.vue'
 
 const props = defineProps({
 	assetType: { type: String, default: null },
@@ -129,6 +141,7 @@ const GRID_MIN_ITEM = 180 // minmax min value
 const GRID_GAP = 3
 const BUCKET_PADDING_TOP = 15
 const BUCKET_PADDING_LR = 32 // 16px left + 16px right
+const BUCKET_HEADER_HEIGHT = 38 // header height plus gap before the photo grid
 
 // Default assumed aspect ratio for masonry height estimation of unloaded buckets.
 const MASONRY_DEFAULT_RATIO = 1.0
@@ -158,7 +171,7 @@ function estimateBucketHeight(count) {
 	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
 	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
 	const rows = Math.ceil(count / cols)
-	return BUCKET_PADDING_TOP + rows * colWidth + (rows - 1) * GRID_GAP
+	return BUCKET_PADDING_TOP + BUCKET_HEADER_HEIGHT + rows * colWidth + (rows - 1) * GRID_GAP
 }
 
 // Estimates masonry bucket height.
@@ -182,13 +195,13 @@ function estimateBucketHeightMasonry(count, assets = null) {
 			}
 			columnHeights[minIdx] += itemHeight + GRID_GAP
 		}
-		return BUCKET_PADDING_TOP + Math.max(...columnHeights)
+		return BUCKET_PADDING_TOP + BUCKET_HEADER_HEIGHT + Math.max(...columnHeights)
 	}
 
 	// No asset data yet: estimate with default ratio
 	const itemHeight = colWidth / MASONRY_DEFAULT_RATIO
 	const rows = Math.ceil(count / cols)
-	return BUCKET_PADDING_TOP + rows * (itemHeight + GRID_GAP)
+	return BUCKET_PADDING_TOP + BUCKET_HEADER_HEIGHT + rows * (itemHeight + GRID_GAP)
 }
 
 // Track actual measured heights (initially estimated)
@@ -422,6 +435,14 @@ function formatBucketDate(timeBucket) {
 	return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long' })
 }
 
+async function selectBucket(index) {
+	const bucket = buckets.value[index]
+	if (!bucket) return
+	await loadBucket(bucket.timeBucket)
+	const assets = assetsCache.value[bucket.timeBucket] || []
+	store.toggleAssetsSelection(assets.map(asset => asset.id))
+}
+
 const currentBucketIndex = computed(() => {
 	if (buckets.value.length === 0) return 0
 	for (let i = buckets.value.length - 1; i >= 0; i--) {
@@ -538,6 +559,49 @@ function scrollToTop() {
 	left: 0;
 	right: 0;
 	padding: 15px 16px 0;
+}
+
+.timeline-view__bucket-header {
+	height: 32px;
+	margin-bottom: 6px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.timeline-view__bucket-label {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-main-text);
+}
+
+.timeline-view__bucket-count {
+	font-size: 11px;
+	color: var(--color-text-maxcontrast);
+}
+
+.timeline-view__select-bucket {
+	all: unset;
+	box-sizing: border-box;
+	width: 28px;
+	height: 28px;
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 6px;
+	cursor: pointer;
+	color: var(--color-text-maxcontrast);
+}
+
+.timeline-view__select-bucket:hover {
+	color: var(--color-main-text);
+	background: var(--color-background-hover);
+}
+
+.timeline-view__select-bucket:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
 }
 
 /* ---- Sticky date — slim & elegant ---- */

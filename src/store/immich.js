@@ -522,6 +522,18 @@ export const useImmichStore = defineStore('immich', {
 			}
 		},
 
+		toggleAssetsSelection(ids) {
+			if (ids.length === 0) return
+			const next = new Set(this.selectedAssetIds)
+		const deselect = ids.every(id => next.has(id))
+		for (const id of ids) {
+			if (deselect) next.delete(id)
+			else next.add(id)
+		}
+		this.selectedAssetIds = next
+			this.isSelectionMode = true
+		},
+
 		clearSelection() {
 			this.selectedAssetIds = new Set()
 			this.isSelectionMode = false

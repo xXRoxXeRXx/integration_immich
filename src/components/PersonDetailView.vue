@@ -81,6 +81,16 @@
 						:key="store.personBuckets[index].timeBucket"
 						class="person-detail__bucket"
 						:style="{ transform: `translateY(${bucketOffsets[index]}px)` }">
+						<div class="person-detail__bucket-header">
+							<span class="person-detail__bucket-label">{{ formatBucketDate(store.personBuckets[index].timeBucket) }}</span>
+							<span class="person-detail__bucket-count">{{ store.personBuckets[index].count }}</span>
+							<button class="person-detail__select-bucket"
+								:title="t('integration_immich', 'Select all photos in this month')"
+								:aria-label="t('integration_immich', 'Select all photos in this month')"
+								@click.stop="selectBucket(index)">
+								<CheckboxMultipleOutlineIcon :size="18" />
+							</button>
+						</div>
 						<NcLoadingIcon v-if="loadingSet.has(store.personBuckets[index].timeBucket)"
 							:size="32"
 							class="person-detail__bucket-loading" />
@@ -111,6 +121,7 @@ import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import AccountIcon from 'vue-material-design-icons/Account.vue'
 import ViewGridIcon from 'vue-material-design-icons/ViewGrid.vue'
 import ViewQuiltIcon from 'vue-material-design-icons/ViewQuilt.vue'
+import CheckboxMultipleOutlineIcon from 'vue-material-design-icons/CheckboxMultipleOutline.vue'
 
 const props = defineProps({
 	id: { type: String, required: true },
@@ -272,6 +283,13 @@ async function loadBucket(timeBucket) {
 		activeRequests--
 		if (pendingQueue.length > 0) pendingQueue.shift()()
 	}
+}
+
+async function selectBucket(index) {
+	const bucket = store.personBuckets[index]
+	if (!bucket) return
+	await loadBucket(bucket.timeBucket)
+	store.toggleAssetsSelection((store.personBucketAssets[bucket.timeBucket] || []).map(asset => asset.id))
 }
 
 function evictDistantBuckets(currentIndices) {
@@ -447,6 +465,32 @@ onBeforeUnmount(() => {
 	right: 0;
 	padding: 15px 16px 0;
 }
+
+.person-detail__bucket-header {
+	height: 32px;
+	margin-bottom: 8px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.person-detail__bucket-label { font-size: 13px; font-weight: 600; color: var(--color-main-text); }
+.person-detail__bucket-count { font-size: 11px; color: var(--color-text-maxcontrast); }
+.person-detail__select-bucket {
+	all: unset;
+	box-sizing: border-box;
+	width: 28px;
+	height: 28px;
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 6px;
+	cursor: pointer;
+	color: var(--color-text-maxcontrast);
+}
+.person-detail__select-bucket:hover { color: var(--color-main-text); background: var(--color-background-hover); }
+.person-detail__select-bucket:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
 .person-detail__bucket-loading {
 	display: flex;

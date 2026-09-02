@@ -98,6 +98,7 @@ OC.L10N.register(
     "Album name": "Nombre del álbum",
     "My album": "Mi álbum",
     "Select photos": "Seleccionar fotos",
+    "Select all photos in this month": "Seleccionar todas las fotos de este mes",
     "Create": "Crear",
     "Delete": "Eliminar",
     "Album deleted": "Álbum eliminado",
