@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-09-03
+
+### Added
+
+- Bulk asset selection toggles — "Select all photos in this month" action added to the Timeline, Album, Person and Place views, in addition to the existing single-photo selection
+
+### Fixed
+
+- Mobile selection toolbar layout no longer overlaps content on small screens
+
+### Security / Dependencies
+
+- `@nextcloud/dialogs` 7.4.1 → 7.5.0
+- `@nextcloud/vue` 9.9.0 → 9.11.0
+- `@nextcloud/webpack-vue-config` 7.0.0 → 7.0.4
+- `pinia` 4.0.2 → 4.0.3
+- `vue` 3.5.40 → 3.5.42
+- `vue-router` 5.2.0 → 5.3.0
+- `sass` 1.102.0 → 1.103.1
+- `webpack` 5.109.2 → 5.110.2
+- `webpack-cli` 7.1.0 → 7.2.3
+- `browserslist` 4.28.4 → 4.28.8
+- `fast-uri` 3.1.5 → 3.1.7
+
+---
+
 ## [1.4.0] - 2026-08-05
 
 ### Added
