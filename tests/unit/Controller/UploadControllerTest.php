@@ -10,7 +10,6 @@ use OCP\AppFramework\Http;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
-use OCP\Files\IUserFolder;
 use OCP\IRequest;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
@@ -41,6 +40,13 @@ class UploadControllerTest extends TestCase {
 		);
 	}
 
+	private function createUserFolderMock(): MockObject {
+		$returnType = (new \ReflectionMethod(IRootFolder::class, 'getUserFolder'))->getReturnType();
+		$userFolderClass = $returnType instanceof \ReflectionNamedType ? $returnType->getName() : Folder::class;
+
+		return $this->createMock($userFolderClass);
+	}
+
 	public function testUploadReturns412WhenNotConfigured(): void {
 		$this->immichService->method('isConfigured')->willReturn(false);
 
@@ -64,7 +70,7 @@ class UploadControllerTest extends TestCase {
 		$this->immichService->method('isConfigured')->willReturn(true);
 		$this->request->method('getParam')->with('fileId')->willReturn('999');
 
-		$userFolder = $this->createMock(IUserFolder::class);
+		$userFolder = $this->createUserFolderMock();
 		$userFolder->method('getById')->with(999)->willReturn([]);
 		$this->rootFolder->method('getUserFolder')->with('testuser')->willReturn($userFolder);
 
@@ -79,7 +85,7 @@ class UploadControllerTest extends TestCase {
 
 		// Return a Folder (not a File) to simulate the "not a file" case
 		$folder = $this->createMock(Folder::class);
-		$userFolder = $this->createMock(IUserFolder::class);
+		$userFolder = $this->createUserFolderMock();
 		$userFolder->method('getById')->with(42)->willReturn([$folder]);
 		$this->rootFolder->method('getUserFolder')->with('testuser')->willReturn($userFolder);
 
@@ -99,7 +105,7 @@ class UploadControllerTest extends TestCase {
 		$file->method('getCreationTime')->willReturn(0);
 		$file->method('getMTime')->willReturn(1700000000);
 
-		$userFolder = $this->createMock(IUserFolder::class);
+		$userFolder = $this->createUserFolderMock();
 		$userFolder->method('getById')->with(42)->willReturn([$file]);
 		$this->rootFolder->method('getUserFolder')->with('testuser')->willReturn($userFolder);
 
