@@ -33,7 +33,7 @@
         "@nextcloud/eslint-config": "^9.0.1",
         "@nextcloud/webpack-vue-config": "^7.0.4",
         "babel-loader": "^10.0.0",
-        "css-loader": "^7.1.1",
+        "css-loader": "^7.1.5",
         "node-polyfill-webpack-plugin": "4.1.0",
         "sass": "^1.103.1",
         "sass-loader": "^17.0.0",
