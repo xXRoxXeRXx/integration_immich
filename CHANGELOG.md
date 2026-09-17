@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-09-17
+
+### Fixed
+
+- Add support for Nextcloud 35
+
+### Security / Dependencies
+
+- `vue-router` 5.3.0 → 5.3.1
+- `@babel/core` 8.0.1 → 8.0.5
+- `css-loader` 7.1.1 → 7.1.5
+- `sass` 1.103.1 → 1.104.1
+- `sass-loader` 17.0.0 → 17.0.1
+- `webpack` 5.110.2 → 5.110.3
+
+---
+
 ## [1.5.0] - 2026-09-03
 
 ### Added
