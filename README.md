@@ -38,8 +38,8 @@ Timeline, albums, people, map, explore — all seamlessly integrated.
 | --- | --- |
 | 🖼️ **Timeline** | Lazy-loaded photo & video timeline, grouped by date with smooth infinite scroll |
 | 📁 **Albums** | Browse all your Immich albums with cover thumbnails, create, rename and delete albums |
-| �️ **Folders** | Browse your library by original file-system folder structure (requires *Folder view* enabled in Immich settings) |
-| �👤 **People** | Face recognition — explore your library by recognized person |
+| 🗂️ **Folders** | Browse your library by original file-system folder structure (requires *Folder view* enabled in Immich settings) |
+| 👤 **People** | Face recognition — explore your library by recognized person |
 | 🗺️ **Map** | Interactive map of all geotagged photos with cluster markers |
 | 🔍 **Explore** | Browse by city, country, state, object or tag |
 | 🔎 **Lightbox** | Full-screen viewer with keyboard navigation, pinch-to-zoom and EXIF metadata panel |
