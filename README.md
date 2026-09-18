@@ -111,6 +111,7 @@ When creating an API key in Immich (*Account Settings → API Keys → New API k
 | `person.read` | List recognized people and their thumbnails |
 | `map.read` | Load map markers for the Map view |
 | `folder.read` | Browse the folder structure in the Folders view (requires *Administration → Features → Folder view* enabled in Immich) |
+| `user.read` | Validate the connection and identify the current user |
 
 > **Tip:** Immich lets you create multiple API keys with different scopes. Creating a dedicated key for the Nextcloud integration (with only the permissions above) is recommended over using a full-access key.
 >
