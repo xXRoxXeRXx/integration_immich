@@ -96,21 +96,21 @@ When creating an API key in Immich (*Account Settings → API Keys → New API k
 
 | Permission | Used for |
 | --- | --- |
-| `asset.view` | Thumbnails and video streaming |
+| `album.create` | Create new albums |
+| `album.delete` | Delete albums |
+| `album.read` | List all albums and album contents |
+| `album.update` | Rename albums |
+| `albumAsset.create` | Add assets to albums |
+| `albumAsset.delete` | Remove assets from albums |
+| `asset.delete` | Delete assets from Immich (moves to trash if enabled) |
+| `asset.download` | Download originals and archives to Nextcloud |
 | `asset.read` | Timeline, asset details, EXIF metadata |
 | `asset.update` | Mark / unmark favorites |
 | `asset.upload` | Upload files from Nextcloud to Immich |
-| `asset.download` | Download originals and archives to Nextcloud |
-| `asset.delete` | Delete assets from Immich (moves to trash if enabled) |
-| `album.read` | List all albums and album contents |
-| `album.create` | Create new albums |
-| `album.update` | Rename albums |
-| `album.delete` | Delete albums |
-| `albumAsset.create` | Add assets to albums |
-| `albumAsset.delete` | Remove assets from albums |
-| `person.read` | List recognized people and their thumbnails |
-| `map.read` | Load map markers for the Map view |
+| `asset.view` | Thumbnails and video streaming |
 | `folder.read` | Browse the folder structure in the Folders view (requires *Administration → Features → Folder view* enabled in Immich) |
+| `map.read` | Load map markers for the Map view |
+| `person.read` | List recognized people and their thumbnails |
 | `user.read` | Validate the connection and identify the current user |
 
 > **Tip:** Immich lets you create multiple API keys with different scopes. Creating a dedicated key for the Nextcloud integration (with only the permissions above) is recommended over using a full-access key.
