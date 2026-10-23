@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2026-10-23
+
+### Fixed
+
+- Make upload-controller user-folder test mocks compatible with Nextcloud 35 and earlier supported versions
+
+### Security / Dependencies
+
+- `@babel/core` 8.0.5 → 8.0.7
+- `@nextcloud/files` 4.0.0 → 4.1.0
+- `@nextcloud/router` 3.1.0 → 3.2.0
+- `@nextcloud/vue` 9.11.0 → 9.13.1
+- `@nextcloud/webpack-vue-config` 7.0.4 → 7.1.0
+- `axios` 1.18.1 → 1.20.0
+- `brace-expansion` 5.0.9 → 5.0.12 / 2.1.4 → 2.1.7
+- `compression` 1.8.1 → 1.8.2
+- `dompurify` 3.4.14 → 3.4.17
+- `follow-redirects` 1.16.0 → 1.16.1
+- `launch-editor` 2.14.1 → 2.14.2
+- `pinia` 4.0.3 → 4.1.0
+- `postcss` 8.5.25 → 8.5.31
+- `postcss-selector-parser` 7.1.4 → 7.1.6
+- `proxy-addr` 2.0.7 → 2.0.8
+- `sass` 1.104.1 → 1.105.2
+- `shell-quote` 1.9.0 → 1.12.0
+- `source-map-js` 1.2.1 → 1.2.2
+- `vue` 3.5.42 → 3.5.44
+- `vue-material-design-icons` 5.3.1 → 5.4.0
+- `vue-router` 5.3.1 → 5.4.0
+- `webpack` 5.110.3 → 5.112.0
+- `webpack-dev-middleware` 8.1.1 → 8.3.0
+
+---
+
 ## [1.5.1] - 2026-09-17
 
 ### Fixed
