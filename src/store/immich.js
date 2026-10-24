@@ -753,6 +753,13 @@ export const useImmichStore = defineStore('immich', {
 			}
 			// Place detail
 			for (const a of state.placeAssets) map[a.id] = a
+			// Partner buckets may omit ownerId; retain their known ownership even
+			// when another cache also contains the asset without that metadata.
+			for (const [partnerId, buckets] of Object.entries(state.partnerAssets)) {
+				for (const assets of Object.values(buckets)) {
+					for (const a of assets) map[a.id] = { ...a, ownerId: a.ownerId || partnerId }
+				}
+			}
 			return map
 		},
 	},

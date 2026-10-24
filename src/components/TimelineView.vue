@@ -74,8 +74,7 @@
 					<div class="timeline-view__bucket-header">
 						<span class="timeline-view__bucket-label">{{ formatBucketDate(buckets[index].timeBucket) }}</span>
 						<span class="timeline-view__bucket-count">{{ buckets[index].count }}</span>
-						<button v-if="!props.userId"
-							class="timeline-view__select-bucket"
+						<button class="timeline-view__select-bucket"
 							:title="t('integration_immich', 'Select all photos in this month')"
 							:aria-label="t('integration_immich', 'Select all photos in this month')"
 							@click.stop="selectBucket(index)">
@@ -87,7 +86,7 @@
 						class="timeline-view__bucket-loading" />
 					<PhotoGrid v-else-if="assetsCache[buckets[index].timeBucket]"
 						:assets="assetsCache[buckets[index].timeBucket]"
-						:selectable="!props.userId"
+						selectable
 						:layout="store.gridLayout"
 					@click="(_, idx) => openLightboxFromBucket(idx, index)" />
 					<div v-else

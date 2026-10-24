@@ -236,13 +236,13 @@ const pageTitles = {
 }
 
 // Views that contain individual selectable assets (photos/videos)
-const photoViews = new Set(['timeline', 'photos', 'videos', 'favorites', 'album-detail', 'person-detail', 'place-detail'])
+const photoViews = new Set(['timeline', 'photos', 'videos', 'favorites', 'album-detail', 'person-detail', 'place-detail', 'partner-detail'])
 
 const pageTitle = computed(() => pageTitles[route.name] ?? 'Immich')
 const isPhotoView = computed(() => photoViews.has(route.name))
 
-// Clear selection when navigating to a different view
-watch(() => route.name, () => {
+// Also clear selection when switching between partners on the same route.
+watch(() => route.fullPath, () => {
 	if (store.isSelectionMode) {
 		store.clearSelection()
 	}
