@@ -227,6 +227,8 @@ const pageTitles = {
 	'album-detail': t('integration_immich', 'Albums'),
 	'people': t('integration_immich', 'People'),
 	'person-detail': t('integration_immich', 'People'),
+	'partners': t('integration_immich', 'Shared with me'),
+	'partner-detail': t('integration_immich', 'Shared with me'),
 	'map': t('integration_immich', 'Map'),
 	'explore': t('integration_immich', 'Explore'),
 	'place-detail': t('integration_immich', 'Explore'),

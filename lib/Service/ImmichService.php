@@ -21,6 +21,7 @@ use Psr\Log\LoggerInterface;
 class ImmichService {
     private const CONFIG_SERVER_URL = 'server_url';
     private const CONFIG_API_KEY = 'api_key';
+    private const CONFIG_INCLUDE_PARTNERS = 'include_partner_assets';
 
     /** Regex for a canonical UUID v4 string. */
     public const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
@@ -95,6 +96,24 @@ class ImmichService {
         return $this->getServerUrl() !== '' && $this->getApiKey() !== '';
     }
 
+    public function includePartnerAssetsInTimeline(): bool {
+        return $this->config->getUserValue(
+            $this->getUserId(),
+            Application::APP_ID,
+            self::CONFIG_INCLUDE_PARTNERS,
+            '1'
+        ) === '1';
+    }
+
+    public function setIncludePartnerAssetsInTimeline(bool $include): void {
+        $this->config->setUserValue(
+            $this->getUserId(),
+            Application::APP_ID,
+            self::CONFIG_INCLUDE_PARTNERS,
+            $include ? '1' : '0'
+        );
+    }
+
     /**
      * Permissions the integration requires to work correctly.
      * These map to Immich's permission strings (as shown in the API key editor).
@@ -113,6 +132,7 @@ class ImmichService {
         'albumAsset.create',
         'albumAsset.delete',
         'person.read',
+        'partner.read',
         'map.read',
         'folder.read',
     ];
@@ -202,41 +222,60 @@ class ImmichService {
         return $missing;
     }
 
-    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false): array {
-        $query = ['size' => $size];
+    public function getPartners(): array {
+        return $this->request('GET', '/partners', ['query' => ['direction' => 'shared-with']]);
+    }
+
+    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false, ?string $userId = null, bool $withPartners = false): array {
+        // Immich's current timeline API infers bucket grouping and rejects the legacy `size` query parameter.
+        $query = [
+            'visibility' => 'timeline',
+            'withStacked' => 'true',
+        ];
         if ($personId !== null && $personId !== '') {
             $query['personId'] = $personId;
         }
         if ($albumId !== null && $albumId !== '') {
             $query['albumId'] = $albumId;
         }
-        if ($assetType !== null && $assetType !== '') {
-            $query['assetType'] = $assetType;
-        }
         if ($isFavorite) {
             $query['isFavorite'] = 'true';
+        }
+        if ($userId !== null && $userId !== '') {
+            $query['userId'] = $userId;
+        }
+        if ($withPartners) {
+            $query['withPartners'] = 'true';
         }
         return $this->request('GET', '/timeline/buckets', ['query' => $query]);
     }
 
-    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false): array {
+    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false, ?string $userId = null, bool $withPartners = false): array {
         // Immich v2 requires ISO-8601 format (YYYY-MM-DDTHH:MM:SS.000Z) for timeBucket.
         // Older API responses returned short dates (YYYY-MM-DD); normalize them here.
         if (strlen($timeBucket) === 10) {
             $timeBucket .= 'T00:00:00.000Z';
         }
-        $query = ['timeBucket' => $timeBucket, 'size' => $size];
+        // Immich's current timeline API infers bucket grouping and rejects the legacy `size` query parameter.
+        $query = [
+            'timeBucket' => $timeBucket,
+            'visibility' => 'timeline',
+            'withStacked' => 'true',
+        ];
         if ($personId !== null && $personId !== '') {
             $query['personId'] = $personId;
         }
         if ($albumId !== null && $albumId !== '') {
             $query['albumId'] = $albumId;
         }
-        if ($assetType !== null && $assetType !== '') {
-            $query['assetType'] = $assetType;
-        }
         if ($isFavorite) {
             $query['isFavorite'] = 'true';
+        }
+        if ($userId !== null && $userId !== '') {
+            $query['userId'] = $userId;
+        }
+        if ($withPartners) {
+            $query['withPartners'] = 'true';
         }
         $raw = $this->request('GET', '/timeline/bucket', ['query' => $query]);
 
@@ -669,10 +708,13 @@ class ImmichService {
 
             // For other non-2xx responses, log and throw so callers can handle them.
             if ($statusCode < 200 || $statusCode >= 300) {
+                $responseBody = (string)$response->getBody();
                 $this->logger->error('Immich API returned HTTP ' . $statusCode . ' for ' . $endpoint, [
                     'app'      => Application::APP_ID,
                     'endpoint' => $endpoint,
                     'method'   => $method,
+                    'query'    => $options['query'] ?? [],
+                    'responseBody' => substr($responseBody, 0, 2000),
                 ]);
                 throw new \RuntimeException('Immich API error: HTTP ' . $statusCode);
             }

@@ -64,6 +64,56 @@ class AssetsControllerTest extends TestCase {
 		$this->assertIsArray($response->getData());
 	}
 
+	public function testTimelineForwardsPartnerTimelineUserId(): void {
+		$userId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['timeBucket', null, null],
+			['size', 'MONTH', 'MONTH'],
+			['personId', null, null],
+			['albumId', null, null],
+			['assetType', null, null],
+			['userId', null, $userId],
+			['withPartners', null, null],
+			['isFavorite', null, null],
+		]);
+		$this->immichService->expects($this->once())
+			->method('getTimelineBuckets')
+			->with('MONTH', null, null, null, false, $userId, false)
+			->willReturn([]);
+
+		$response = $this->controller->timeline();
+
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
+	}
+
+	public function testTimelineReturns400ForInvalidUserId(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['timeBucket', null, null],
+			['size', 'MONTH', 'MONTH'],
+			['personId', null, null],
+			['albumId', null, null],
+			['assetType', null, null],
+			['userId', null, 'not-a-uuid'],
+		]);
+
+		$response = $this->controller->timeline();
+
+		$this->assertEquals(Http::STATUS_BAD_REQUEST, $response->getStatus());
+	}
+
+	public function testPartnersReturnsList(): void {
+		$partners = [['id' => 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'name' => 'Partner']];
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->immichService->expects($this->once())->method('getPartners')->willReturn($partners);
+
+		$response = $this->controller->partners();
+
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
+		$this->assertSame($partners, $response->getData());
+	}
+
 	public function testTimelineFiltersImageAssets(): void {
 		$this->immichService->method('isConfigured')->willReturn(true);
 		$this->request->method('getParam')->willReturnMap([

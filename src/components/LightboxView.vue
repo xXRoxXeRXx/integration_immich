@@ -39,7 +39,7 @@
 						<svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7z" /></svg>
 					</button>
 					<button
-						v-if="currentAsset"
+						v-if="isOwnedAsset"
 						class="ic-lb-btn"
 						:class="{ 'ic-lb-btn--active': isFavorite }"
 						:title="isFavorite ? t('integration_immich', 'Remove from favorites') : t('integration_immich', 'Add to favorites')"
@@ -53,7 +53,7 @@
 						</svg>
 					</button>
 					<button
-						v-if="currentAsset"
+						v-if="isOwnedAsset"
 						class="ic-lb-btn"
 						:class="{ 'ic-lb-btn--active': showAlbumPanel }"
 						:title="t('integration_immich', 'Add to album')"
@@ -64,7 +64,7 @@
 						<svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2m-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3z" /></svg>
 					</button>
 					<button
-						v-if="currentAsset"
+						v-if="isOwnedAsset"
 						class="ic-lb-btn"
 						:class="{ 'ic-lb-btn--loading': deletingAsset }"
 						:title="t('integration_immich', 'Delete')"
@@ -238,6 +238,7 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { useImmichStore } from '../store/immich.js'
+import { useRoute } from 'vue-router'
 import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset, createAlbum, deleteAssets } from '../services/api.js'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { translate as t, getCanonicalLocale } from '@nextcloud/l10n'
@@ -247,6 +248,7 @@ import { useHotKey } from '@nextcloud/vue/composables/useHotKey'
 import { logger } from '../services/logger.js'
 
 const store = useImmichStore()
+const route = useRoute()
 const overlayEl = ref(null)
 const showInfo = ref(false)
 const fetchingInfo = ref(false)
@@ -382,6 +384,11 @@ const isFavorite = computed(() => currentAsset.value?.isFavorite === true)
 const assets = computed(() => store.lightbox.assets ?? [])
 const currentIndex = computed(() => store.lightbox.currentIndex ?? 0)
 const currentAsset = computed(() => assets.value[currentIndex.value] ?? null)
+const isOwnedAsset = computed(() => {
+	if (route.name === 'partner-detail') return false
+	const ownerId = currentAsset.value?.ownerId
+	return !ownerId || Boolean(store.currentUserId && ownerId === store.currentUserId)
+})
 const prevAsset = computed(() => currentIndex.value > 0 ? assets.value[currentIndex.value - 1] : null)
 const nextAsset = computed(() => currentIndex.value < assets.value.length - 1 ? assets.value[currentIndex.value + 1] : null)
 const previewSrc = computed(() => currentAsset.value ? getPreviewUrl(currentAsset.value.id) : '')
@@ -525,7 +532,7 @@ async function saveCurrentToNextcloud() {
 }
 
 async function toggleFavorite() {
-	if (!currentAsset.value || togglingFavorite.value) return
+	if (!isOwnedAsset.value || togglingFavorite.value) return
 	togglingFavorite.value = true
 	const newVal = !currentAsset.value.isFavorite
 	try {
@@ -548,7 +555,7 @@ function onLbDeleteDialogAction(confirmed) {
 }
 
 async function deleteCurrent() {
-	if (!currentAsset.value || deletingAsset.value) return
+	if (!isOwnedAsset.value || deletingAsset.value) return
 
 	const confirmed = await new Promise((resolve) => {
 		pendingLbDeleteResolve = resolve
@@ -578,6 +585,7 @@ async function deleteCurrent() {
 }
 
 function toggleAlbumPanel() {
+	if (!isOwnedAsset.value) return
 	if (showAlbumPanel.value) {
 		showAlbumPanel.value = false
 		creatingAlbum.value = false

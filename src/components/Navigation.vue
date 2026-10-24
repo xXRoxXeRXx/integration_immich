@@ -54,6 +54,13 @@
 					<AccountGroupIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
+			<NcAppNavigationItem :name="t('integration_immich', 'Shared with me')"
+				:to="{ name: 'partners' }"
+				:active="$route.name === 'partners' || $route.name === 'partner-detail'">
+				<template #icon>
+					<AccountMultipleIcon :size="20" />
+				</template>
+			</NcAppNavigationItem>
 			<NcAppNavigationItem :name="t('integration_immich', 'Map')"
 				:to="{ name: 'map' }"
 				:active="$route.name === 'map'">
@@ -97,6 +104,7 @@ import HeartIcon from 'vue-material-design-icons/HeartOutline.vue'
 import FolderIcon from 'vue-material-design-icons/ViewGalleryOutline.vue'
 import FolderTreeIcon from 'vue-material-design-icons/FolderOutline.vue'
 import AccountGroupIcon from 'vue-material-design-icons/FaceWomanShimmerOutline.vue'
+import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
 import MapIcon from 'vue-material-design-icons/MapOutline.vue'
 import CompassIcon from 'vue-material-design-icons/Telescope.vue'
 import OpenInNewIcon from 'vue-material-design-icons/OpenInNew.vue'

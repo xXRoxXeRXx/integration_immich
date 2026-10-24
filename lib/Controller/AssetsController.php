@@ -62,11 +62,17 @@ class AssetsController extends Controller {
             $personId = $this->request->getParam('personId');
             $albumId = $this->request->getParam('albumId');
             $assetType = $this->request->getParam('assetType');
+            $userId = $this->request->getParam('userId');
+            $withPartners = $this->request->getParam('withPartners') === 'true';
             $isFavoriteParam = $this->request->getParam('isFavorite');
             $isFavorite = $isFavoriteParam === 'true';
 
+            if ($userId !== null && $userId !== '' && (!is_string($userId) || !preg_match(ImmichService::UUID_PATTERN, $userId))) {
+                return new JSONResponse(['error' => 'Invalid user ID format'], Http::STATUS_BAD_REQUEST);
+            }
+
             if ($timeBucket) {
-                $data = $this->immichService->getTimelineBucket($timeBucket, $size, $personId, $albumId, null, $isFavorite);
+                $data = $this->immichService->getTimelineBucket($timeBucket, $size, $personId, $albumId, null, $isFavorite, $userId, $withPartners);
                 // Immich timeline/bucket does not support assetType filtering.
                 // Immich returns isImage (bool) instead of a type field — filter in PHP.
                 if ($assetType === 'IMAGE') {
@@ -81,12 +87,26 @@ class AssetsController extends Controller {
                     ));
                 }
             } else {
-                $data = $this->immichService->getTimelineBuckets($size, $personId, $albumId, null, $isFavorite);
+                $data = $this->immichService->getTimelineBuckets($size, $personId, $albumId, null, $isFavorite, $userId, $withPartners);
             }
 
             return new JSONResponse($data);
         } catch (\Exception $e) {
             return $this->errorResponse('timeline', $e);
+        }
+    }
+
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function partners(): JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(['error' => 'Immich is not configured'], Http::STATUS_PRECONDITION_FAILED);
+        }
+
+        try {
+            return new JSONResponse($this->immichService->getPartners());
+        } catch (\Exception $e) {
+            return $this->errorResponse('partners', $e);
         }
     }
 

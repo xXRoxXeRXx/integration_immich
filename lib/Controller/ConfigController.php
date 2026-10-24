@@ -35,6 +35,7 @@ class ConfigController extends Controller {
         return new JSONResponse([
             'server_url' => $this->immichService->getServerUrl(),
             'api_key_set' => $this->immichService->getApiKey() !== '',
+            'include_partner_assets' => $this->immichService->includePartnerAssetsInTimeline(),
         ]);
     }
 
@@ -42,7 +43,17 @@ class ConfigController extends Controller {
     public function setConfig(): JSONResponse {
         $serverUrl = $this->request->getParam('server_url');
         $apiKey = $this->request->getParam('api_key');
+        $includePartnerAssets = $this->request->getParam('include_partner_assets');
         $validate = $this->request->getParam('validate', false);
+
+        if ($includePartnerAssets !== null) {
+            if (!in_array($includePartnerAssets, [true, false, 'true', 'false', '1', '0', 1, 0], true)) {
+                return new JSONResponse(['error' => 'Invalid partner timeline setting'], Http::STATUS_BAD_REQUEST);
+            }
+            $this->immichService->setIncludePartnerAssetsInTimeline(
+                in_array($includePartnerAssets, [true, 'true', '1', 1], true)
+            );
+        }
 
         $doValidate = $validate === true || $validate === 'true' || $validate === '1';
 
