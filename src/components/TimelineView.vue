@@ -74,7 +74,7 @@
 					<div class="timeline-view__bucket-header">
 						<span class="timeline-view__bucket-label">{{ formatBucketDate(buckets[index].timeBucket) }}</span>
 						<span class="timeline-view__bucket-count">{{ buckets[index].count }}</span>
-						<button
+						<button v-if="!props.userId"
 							class="timeline-view__select-bucket"
 							:title="t('integration_immich', 'Select all photos in this month')"
 							:aria-label="t('integration_immich', 'Select all photos in this month')"
@@ -87,7 +87,7 @@
 						class="timeline-view__bucket-loading" />
 					<PhotoGrid v-else-if="assetsCache[buckets[index].timeBucket]"
 						:assets="assetsCache[buckets[index].timeBucket]"
-						:selectable="true"
+						:selectable="!props.userId"
 						:layout="store.gridLayout"
 					@click="(_, idx) => openLightboxFromBucket(idx, index)" />
 					<div v-else
@@ -114,17 +114,20 @@ import CheckboxMultipleOutlineIcon from 'vue-material-design-icons/CheckboxMulti
 const props = defineProps({
 	assetType: { type: String, default: null },
 	isFavorite: { type: Boolean, default: false },
+	userId: { type: String, default: null },
 })
 
 const store = useImmichStore()
 
 // Point to the right store state based on assetType / isFavorite prop
 const buckets = computed(() => {
+	if (props.userId) return store.partnerBuckets[props.userId] || []
 	if (props.isFavorite) return store.favoriteBuckets
 	if (props.assetType) return store.filteredBuckets[props.assetType]
 	return store.timelineBuckets
 })
 const assetsCache = computed(() => {
+	if (props.userId) return store.partnerAssets[props.userId] || {}
 	if (props.isFavorite) return store.favoriteAssets
 	if (props.assetType) return store.filteredAssets[props.assetType]
 	return store.timelineAssets
@@ -280,7 +283,9 @@ function onScroll() {
 
 // --- Fetch/unload helpers depending on assetType / isFavorite ---
 async function fetchBuckets() {
-	if (props.isFavorite) {
+	if (props.userId) {
+		await store.fetchPartnerBuckets(props.userId)
+	} else if (props.isFavorite) {
 		await store.fetchFavoriteBuckets()
 	} else if (props.assetType) {
 		await store.fetchFilteredBuckets(props.assetType)
@@ -290,7 +295,9 @@ async function fetchBuckets() {
 }
 
 async function fetchBucket(timeBucket, signal) {
-	if (props.isFavorite) {
+	if (props.userId) {
+		await store.fetchPartnerBucket(props.userId, timeBucket, signal)
+	} else if (props.isFavorite) {
 		await store.fetchFavoriteBucket(timeBucket, signal)
 	} else if (props.assetType) {
 		await store.fetchFilteredBucket(props.assetType, timeBucket, signal)
@@ -300,7 +307,9 @@ async function fetchBucket(timeBucket, signal) {
 }
 
 function unloadBucket(timeBucket) {
-	if (props.isFavorite) {
+	if (props.userId) {
+		store.unloadPartnerBucket(props.userId, timeBucket)
+	} else if (props.isFavorite) {
 		store.unloadFavoriteBucket(timeBucket)
 	} else if (props.assetType) {
 		store.unloadFilteredBucket(props.assetType, timeBucket)
@@ -440,7 +449,8 @@ async function selectBucket(index) {
 	if (!bucket) return
 	await loadBucket(bucket.timeBucket)
 	const assets = assetsCache.value[bucket.timeBucket] || []
-	store.toggleAssetsSelection(assets.map(asset => asset.id))
+	const userAssets = assets.filter(asset => !asset.ownerId || (store.currentUserId && asset.ownerId === store.currentUserId))
+	store.toggleAssetsSelection(userAssets.map(asset => asset.id))
 }
 
 const currentBucketIndex = computed(() => {
@@ -486,7 +496,7 @@ onMounted(async () => {
 
 // When navigating between timeline / photos / videos / favorites, Vue Router reuses this
 // component instance — onMounted does NOT fire again. Watch the props instead.
-watch([() => props.assetType, () => props.isFavorite], async () => {
+watch([() => props.assetType, () => props.isFavorite, () => props.userId], async () => {
 	scrollTop.value = 0
 	lastScrollTop = 0
 	loadingSet.value = new Set()

@@ -3,19 +3,25 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { defineStore } from 'pinia'
+import { loadState } from '@nextcloud/initial-state'
 import { translate as t } from '@nextcloud/l10n'
-import { getTimeline, getAlbums, getAlbum, getPeople, getMapMarkers, searchByLocation, getExplore, getMe, getFolderContent } from '../services/api.js'
+import { getTimeline, getPartners, getAlbums, getAlbum, getPeople, getMapMarkers, searchByLocation, getExplore, getMe, getFolderContent } from '../services/api.js'
 import { appStorage } from '../services/storage.js'
 
-const BUCKET_CACHE_KEY = 'timeline_buckets'
+const BUCKET_CACHE_KEY = includePartners => `timeline_buckets_${includePartners ? 'with_partners' : 'without_partners'}`
 const BUCKET_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const LAYOUT_STORAGE_KEY = 'grid_layout'
 
 export const useImmichStore = defineStore('immich', {
 	state: () => ({
 		// Timeline
+		includePartnerAssets: loadState('integration_immich', 'user-config', {}).include_partner_assets !== false,
 		timelineBuckets: [],
 		timelineAssets: {},
+		partnerBuckets: {},
+		partnerAssets: {},
+		partners: [],
+		currentPartnerId: null,
 		// Filtered timelines (keyed by assetType: 'IMAGE' | 'VIDEO')
 		filteredBuckets: { IMAGE: [], VIDEO: [] },
 		filteredAssets: { IMAGE: {}, VIDEO: {} },
@@ -79,10 +85,11 @@ export const useImmichStore = defineStore('immich', {
 		async fetchTimelineBuckets() {
 			this.loading = true
 			this.error = null
+			const bucketCacheKey = BUCKET_CACHE_KEY(this.includePartnerAssets)
 
 			// Populate from cache immediately for instant display (stale-while-revalidate)
 			try {
-				const cached = appStorage.getItem(BUCKET_CACHE_KEY)
+				const cached = appStorage.getItem(bucketCacheKey)
 				if (cached) {
 					const { buckets, ts } = JSON.parse(cached)
 					if (Date.now() - ts < BUCKET_CACHE_TTL_MS && Array.isArray(buckets) && buckets.length > 0) {
@@ -93,11 +100,11 @@ export const useImmichStore = defineStore('immich', {
 			} catch { /* ignore malformed cache */ }
 
 			try {
-				const response = await getTimeline()
+				const response = await getTimeline({ withPartners: this.includePartnerAssets })
 				this.timelineBuckets = Array.isArray(response.data) ? response.data : []
 				// Persist fresh bucket list for next load
 				try {
-					appStorage.setItem(BUCKET_CACHE_KEY, JSON.stringify({ buckets: this.timelineBuckets, ts: Date.now() }))
+					appStorage.setItem(bucketCacheKey, JSON.stringify({ buckets: this.timelineBuckets, ts: Date.now() }))
 				} catch { /* storage full or unavailable — non-fatal */ }
 			} catch (e) {
 				const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout')
@@ -114,7 +121,7 @@ export const useImmichStore = defineStore('immich', {
 				return
 			}
 			try {
-				const response = await getTimeline({ timeBucket }, signal)
+				const response = await getTimeline({ timeBucket, withPartners: this.includePartnerAssets }, signal)
 				this.timelineAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
 			} catch (e) {
 				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
@@ -126,6 +133,54 @@ export const useImmichStore = defineStore('immich', {
 			delete this.timelineAssets[timeBucket]
 		},
 
+		async fetchPartners() {
+			this.loading = true
+			this.error = null
+			try {
+				const response = await getPartners()
+				this.partners = Array.isArray(response.data) ? response.data : []
+			} catch (e) {
+				this.error = e.response?.data?.error || e.message
+			} finally {
+				this.loading = false
+			}
+		},
+
+		async fetchPartnerBuckets(partnerId) {
+			this.loading = true
+			this.error = null
+			this.currentPartnerId = partnerId
+			if (!this.partnerAssets[partnerId]) this.partnerAssets[partnerId] = {}
+			try {
+				const response = await getTimeline({ userId: partnerId })
+				if (this.currentPartnerId === partnerId) {
+					this.partnerBuckets[partnerId] = Array.isArray(response.data) ? response.data : []
+				}
+			} catch (e) {
+				if (this.currentPartnerId === partnerId) this.error = e.response?.data?.error || e.message
+			} finally {
+				if (this.currentPartnerId === partnerId) this.loading = false
+			}
+		},
+
+		async fetchPartnerBucket(partnerId, timeBucket, signal = null) {
+			if (!this.partnerAssets[partnerId]) this.partnerAssets[partnerId] = {}
+			if (this.partnerAssets[partnerId][timeBucket]) return
+			try {
+				const response = await getTimeline({ userId: partnerId, timeBucket }, signal)
+				if (this.currentPartnerId === partnerId) {
+					this.partnerAssets[partnerId][timeBucket] = Array.isArray(response.data) ? response.data : []
+				}
+			} catch (e) {
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
+				if (this.currentPartnerId === partnerId) this.error = e.response?.data?.error || e.message
+			}
+		},
+
+		unloadPartnerBucket(partnerId, timeBucket) {
+			if (this.partnerAssets[partnerId]) delete this.partnerAssets[partnerId][timeBucket]
+		},
+
 		// ---- Filtered timelines (Fotos / Videos) ----
 
 		async fetchFilteredBuckets(assetType) {
@@ -135,7 +190,7 @@ export const useImmichStore = defineStore('immich', {
 				// Immich's timeline/buckets endpoint does not support assetType filtering.
 				// Reuse the main timeline bucket structure; PHP will filter the asset content.
 				if (this.timelineBuckets.length === 0) {
-					const response = await getTimeline()
+					const response = await getTimeline({ withPartners: this.includePartnerAssets })
 					this.timelineBuckets = Array.isArray(response.data) ? response.data : []
 				}
 				this.filteredBuckets[assetType] = this.timelineBuckets.map(b => {
@@ -158,7 +213,7 @@ export const useImmichStore = defineStore('immich', {
 			if (this.filteredAssets[assetType][timeBucket]) return
 			try {
 				// Pass assetType so PHP backend can filter the returned assets by type
-				const response = await getTimeline({ assetType, timeBucket }, signal)
+				const response = await getTimeline({ assetType, timeBucket, withPartners: this.includePartnerAssets }, signal)
 				const assets = Array.isArray(response.data) ? response.data : []
 				this.filteredAssets[assetType][timeBucket] = assets
 				// Update bucket count to match actual filtered asset count for correct height estimation

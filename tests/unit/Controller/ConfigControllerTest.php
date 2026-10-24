@@ -36,6 +36,7 @@ class ConfigControllerTest extends TestCase {
 	public function testGetConfigReturnsServerUrlAndKeyStatus(): void {
 		$this->immichService->method('getServerUrl')->willReturn('https://photos.example.com');
 		$this->immichService->method('getApiKey')->willReturn('abcdefgh');
+		$this->immichService->method('includePartnerAssetsInTimeline')->willReturn(true);
 
 		$response = $this->controller->getConfig();
 		$data = $response->getData();
@@ -43,6 +44,7 @@ class ConfigControllerTest extends TestCase {
 		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
 		$this->assertEquals('https://photos.example.com', $data['server_url']);
 		$this->assertTrue($data['api_key_set']);
+		$this->assertTrue($data['include_partner_assets']);
 		$this->assertArrayNotHasKey('api_key_masked', $data);
 	}
 
@@ -84,6 +86,34 @@ class ConfigControllerTest extends TestCase {
 		$this->immichService->expects($this->never())->method('setApiKey');
 
 		$this->controller->setConfig();
+	}
+
+	public function testSetConfigSavesPartnerTimelinePreference(): void {
+		$this->request->method('getParam')->willReturnMap([
+			['server_url', null, null],
+			['api_key', null, null],
+			['include_partner_assets', null, false],
+			['validate', false, false],
+		]);
+		$this->immichService->expects($this->once())
+			->method('setIncludePartnerAssetsInTimeline')
+			->with(false);
+
+		$response = $this->controller->setConfig();
+
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
+	}
+
+	public function testSetConfigRejectsInvalidPartnerTimelinePreference(): void {
+		$this->request->method('getParam')->willReturnMap([
+			['server_url', null, null],
+			['api_key', null, null],
+			['include_partner_assets', null, 'sometimes'],
+		]);
+
+		$response = $this->controller->setConfig();
+
+		$this->assertEquals(Http::STATUS_BAD_REQUEST, $response->getStatus());
 	}
 
 	public function testSetConfigWithValidationSuccessful(): void {

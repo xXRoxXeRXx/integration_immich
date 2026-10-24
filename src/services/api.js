@@ -11,6 +11,10 @@ export function getTimeline(params = {}, signal = null) {
 	return axios.get(`${baseUrl}/timeline`, { params, signal, timeout: 65000 })
 }
 
+export function getPartners() {
+	return axios.get(`${baseUrl}/partners`)
+}
+
 export function getAlbums(params = {}) {
 	return axios.get(`${baseUrl}/albums`, { params })
 }

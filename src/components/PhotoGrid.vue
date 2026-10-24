@@ -8,8 +8,8 @@
 			:key="asset.id"
 			class="photo-grid__item"
 			:class="{
-				'photo-grid__item--selected': selectable && store.selectedAssetIds.has(asset.id),
-				'photo-grid__item--selection-mode': selectable && store.isSelectionMode,
+				'photo-grid__item--selected': canSelect(asset) && store.selectedAssetIds.has(asset.id),
+				'photo-grid__item--selection-mode': canSelect(asset) && store.isSelectionMode,
 			}"
 			:style="layout === 'masonry' ? { '--item-ratio': String(getItemRatio(asset)) } : {}"
 			@click="handleClick(asset, index, $event)">
@@ -44,7 +44,7 @@
 
 			<!-- Checkbox: always rendered when selectable, hint on hover, full in selection-mode -->
 			<NcCheckboxRadioSwitch
-				v-if="selectable"
+				v-if="canSelect(asset)"
 				:model-value="store.selectedAssetIds.has(asset.id)"
 				:aria-label="t('integration_immich', 'Select photo')"
 				class="photo-grid__checkbox"
@@ -99,7 +99,7 @@ function handleClick(asset, index, event) {
 	// to avoid double-toggling (label click + bubbled parent click)
 	if (event?.target?.closest('.photo-grid__checkbox')) return
 
-	if (props.selectable && store.isSelectionMode) {
+	if (canSelect(asset) && store.isSelectionMode) {
 		store.toggleAssetSelection(asset.id)
 	} else {
 		emit('click', asset, index)
@@ -107,7 +107,7 @@ function handleClick(asset, index, event) {
 }
 
 function onCheckboxClick(asset) {
-	if (!props.selectable) return
+	if (!canSelect(asset)) return
 	if (!store.isSelectionMode) {
 		store.enterSelectionMode()
 	}
@@ -131,6 +131,10 @@ function formatDate(asset) {
 			day: '2-digit', month: 'short', year: 'numeric',
 		}).format(new Date(raw))
 	} catch { return '' }
+}
+
+function canSelect(asset) {
+	return props.selectable && (!asset.ownerId || (store.currentUserId && asset.ownerId === store.currentUserId))
 }
 </script>
 

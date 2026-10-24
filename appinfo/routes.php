@@ -20,6 +20,7 @@ return [
 
         // Assets / Timeline
         ['name' => 'assets#timeline',        'url' => '/api/v1/timeline',                    'verb' => 'GET'],
+        ['name' => 'assets#partners',       'url' => '/api/v1/partners',                     'verb' => 'GET'],
         ['name' => 'assets#downloadAssets',  'url' => '/api/v1/download',                    'verb' => 'POST'],
         ['name' => 'assets#saveToNextcloud', 'url' => '/api/v1/assets/save',                 'verb' => 'POST'],
         ['name' => 'assets#deleteAssets',    'url' => '/api/v1/assets/delete',               'verb' => 'POST'],

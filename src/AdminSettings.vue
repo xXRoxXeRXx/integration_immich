@@ -21,6 +21,22 @@
 						:placeholder="apiKeySet ? t('integration_immich', 'API key is set') : t('integration_immich', 'Enter Immich API key')" />
 				</div>
 
+				<div class="partner-timeline-setting">
+					<NcCheckboxRadioSwitch
+						type="switch"
+						:model-value="includePartnerAssets"
+						:disabled="savingPartnerSetting"
+						@update:model-value="savePartnerSetting">
+						{{ t('integration_immich', 'Show partner photos in the main timeline') }}
+					</NcCheckboxRadioSwitch>
+					<p class="partner-timeline-setting__description">
+						{{ t('integration_immich', 'When enabled, Immich partner photos are included according to each partner’s timeline setting.') }}
+					</p>
+					<NcNoteCard v-if="partnerSettingMessage" :type="partnerSettingMessageType">
+						{{ partnerSettingMessage }}
+					</NcNoteCard>
+				</div>
+
 				<div class="actions">
 					<NcButton type="secondary"
 						:disabled="testing || !serverUrl"
@@ -76,6 +92,7 @@ import {
 	NcButton,
 	NcNoteCard,
 	NcLoadingIcon,
+	NcCheckboxRadioSwitch,
 } from '@nextcloud/vue'
 import { getConfig, setConfig } from './services/api.js'
 
@@ -88,12 +105,17 @@ const message = ref('')
 const messageType = ref('success')
 const localAccessBlocked = ref(false)
 const missingPermissions = ref([])
+const includePartnerAssets = ref(true)
+const savingPartnerSetting = ref(false)
+const partnerSettingMessage = ref('')
+const partnerSettingMessageType = ref('success')
 
 onMounted(() => {
 	try {
 		const state = loadState('integration_immich', 'admin-config')
 		serverUrl.value = state.server_url || ''
 		apiKeySet.value = state.api_key_set || false
+		includePartnerAssets.value = state.include_partner_assets !== false
 	} catch (e) {
 		loadConfig()
 	}
@@ -104,9 +126,26 @@ async function loadConfig() {
 		const response = await getConfig()
 		serverUrl.value = response.data.server_url || ''
 		apiKeySet.value = response.data.api_key_set || false
+		includePartnerAssets.value = response.data.include_partner_assets !== false
 	} catch (e) {
 		message.value = t('integration_immich', 'Error loading configuration')
 		messageType.value = 'error'
+	}
+}
+
+async function savePartnerSetting(enabled) {
+	savingPartnerSetting.value = true
+	partnerSettingMessage.value = ''
+	try {
+		await setConfig({ include_partner_assets: enabled })
+		includePartnerAssets.value = enabled
+		partnerSettingMessage.value = t('integration_immich', 'Settings saved')
+		partnerSettingMessageType.value = 'success'
+	} catch (e) {
+		partnerSettingMessage.value = e.response?.data?.error || t('integration_immich', 'Error saving settings')
+		partnerSettingMessageType.value = 'error'
+	} finally {
+		savingPartnerSetting.value = false
 	}
 }
 
@@ -173,6 +212,15 @@ async function testConnection() {
 
 .field {
 	margin-bottom: 16px;
+}
+
+.partner-timeline-setting {
+	margin: 20px 0;
+}
+
+.partner-timeline-setting__description {
+	margin: 4px 0 0 34px;
+	color: var(--color-text-maxcontrast);
 }
 
 .actions {

@@ -33,6 +33,7 @@ class PageController extends Controller {
     public function index(): TemplateResponse {
         $this->initialState->provideInitialState('user-config', [
             'server_url' => $this->immichService->getServerUrl(),
+            'include_partner_assets' => $this->immichService->includePartnerAssetsInTimeline(),
         ]);
         return new TemplateResponse(Application::APP_ID, 'main');
     }
