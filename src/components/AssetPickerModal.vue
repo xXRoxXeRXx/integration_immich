@@ -107,6 +107,14 @@ import { translate as t } from '@nextcloud/l10n'
 import { showError } from '@nextcloud/dialogs'
 import { getTimeline, getThumbnailUrl } from '../services/api.js'
 import { logger } from '../services/logger.js'
+import { useVirtualScroll } from '../composables/useVirtualScroll.js'
+import { BucketRequestScheduler } from '../services/BucketRequestScheduler.js'
+import {
+	getBucketIndexAtOffset,
+	getCumulativeOffsets,
+	getTotalHeight,
+	getVirtualWindowIndices,
+} from '../services/virtualScrollGeometry.js'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import CheckAllIcon from 'vue-material-design-icons/CheckAll.vue'
 import PlayIcon from 'vue-material-design-icons/Play.vue'
@@ -138,23 +146,27 @@ function toggleAsset(id) {
 // --- Virtual scroll state ---
 const buckets = ref([])          // [{timeBucket, count}]
 const assetsCache = ref({})      // timeBucket → asset[]
-const loadingSet = ref(new Set())
 const initialLoading = ref(true)
-const scrollContainer = ref(null)
-const scrollTop = ref(0)
-const viewportHeight = ref(600)
 
 const GRID_MIN_ITEM = 130   // matches .asset-picker-modal__grid minmax(130px, 1fr)
 const GRID_GAP = 4           // matches gap: 4px
 const BUCKET_PADDING_LR = 16 // .asset-picker-modal__bucket padding: 0 8px → 8×2
 const OVERSCAN = 600
-const MAX_CONCURRENT = 2
 const MAX_LOADED = 10
 
-const containerWidth = ref(0)
-let activeRequests = 0
-const pendingQueue = []
-let resizeObserver = null
+const scheduler = new BucketRequestScheduler({
+	maxConcurrent: 2,
+	onError: (error, timeBucket) => logger.error('Failed to load asset picker bucket: ' + timeBucket, { error }),
+})
+scheduler.setDataset('asset-picker')
+const loadingSet = scheduler.loadingKeys
+const {
+	scrollContainer,
+	scrollTop,
+	viewportHeight,
+	containerWidth,
+	onScroll: virtualScrollOnScroll,
+} = useVirtualScroll()
 
 // --- Height / offset calculations ---
 function estimateHeight(count) {
@@ -169,85 +181,33 @@ const bucketHeights = computed(() =>
 	buckets.value.map(b => estimateHeight(b.count))
 )
 
-const bucketOffsets = computed(() => {
-	const offsets = []
-	let cumulative = 0
-	for (let i = 0; i < bucketHeights.value.length; i++) {
-		offsets.push(cumulative)
-		cumulative += bucketHeights.value[i]
-	}
-	return offsets
-})
+const bucketOffsets = computed(() => getCumulativeOffsets(bucketHeights.value))
 
-const totalHeight = computed(() => {
-	const h = bucketHeights.value
-	if (!h.length) return 0
-	return bucketOffsets.value[h.length - 1] + h[h.length - 1]
-})
+const totalHeight = computed(() => getTotalHeight(bucketHeights.value, bucketOffsets.value))
 
 // --- Sliding window ---
-const windowIndices = computed(() => {
-	const indices = []
-	const top = scrollTop.value - OVERSCAN
-	const bottom = scrollTop.value + viewportHeight.value + OVERSCAN
-	for (let i = 0; i < buckets.value.length; i++) {
-		const bTop = bucketOffsets.value[i]
-		const bBottom = bTop + bucketHeights.value[i]
-		if (bBottom >= top && bTop <= bottom) indices.push(i)
-		if (bTop > bottom) break
-	}
-	return indices
-})
+const windowIndices = computed(() => getVirtualWindowIndices(
+	bucketHeights.value,
+	bucketOffsets.value,
+	scrollTop.value,
+	viewportHeight.value,
+	OVERSCAN,
+))
 
 // --- Scroll handler ---
-let scrollRaf = null
 function onScroll() {
-	if (scrollRaf) return
-	scrollRaf = requestAnimationFrame(() => {
-		if (scrollContainer.value) {
-			scrollTop.value = scrollContainer.value.scrollTop
-			viewportHeight.value = scrollContainer.value.clientHeight
-		}
-		scrollRaf = null
-
-		// Load visible buckets
-		for (const i of windowIndices.value) {
-			const tb = buckets.value[i]?.timeBucket
-			if (tb && !assetsCache.value[tb] && !loadingSet.value.has(tb)) {
-				loadBucket(tb)
-			}
-		}
-		evict()
-	})
+	virtualScrollOnScroll()
 }
 
 // --- Bucket loading ---
-async function loadBucket(timeBucket) {
-	if (assetsCache.value[timeBucket] || loadingSet.value.has(timeBucket)) return
-
-	if (activeRequests >= MAX_CONCURRENT) {
-		return new Promise(resolve => {
-			pendingQueue.push(() => loadBucket(timeBucket).then(resolve))
-		})
-	}
-
-	activeRequests++
-	loadingSet.value = new Set([...loadingSet.value, timeBucket])
-
-	try {
-		const res = await getTimeline({ timeBucket, size: 'MONTH' })
+function loadBucket(timeBucket, priority = 0) {
+	if (assetsCache.value[timeBucket]) return Promise.resolve(true)
+	return scheduler.request(timeBucket, async signal => {
+		const res = await getTimeline({ timeBucket, size: 'MONTH' }, signal)
+		if (signal.aborted) return false
 		assetsCache.value = { ...assetsCache.value, [timeBucket]: Array.isArray(res.data) ? res.data : [] }
-	} catch (e) {
-		// Log the technical error; remove the failed bucket so re-scrolling can retry
-		logger.error('Failed to load asset picker bucket: ' + timeBucket, { error: e })
-		const updated = { ...assetsCache.value }
-		delete updated[timeBucket]
-		assetsCache.value = updated
-	} finally {
-		loadingSet.value = new Set([...loadingSet.value].filter(b => b !== timeBucket))
-		activeRequests--
-		if (pendingQueue.length > 0) pendingQueue.shift()()
-	}
+		return true
+	}, { priority })
 }
 
 function evict() {
@@ -268,10 +228,7 @@ function formatBucket(timeBucket) {
 }
 
 const currentBucketIndex = computed(() => {
-	for (let i = buckets.value.length - 1; i >= 0; i--) {
-		if (bucketOffsets.value[i] <= scrollTop.value) return i
-	}
-	return 0
+	return getBucketIndexAtOffset(bucketOffsets.value, scrollTop.value)
 })
 
 const currentBucketLabel = computed(() =>
@@ -279,38 +236,42 @@ const currentBucketLabel = computed(() =>
 )
 
 // --- Init ---
-watch(scrollContainer, (el) => {
-	resizeObserver?.disconnect()
-	resizeObserver = null
-	if (el) {
-		containerWidth.value = el.clientWidth
-		viewportHeight.value = el.clientHeight
-		resizeObserver = new ResizeObserver(([entry]) => {
-			containerWidth.value = entry.contentRect.width
-			viewportHeight.value = entry.contentRect.height
-		})
-		resizeObserver.observe(el)
+watch([windowIndices, containerWidth], ([indices, width]) => {
+	if (width <= 0) {
+		scheduler.setVisibleKeys([])
+		return
 	}
-})
+	scheduler.setVisibleKeys(indices.map(i => buckets.value[i]?.timeBucket).filter(Boolean))
+	const prioritizedIndices = [...indices].sort((a, b) => Math.abs(a - indices[0]) - Math.abs(b - indices[0]))
+	for (const index of prioritizedIndices) {
+		const timeBucket = buckets.value[index]?.timeBucket
+		if (timeBucket && !assetsCache.value[timeBucket]) {
+			loadBucket(timeBucket, Math.abs(index - (indices[0] + indices[indices.length - 1]) / 2))
+		}
+	}
+	evict()
+}, { immediate: true })
+
+let bucketListController = null
 
 onMounted(async () => {
+	bucketListController = new AbortController()
 	try {
-		const res = await getTimeline({ size: 'MONTH' })
+		const res = await getTimeline({ size: 'MONTH' }, bucketListController.signal)
+		if (bucketListController.signal.aborted) return
 		buckets.value = Array.isArray(res.data) ? res.data : []
-		// Immediately load the first visible buckets
-		for (const i of windowIndices.value) {
-			loadBucket(buckets.value[i].timeBucket)
-		}
 	} catch (e) {
-		showError(t('integration_immich', 'Could not load photos'))
+		if (e?.name !== 'AbortError' && e?.code !== 'ERR_CANCELED') {
+			showError(t('integration_immich', 'Could not load photos'))
+		}
 	} finally {
-		initialLoading.value = false
+		if (!bucketListController.signal.aborted) initialLoading.value = false
 	}
 })
 
 onBeforeUnmount(() => {
-	if (scrollRaf) cancelAnimationFrame(scrollRaf)
-	resizeObserver?.disconnect()
+	bucketListController?.abort()
+	scheduler.destroy()
 })
 </script>
 

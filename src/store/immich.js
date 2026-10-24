@@ -20,6 +20,7 @@ export const useImmichStore = defineStore('immich', {
 		timelineAssets: {},
 		partnerBuckets: {},
 		partnerAssets: {},
+		partnerBucketGenerations: {},
 		partners: [],
 		currentPartnerId: null,
 		// Filtered timelines (keyed by assetType: 'IMAGE' | 'VIDEO')
@@ -31,16 +32,23 @@ export const useImmichStore = defineStore('immich', {
 		// Albums
 		albums: [],
 		currentAlbum: null,
+		currentAlbumDetailId: null,
+		albumDetailLoading: false,
 		// People list
 		people: [],
 		// Person detail — lazy-loaded buckets (same pattern as timeline)
 		currentPersonId: null,
 		personBuckets: [],
 		personBucketAssets: {},
+		personBucketsGeneration: 0,
+		personBucketsLoading: false,
 		// Album detail — lazy-loaded buckets
 		currentAlbumId: null,
 		albumBuckets: [],
 		albumBucketAssets: {},
+		albumBucketsGeneration: 0,
+		albumBucketsLoading: false,
+		albumDetailRequestGeneration: 0,
 		// Map
 		mapMarkers: [],
 		// Place detail — full asset objects (with width/height) from metadata search
@@ -118,14 +126,16 @@ export const useImmichStore = defineStore('immich', {
 
 		async fetchTimelineBucket(timeBucket, signal = null) {
 			if (this.timelineAssets[timeBucket]) {
-				return
+				return true
 			}
 			try {
 				const response = await getTimeline({ timeBucket, withPartners: this.includePartnerAssets }, signal)
 				this.timelineAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
+				return true
 			} catch (e) {
-				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return false
 				this.error = e.response?.data?.error || e.message
+				throw e
 			}
 		},
 
@@ -147,33 +157,45 @@ export const useImmichStore = defineStore('immich', {
 		},
 
 		async fetchPartnerBuckets(partnerId) {
+			const requestGeneration = (this.partnerBucketGenerations[partnerId] || 0) + 1
+			this.partnerBucketGenerations[partnerId] = requestGeneration
 			this.loading = true
 			this.error = null
 			this.currentPartnerId = partnerId
 			if (!this.partnerAssets[partnerId]) this.partnerAssets[partnerId] = {}
 			try {
 				const response = await getTimeline({ userId: partnerId })
-				if (this.currentPartnerId === partnerId) {
+				if (this.currentPartnerId === partnerId && this.partnerBucketGenerations[partnerId] === requestGeneration) {
 					this.partnerBuckets[partnerId] = Array.isArray(response.data) ? response.data : []
 				}
 			} catch (e) {
-				if (this.currentPartnerId === partnerId) this.error = e.response?.data?.error || e.message
+				if (this.currentPartnerId === partnerId && this.partnerBucketGenerations[partnerId] === requestGeneration) {
+					this.error = e.response?.data?.error || e.message
+				}
 			} finally {
-				if (this.currentPartnerId === partnerId) this.loading = false
+				if (this.currentPartnerId === partnerId && this.partnerBucketGenerations[partnerId] === requestGeneration) {
+					this.loading = false
+				}
 			}
 		},
 
 		async fetchPartnerBucket(partnerId, timeBucket, signal = null) {
+			const requestGeneration = this.partnerBucketGenerations[partnerId] || 0
 			if (!this.partnerAssets[partnerId]) this.partnerAssets[partnerId] = {}
-			if (this.partnerAssets[partnerId][timeBucket]) return
+			if (this.partnerAssets[partnerId][timeBucket]) return true
 			try {
 				const response = await getTimeline({ userId: partnerId, timeBucket }, signal)
-				if (this.currentPartnerId === partnerId) {
+				if (this.currentPartnerId !== partnerId
+					|| this.partnerBucketGenerations[partnerId] !== requestGeneration) return false
 					this.partnerAssets[partnerId][timeBucket] = Array.isArray(response.data) ? response.data : []
-				}
+					return true
 			} catch (e) {
-				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
-				if (this.currentPartnerId === partnerId) this.error = e.response?.data?.error || e.message
+					if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return false
+				if (this.currentPartnerId === partnerId
+					&& this.partnerBucketGenerations[partnerId] === requestGeneration) {
+					this.error = e.response?.data?.error || e.message
+				}
+					throw e
 			}
 		},
 
@@ -210,7 +232,7 @@ export const useImmichStore = defineStore('immich', {
 		},
 
 		async fetchFilteredBucket(assetType, timeBucket, signal = null) {
-			if (this.filteredAssets[assetType][timeBucket]) return
+			if (this.filteredAssets[assetType][timeBucket]) return true
 			try {
 				// Pass assetType so PHP backend can filter the returned assets by type
 				const response = await getTimeline({ assetType, timeBucket, withPartners: this.includePartnerAssets }, signal)
@@ -221,9 +243,11 @@ export const useImmichStore = defineStore('immich', {
 				if (bucket) {
 					bucket.count = assets.length
 				}
+				return true
 			} catch (e) {
-				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return false
 				this.error = e.response?.data?.error || e.message
+				throw e
 			}
 		},
 
@@ -250,13 +274,15 @@ export const useImmichStore = defineStore('immich', {
 		},
 
 		async fetchFavoriteBucket(timeBucket, signal = null) {
-			if (this.favoriteAssets[timeBucket]) return
+			if (this.favoriteAssets[timeBucket]) return true
 			try {
 				const response = await getTimeline({ isFavorite: true, timeBucket }, signal)
 				this.favoriteAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
+				return true
 			} catch (e) {
-				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return false
 				this.error = e.response?.data?.error || e.message
+				throw e
 			}
 		},
 
@@ -280,15 +306,24 @@ export const useImmichStore = defineStore('immich', {
 		},
 
 		async fetchAlbum(id) {
-			this.loading = true
+			const requestGeneration = ++this.albumDetailRequestGeneration
+			this.currentAlbumDetailId = null
+			this.albumDetailLoading = true
 			this.error = null
 			try {
 				const response = await getAlbum(id)
-				this.currentAlbum = response.data
+				if (requestGeneration === this.albumDetailRequestGeneration) {
+					this.currentAlbum = response.data
+					this.currentAlbumDetailId = id
+				}
 			} catch (e) {
-				this.error = e.response?.data?.error || e.message
+				if (requestGeneration === this.albumDetailRequestGeneration) {
+					this.error = e.response?.data?.error || e.message
+				}
 			} finally {
-				this.loading = false
+				if (requestGeneration === this.albumDetailRequestGeneration) {
+					this.albumDetailLoading = false
+				}
 			}
 		},
 
@@ -322,33 +357,48 @@ export const useImmichStore = defineStore('immich', {
 		// ---- Person detail (lazy buckets) ----
 
 		async fetchPersonBuckets(id) {
-			this.loading = true
+			const requestGeneration = ++this.personBucketsGeneration
+			this.personBucketsLoading = true
 			this.error = null
 			this.currentPersonId = id
 			this.personBuckets = []
 			this.personBucketAssets = {}
 			try {
 				const response = await getTimeline({ personId: id })
-				this.personBuckets = Array.isArray(response.data) ? response.data : []
+				if (this.currentPersonId === id && this.personBucketsGeneration === requestGeneration) {
+					this.personBuckets = Array.isArray(response.data) ? response.data : []
+				}
 			} catch (e) {
+				if (this.currentPersonId !== id || this.personBucketsGeneration !== requestGeneration) return
 				const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout')
 				this.error = isTimeout
 					? t('integration_immich', 'Request timed out — Immich may be slow or unreachable. Check your server connection.')
 					: (e.response?.data?.error || e.message)
 			} finally {
-				this.loading = false
+				if (this.currentPersonId === id && this.personBucketsGeneration === requestGeneration) {
+					this.personBucketsLoading = false
+				}
 			}
 		},
 
-		async fetchPersonBucketAsset(personId, timeBucket) {
+		async fetchPersonBucketAsset(personId, timeBucket, signal = null) {
+			const requestGeneration = this.personBucketsGeneration
 			if (this.personBucketAssets[timeBucket]) {
-				return
+				return true
 			}
 			try {
-				const response = await getTimeline({ personId, timeBucket })
-				this.personBucketAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
+				const response = await getTimeline({ personId, timeBucket }, signal)
+				if (this.currentPersonId === personId && this.personBucketsGeneration === requestGeneration) {
+					this.personBucketAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
+					return true
+				}
+				return false
 			} catch (e) {
-				this.error = e.response?.data?.error || e.message
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return false
+				if (this.currentPersonId === personId && this.personBucketsGeneration === requestGeneration) {
+					this.error = e.response?.data?.error || e.message
+				}
+				throw e
 			}
 		},
 
@@ -359,36 +409,46 @@ export const useImmichStore = defineStore('immich', {
 		// ---- Album detail (lazy buckets) ----
 
 		async fetchAlbumBuckets(albumId) {
-			this.loading = true
+			const requestGeneration = ++this.albumBucketsGeneration
+			this.albumBucketsLoading = true
 			this.error = null
 			this.currentAlbumId = albumId
 			this.albumBuckets = []
 			this.albumBucketAssets = {}
 			try {
 				const response = await getTimeline({ albumId })
-				if (this.currentAlbumId === albumId) {
+				if (this.currentAlbumId === albumId && this.albumBucketsGeneration === requestGeneration) {
 					this.albumBuckets = Array.isArray(response.data) ? response.data : []
 				}
 			} catch (e) {
+				if (this.currentAlbumId !== albumId || this.albumBucketsGeneration !== requestGeneration) return
 				const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout')
 				this.error = isTimeout
 					? t('integration_immich', 'Request timed out — Immich may be slow or unreachable. Check your server connection.')
 					: (e.response?.data?.error || e.message)
 			} finally {
-				this.loading = false
+				if (this.currentAlbumId === albumId && this.albumBucketsGeneration === requestGeneration) {
+					this.albumBucketsLoading = false
+				}
 			}
 		},
 
-		async fetchAlbumBucketAssets(albumId, timeBucket) {
-			if (this.albumBucketAssets[timeBucket]) return
+		async fetchAlbumBucketAssets(albumId, timeBucket, signal = null) {
+			const requestGeneration = this.albumBucketsGeneration
+			if (this.albumBucketAssets[timeBucket]) return true
 			try {
-				const response = await getTimeline({ albumId, timeBucket })
-				if (this.currentAlbumId === albumId) {
+				const response = await getTimeline({ albumId, timeBucket }, signal)
+				if (this.currentAlbumId === albumId && this.albumBucketsGeneration === requestGeneration) {
 					this.albumBucketAssets[timeBucket] = Array.isArray(response.data) ? response.data : []
+					return true
 				}
+				return false
 			} catch (e) {
-				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
-				this.error = e.response?.data?.error || e.message
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return false
+				if (this.currentAlbumId === albumId && this.albumBucketsGeneration === requestGeneration) {
+					this.error = e.response?.data?.error || e.message
+				}
+				throw e
 			}
 		},
 

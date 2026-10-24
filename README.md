@@ -123,7 +123,8 @@ When creating an API key in Immich (*Account Settings → API Keys → New API k
 ## 🛠️ Development
 
 ```bash
-npm install
+npm install --legacy-peer-deps
+npm run test:unit  # frontend unit and lifecycle tests
 npm run dev      # development build (unminified)
 npm run watch    # watch mode with hot rebuild
 npm run build    # production build

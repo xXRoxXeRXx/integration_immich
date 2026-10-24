@@ -5,7 +5,7 @@
 <template>
 	<div class="person-detail">
 		<!-- Loading state: initial bucket-list fetch -->
-		<NcLoadingIcon v-if="store.loading && store.personBuckets.length === 0"
+		<NcLoadingIcon v-if="store.personBucketsLoading && store.personBuckets.length === 0"
 			:size="64"
 			class="person-detail__loading" />
 
@@ -56,7 +56,7 @@
 				</div>
 			</div>
 
-			<NcEmptyContent v-if="store.personBuckets.length === 0 && !store.loading"
+			<NcEmptyContent v-if="store.personBuckets.length === 0 && !store.personBucketsLoading"
 				:name="t('integration_immich', 'No photos')"
 				:description="t('integration_immich', 'No photos found for this person.')">
 				<template #icon>
@@ -71,7 +71,7 @@
 				@scroll="onScroll">
 
 				<!-- Sticky date bar — direct child of scroll container so position:sticky works -->
-				<div class="person-detail__sticky-date">
+				<div ref="stickyDate" class="person-detail__sticky-date">
 					<span class="person-detail__sticky-label">{{ currentBucketLabel }}</span>
 					<span v-if="currentBucketCount" class="person-detail__sticky-count">{{ currentBucketCount }}</span>
 				</div>
@@ -101,7 +101,7 @@
 						@click="(_, idx) => openLightboxFromBucket(idx, index)" />
 						<div v-else
 							class="person-detail__bucket-placeholder"
-							:style="{ height: (bucketHeights[index] - HEADER_HEIGHT) + 'px' }" />
+							:style="{ height: Math.max(0, bucketHeights[index] - bucketGeometry.verticalChrome) + 'px' }" />
 					</div>
 				</div>
 			</div>
@@ -116,6 +116,20 @@ import { NcEmptyContent, NcLoadingIcon, NcBreadcrumbs, NcBreadcrumb } from '@nex
 import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { useImmichStore } from '../store/immich.js'
 import { getPersonThumbnailUrl } from '../services/api.js'
+import { useVirtualScroll } from '../composables/useVirtualScroll.js'
+import { BucketRequestScheduler } from '../services/BucketRequestScheduler.js'
+import {
+	estimateGridBucketHeight,
+	estimateMasonryBucketHeight,
+	getBucketIndexAtOffset,
+	getCumulativeOffsets,
+	evictDistantBuckets as evictLoadedBuckets,
+	getLightboxAssetsInBucketOrder,
+	getResponsiveBucketGeometry,
+	getTotalHeight,
+	getWindowPriority,
+	getVirtualWindowIndices,
+} from '../services/virtualScrollGeometry.js'
 import PhotoGrid from './PhotoGrid.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import AccountIcon from 'vue-material-design-icons/Account.vue'
@@ -131,25 +145,23 @@ const store = useImmichStore()
 const router = useRouter()
 
 // --- Constants ---
-const HEADER_HEIGHT = 40
-const GRID_MIN_ITEM = 180   // matches PhotoGrid minmax(180px, 1fr)
-const GRID_GAP = 3          // matches PhotoGrid gap: 3px
-const BUCKET_PADDING_LR = 32 // .person-detail__bucket padding: 15px 16px → 16×2
-const OVERSCAN = 800
-const MAX_CONCURRENT = 2
 const MAX_LOADED_BUCKETS = 12
-const MASONRY_DEFAULT_RATIO = 1.0
 
 // --- Reactive state ---
-const scrollContainer = ref(null)
-const scrollTop = ref(0)
-const viewportHeight = ref(800)
-const containerWidth = ref(0)
-const loadingSet = ref(new Set())
-
-let activeRequests = 0
-const pendingQueue = []
-let resizeObserver = null
+const scheduler = new BucketRequestScheduler({ maxConcurrent: 2 })
+scheduler.setDataset(`person:${props.id}`)
+const loadingSet = scheduler.loadingKeys
+const stickyDate = ref(null)
+const {
+	scrollContainer,
+	scrollTop,
+	viewportHeight,
+	containerWidth,
+	viewportWidth,
+	stickyOffset,
+	onScroll,
+	resetScroll,
+} = useVirtualScroll({ stickyElement: stickyDate })
 
 // --- Computed ---
 const personName = computed(() => {
@@ -161,99 +173,39 @@ const totalCount = computed(() =>
 	store.personBuckets.reduce((sum, b) => sum + (b.count || 0), 0),
 )
 
-function estimateBucketHeight(count) {
-	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)
-	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
-	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
-	const rows = Math.ceil(count / cols)
-	return HEADER_HEIGHT + rows * colWidth + (rows - 1) * GRID_GAP
-}
-
-function estimateBucketHeightMasonry(count, assets = null) {
-	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)
-	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
-	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
-
-	if (assets && assets.length > 0) {
-		const columnHeights = new Array(cols).fill(0)
-		for (const asset of assets) {
-			const ratio = (asset.ratio > 0) ? asset.ratio : MASONRY_DEFAULT_RATIO
-			const itemHeight = colWidth / ratio
-			let minIdx = 0
-			for (let i = 1; i < columnHeights.length; i++) {
-				if (columnHeights[i] < columnHeights[minIdx]) minIdx = i
-			}
-			columnHeights[minIdx] += itemHeight + GRID_GAP
-		}
-		return HEADER_HEIGHT + Math.max(...columnHeights)
-	}
-
-	const itemHeight = colWidth / MASONRY_DEFAULT_RATIO
-	const rows = Math.ceil(count / cols)
-	return HEADER_HEIGHT + rows * (itemHeight + GRID_GAP)
-}
+const bucketGeometry = computed(() => getResponsiveBucketGeometry({
+	containerWidth: containerWidth.value,
+	viewportWidth: viewportWidth.value,
+	gridBreakpoint: 480,
+	bucketPaddingBreakpoint: 480,
+	desktopVerticalChrome: 55,
+	mobileVerticalChrome: 40,
+}))
 
 const bucketHeights = computed(() =>
 	store.personBuckets.map(b => {
 		if (store.gridLayout === 'masonry') {
-			return estimateBucketHeightMasonry(b.count, store.personBucketAssets[b.timeBucket])
+			return estimateMasonryBucketHeight(b.count, store.personBucketAssets[b.timeBucket], bucketGeometry.value)
 		}
-		return estimateBucketHeight(b.count)
+		return estimateGridBucketHeight(b.count, bucketGeometry.value)
 	}),
 )
 
-const bucketOffsets = computed(() => {
-	const offsets = []
-	let cumulative = 0
-	for (let i = 0; i < bucketHeights.value.length; i++) {
-		offsets.push(cumulative)
-		cumulative += bucketHeights.value[i]
-	}
-	return offsets
-})
-
-const totalHeight = computed(() => {
-	const h = bucketHeights.value
-	if (h.length === 0) return 0
-	return bucketOffsets.value[h.length - 1] + h[h.length - 1]
-})
-
-const windowIndices = computed(() => {
-	if (store.personBuckets.length === 0) return []
-	const top = scrollTop.value - OVERSCAN
-	const bottom = scrollTop.value + viewportHeight.value + OVERSCAN
-	const indices = []
-	for (let i = 0; i < store.personBuckets.length; i++) {
-		const bTop = bucketOffsets.value[i]
-		const bBottom = bTop + bucketHeights.value[i]
-		if (bBottom >= top && bTop <= bottom) indices.push(i)
-		if (bTop > bottom) break
-	}
-	return indices
-})
-
-// --- Scroll handler ---
-let scrollRaf = null
-function onScroll() {
-	if (scrollRaf) return
-	scrollRaf = requestAnimationFrame(() => {
-		if (scrollContainer.value) {
-			scrollTop.value = scrollContainer.value.scrollTop
-			viewportHeight.value = scrollContainer.value.clientHeight
-		}
-		scrollRaf = null
-	})
-}
+const bucketOffsets = computed(() => getCumulativeOffsets(bucketHeights.value))
+const totalHeight = computed(() => getTotalHeight(bucketHeights.value, bucketOffsets.value))
+const windowIndices = computed(() => getVirtualWindowIndices(
+	bucketHeights.value,
+	bucketOffsets.value,
+	scrollTop.value,
+	viewportHeight.value,
+	800,
+	stickyOffset.value,
+))
 
 // --- Sticky date label (which bucket is at top of viewport) ---
 const currentBucket = computed(() => {
 	if (store.personBuckets.length === 0) return null
-	let idx = 0
-	for (let i = 0; i < bucketOffsets.value.length; i++) {
-		if (bucketOffsets.value[i] <= scrollTop.value) idx = i
-		else break
-	}
-	return store.personBuckets[idx]
+	return store.personBuckets[getBucketIndexAtOffset(bucketOffsets.value, scrollTop.value, stickyOffset.value)]
 })
 
 const currentBucketLabel = computed(() =>
@@ -265,64 +217,57 @@ const currentBucketCount = computed(() =>
 )
 
 // --- Lazy bucket loading ---
-async function loadBucket(timeBucket) {
-	if (store.personBucketAssets[timeBucket] || loadingSet.value.has(timeBucket)) return
-
-	if (activeRequests >= MAX_CONCURRENT) {
-		return new Promise(resolve => {
-			pendingQueue.push(() => loadBucket(timeBucket).then(resolve))
-		})
-	}
-
-	activeRequests++
-	loadingSet.value = new Set([...loadingSet.value, timeBucket])
-	try {
-		await store.fetchPersonBucketAsset(props.id, timeBucket)
-	} finally {
-		loadingSet.value = new Set([...loadingSet.value].filter(b => b !== timeBucket))
-		activeRequests--
-		if (pendingQueue.length > 0) pendingQueue.shift()()
-	}
+function loadBucket(timeBucket, options = {}) {
+	if (store.personBucketAssets[timeBucket]) return Promise.resolve(true)
+	const personId = props.id
+	return scheduler.request(
+		timeBucket,
+		signal => store.fetchPersonBucketAsset(personId, timeBucket, signal),
+		options,
+	)
 }
 
 async function selectBucket(index) {
 	const bucket = store.personBuckets[index]
 	if (!bucket) return
-	await loadBucket(bucket.timeBucket)
+	const personId = props.id
+	const datasetId = `person:${personId}`
+	const loaded = await loadBucket(bucket.timeBucket, { priority: -1, retain: true })
+	if (!loaded || props.id !== personId || scheduler.datasetId !== datasetId) return
 	store.toggleAssetsSelection((store.personBucketAssets[bucket.timeBucket] || []).map(asset => asset.id))
 }
 
 function evictDistantBuckets(currentIndices) {
 	const loadedKeys = Object.keys(store.personBucketAssets)
-	if (loadedKeys.length <= MAX_LOADED_BUCKETS) return
 	const visibleKeys = new Set(currentIndices.map(i => store.personBuckets[i].timeBucket))
-	for (const key of loadedKeys) {
-		if (visibleKeys.has(key)) continue
-		if (Object.keys(store.personBucketAssets).length <= MAX_LOADED_BUCKETS) break
-		store.unloadPersonBucketAsset(key)
-	}
+	evictLoadedBuckets(loadedKeys, visibleKeys, MAX_LOADED_BUCKETS, key => store.unloadPersonBucketAsset(key))
 }
 
 watch(windowIndices, (indices) => {
-	for (const i of indices) {
+	if (containerWidth.value <= 0) {
+		scheduler.setVisibleKeys([])
+		return
+	}
+	scheduler.setVisibleKeys(indices.map(i => store.personBuckets[i]?.timeBucket).filter(key => key !== undefined))
+	const prioritizedIndices = [...indices].sort((a, b) => getWindowPriority(a, indices) - getWindowPriority(b, indices))
+	for (const i of prioritizedIndices) {
 		const bucket = store.personBuckets[i]
 		if (bucket && !store.personBucketAssets[bucket.timeBucket]) {
-			loadBucket(bucket.timeBucket)
+			loadBucket(bucket.timeBucket, { priority: getWindowPriority(i, indices) })
 		}
 	}
 	evictDistantBuckets(indices)
 }, { immediate: true })
 
 function openLightboxFromBucket(localIdx, bucketIndex) {
-	const allAssets = []
-	let globalIdx = 0
-	for (let i = 0; i < store.personBuckets.length; i++) {
-		const bucketAssets = store.personBucketAssets[store.personBuckets[i].timeBucket]
-		if (!bucketAssets) continue
-		if (i === bucketIndex) globalIdx = allAssets.length + localIdx
-		allAssets.push(...bucketAssets)
-	}
-	store.openLightbox(allAssets, globalIdx)
+	const { assets, index } = getLightboxAssetsInBucketOrder(
+		store.personBuckets,
+		store.personBucketAssets,
+		bucketIndex,
+		localIdx,
+		bucket => bucket.timeBucket,
+	)
+	store.openLightbox(assets, index)
 }
 
 function formatBucketDate(timeBucket) {
@@ -338,33 +283,20 @@ async function load() {
 	await store.fetchPersonBuckets(props.id)
 }
 
-watch(scrollContainer, (el) => {
-	resizeObserver?.disconnect()
-	resizeObserver = null
-	if (el) {
-		containerWidth.value = el.clientWidth
-		viewportHeight.value = el.clientHeight
-		resizeObserver = new ResizeObserver(([entry]) => {
-			containerWidth.value = entry.contentRect.width
-			viewportHeight.value = entry.contentRect.height
-		})
-		resizeObserver.observe(el)
-	}
-})
-
 onMounted(() => {
 	load()
 	if (store.people.length === 0) {
 		store.fetchPeople()
 	}
 })
-watch(() => props.id, load)
+watch(() => props.id, (id) => {
+	scheduler.setDataset(`person:${id}`)
+	resetScroll()
+	load()
+})
 
 onBeforeUnmount(() => {
-	if (scrollRaf) cancelAnimationFrame(scrollRaf)
-	resizeObserver?.disconnect()
-	pendingQueue.length = 0
-	activeRequests = 0
+	scheduler.destroy()
 })
 </script>
 

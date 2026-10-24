@@ -30,7 +30,7 @@
 			class="timeline-view__scroll"
 			@scroll="onScroll">
 			<!-- Sticky date overlay -->
-			<div class="timeline-view__sticky-date">
+			<div ref="stickyDate" class="timeline-view__sticky-date">
 				<span class="timeline-view__sticky-label">{{ currentBucketLabel }}</span>
 				<span class="timeline-view__sticky-count">{{ currentBucketCount }}</span>
 				<!-- Layout toggle: square grid vs. masonry -->
@@ -92,7 +92,7 @@
 					@click="(_, idx) => openLightboxFromBucket(idx, index)" />
 					<div v-else
 						class="timeline-view__bucket-placeholder"
-						:style="{ height: bucketHeights[index] + 'px' }" />
+						:style="{ height: Math.max(0, bucketHeights[index] - bucketGeometry.verticalChrome) + 'px' }" />
 				</div>
 			</div>
 		</div>
@@ -104,6 +104,20 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { useImmichStore } from '../store/immich.js'
+import { useVirtualScroll } from '../composables/useVirtualScroll.js'
+import { BucketRequestScheduler } from '../services/BucketRequestScheduler.js'
+import {
+	estimateGridBucketHeight,
+	estimateMasonryBucketHeight,
+	getBucketIndexAtOffset,
+	getCumulativeOffsets,
+	evictDistantBuckets as evictLoadedBuckets,
+	getLightboxAssetsInBucketOrder,
+	getResponsiveBucketGeometry,
+	getTotalHeight,
+	getWindowPriority,
+	getVirtualWindowIndices,
+} from '../services/virtualScrollGeometry.js'
 import PhotoGrid from './PhotoGrid.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import ImageIcon from 'vue-material-design-icons/Image.vue'
@@ -134,152 +148,71 @@ const assetsCache = computed(() => {
 })
 
 // --- Constants ---
-const OVERSCAN = 800 // px above/below viewport to pre-render
-const MAX_CONCURRENT = 2
 const MAX_LOADED_BUCKETS = 12 // max buckets with loaded assets in memory
 
-// PhotoGrid uses: grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 3px
-// Each item has aspect-ratio: 1. Bucket has padding: 15px 16px 0 (top=15, lr=16).
-const GRID_MIN_ITEM = 180 // minmax min value
-const GRID_GAP = 3
-const BUCKET_PADDING_TOP = 15
-const BUCKET_PADDING_LR = 32 // 16px left + 16px right
-const BUCKET_HEADER_HEIGHT = 38 // header height plus gap before the photo grid
-
-// Default assumed aspect ratio for masonry height estimation of unloaded buckets.
-const MASONRY_DEFAULT_RATIO = 1.0
-
 // --- Reactive state ---
-const scrollContainer = ref(null)
-const scrollTop = ref(0)
-const viewportHeight = ref(800)
-const containerWidth = ref(0) // measured width of the scroll container
-const loadingSet = ref(new Set())
+const scheduler = new BucketRequestScheduler({ maxConcurrent: 2 })
+function getDatasetId() {
+	if (props.userId) return `partner:${props.userId}`
+	if (props.isFavorite) return 'favorites'
+	if (props.assetType) return `filtered:${props.assetType}`
+	return 'timeline'
+}
+scheduler.setDataset(getDatasetId())
+const loadingSet = scheduler.loadingKeys
+const stickyDate = ref(null)
 
-let activeRequests = 0
-const pendingQueue = []
-// AbortController per timeBucket for in-flight requests
-const abortControllers = new Map()
+const {
+	scrollContainer,
+	scrollTop,
+	viewportHeight,
+	containerWidth,
+	viewportWidth,
+	stickyOffset,
+	onScroll,
+	resetScroll,
+} = useVirtualScroll({
+	onLargeScrollJump: () => scheduler.setVisibleKeys([]),
+	stickyElement: stickyDate,
+})
 
 // --- Layout toggle ---
 function setLayout(layout) {
 	store.setGridLayout(layout)
 }
 
-// --- Height estimation ---
-// Derives column count and row height from the actual container width, matching
-// the CSS grid in PhotoGrid.vue (auto-fill, minmax(180px, 1fr), gap: 3px, aspect-ratio:1).
-function estimateBucketHeight(count) {
-	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)
-	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
-	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
-	const rows = Math.ceil(count / cols)
-	return BUCKET_PADDING_TOP + BUCKET_HEADER_HEIGHT + rows * colWidth + (rows - 1) * GRID_GAP
-}
-
-// Estimates masonry bucket height.
-// When asset data is already loaded, simulates the CSS columns placement using
-// actual aspect ratios for an accurate result. Falls back to MASONRY_DEFAULT_RATIO
-// for unloaded buckets (placeholder height before data arrives).
-function estimateBucketHeightMasonry(count, assets = null) {
-	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)
-	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
-	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
-
-	if (assets && assets.length > 0) {
-		// Simulate actual masonry column placement for accurate height estimation
-		const columnHeights = new Array(cols).fill(0)
-		for (const asset of assets) {
-			const ratio = (asset.ratio > 0) ? asset.ratio : MASONRY_DEFAULT_RATIO
-			const itemHeight = colWidth / ratio
-			let minIdx = 0
-			for (let i = 1; i < columnHeights.length; i++) {
-				if (columnHeights[i] < columnHeights[minIdx]) minIdx = i
-			}
-			columnHeights[minIdx] += itemHeight + GRID_GAP
-		}
-		return BUCKET_PADDING_TOP + BUCKET_HEADER_HEIGHT + Math.max(...columnHeights)
-	}
-
-	// No asset data yet: estimate with default ratio
-	const itemHeight = colWidth / MASONRY_DEFAULT_RATIO
-	const rows = Math.ceil(count / cols)
-	return BUCKET_PADDING_TOP + BUCKET_HEADER_HEIGHT + rows * (itemHeight + GRID_GAP)
-}
+const bucketGeometry = computed(() => getResponsiveBucketGeometry({
+	containerWidth: containerWidth.value,
+	viewportWidth: viewportWidth.value,
+	gridBreakpoint: 480,
+	bucketPaddingBreakpoint: null,
+	desktopHorizontalPadding: 32,
+	desktopVerticalChrome: 53,
+	mobileVerticalChrome: 53,
+}))
 
 // Track actual measured heights (initially estimated)
 const bucketHeights = computed(() => {
-	// containerWidth and gridLayout are reactive dependencies, triggering recompute
-	// when the layout is toggled or the viewport is resized.
 	return buckets.value.map(b => {
 		if (store.gridLayout === 'masonry') {
-			return estimateBucketHeightMasonry(b.count, assetsCache.value[b.timeBucket])
+			return estimateMasonryBucketHeight(b.count, assetsCache.value[b.timeBucket], bucketGeometry.value)
 		}
-		return estimateBucketHeight(b.count)
+		return estimateGridBucketHeight(b.count, bucketGeometry.value)
 	})
 })
 
-// Cumulative offsets for each bucket
-const bucketOffsets = computed(() => {
-	const offsets = []
-	let cumulative = 0
-	for (let i = 0; i < bucketHeights.value.length; i++) {
-		offsets.push(cumulative)
-		cumulative += bucketHeights.value[i]
-	}
-	return offsets
-})
-
-const totalHeight = computed(() => {
-	const heights = bucketHeights.value
-	if (heights.length === 0) return 0
-	return bucketOffsets.value[heights.length - 1] + heights[heights.length - 1]
-})
+const bucketOffsets = computed(() => getCumulativeOffsets(bucketHeights.value))
+const totalHeight = computed(() => getTotalHeight(bucketHeights.value, bucketOffsets.value))
 
 // --- Sliding window: which bucket indices are in/near the viewport ---
-const windowIndices = computed(() => {
-	if (buckets.value.length === 0) return []
-
-	const top = scrollTop.value - OVERSCAN
-	const bottom = scrollTop.value + viewportHeight.value + OVERSCAN
-	const indices = []
-
-	for (let i = 0; i < buckets.value.length; i++) {
-		const bucketTop = bucketOffsets.value[i]
-		const bucketBottom = bucketTop + bucketHeights.value[i]
-
-		// Bucket overlaps with the visible range
-		if (bucketBottom >= top && bucketTop <= bottom) {
-			indices.push(i)
-		}
-		// Past the visible range, stop searching
-		if (bucketTop > bottom) break
-	}
-
-	return indices
-})
-
-// --- Scroll handler (throttled) ---
-let scrollRaf = null
-let lastScrollTop = 0
-function onScroll() {
-	if (scrollRaf) return
-	scrollRaf = requestAnimationFrame(() => {
-		if (scrollContainer.value) {
-			const newScrollTop = scrollContainer.value.scrollTop
-			// Large jump detection: if the user dragged the scrollbar far,
-			// flush the pending queue so stale out-of-view requests don't
-			// block the newly visible buckets.
-			if (Math.abs(newScrollTop - lastScrollTop) > viewportHeight.value * 2) {
-				pendingQueue.length = 0
-			}
-			lastScrollTop = newScrollTop
-			scrollTop.value = newScrollTop
-			viewportHeight.value = scrollContainer.value.clientHeight
-		}
-		scrollRaf = null
-	})
-}
+const windowIndices = computed(() => getVirtualWindowIndices(
+	bucketHeights.value,
+	bucketOffsets.value,
+	scrollTop.value,
+	viewportHeight.value,
+	800,
+	stickyOffset.value,
+))
 
 // --- Fetch/unload helpers depending on assetType / isFavorite ---
 async function fetchBuckets() {
@@ -294,15 +227,15 @@ async function fetchBuckets() {
 	}
 }
 
-async function fetchBucket(timeBucket, signal) {
-	if (props.userId) {
-		await store.fetchPartnerBucket(props.userId, timeBucket, signal)
-	} else if (props.isFavorite) {
-		await store.fetchFavoriteBucket(timeBucket, signal)
-	} else if (props.assetType) {
-		await store.fetchFilteredBucket(props.assetType, timeBucket, signal)
+async function fetchBucket(timeBucket, signal, context) {
+	if (context.userId) {
+		return store.fetchPartnerBucket(context.userId, timeBucket, signal)
+	} else if (context.isFavorite) {
+		return store.fetchFavoriteBucket(timeBucket, signal)
+	} else if (context.assetType) {
+		return store.fetchFilteredBucket(context.assetType, timeBucket, signal)
 	} else {
-		await store.fetchTimelineBucket(timeBucket, signal)
+		return store.fetchTimelineBucket(timeBucket, signal)
 	}
 }
 
@@ -319,107 +252,39 @@ function unloadBucket(timeBucket) {
 }
 
 // --- Load / unload bucket data ---
-async function loadBucket(timeBucket) {
-	if (assetsCache.value[timeBucket] || loadingSet.value.has(timeBucket)) {
-		return
+function loadBucket(timeBucket, options = {}) {
+	if (assetsCache.value[timeBucket]) return Promise.resolve(true)
+	const context = {
+		userId: props.userId,
+		isFavorite: props.isFavorite,
+		assetType: props.assetType,
 	}
-
-	if (activeRequests >= MAX_CONCURRENT) {
-		return new Promise(resolve => {
-			// Only enqueue if not already waiting
-			const alreadyQueued = pendingQueue.some(fn => fn._bucket === timeBucket)
-			if (!alreadyQueued) {
-				const fn = () => loadBucket(timeBucket).then(resolve)
-				fn._bucket = timeBucket
-				pendingQueue.push(fn)
-			} else {
-				resolve()
-			}
-		})
-	}
-
-	const controller = new AbortController()
-	abortControllers.set(timeBucket, controller)
-
-	activeRequests++
-	loadingSet.value = new Set([...loadingSet.value, timeBucket])
-
-	try {
-		await fetchBucket(timeBucket, controller.signal)
-	} catch (e) {
-		// Ignore abort errors — user just scrolled away
-		if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') {
-			return
-		}
-	} finally {
-		abortControllers.delete(timeBucket)
-		loadingSet.value = new Set(
-			[...loadingSet.value].filter(b => b !== timeBucket),
-		)
-		activeRequests--
-		if (pendingQueue.length > 0) {
-			const next = pendingQueue.shift()
-			next()
-		}
-	}
-}
-
-// Cancel all in-flight requests for buckets not in the given set.
-// activeRequests is decremented by the finally-block in loadBucket — not here.
-// loadingSet is cleared immediately so that re-scrolling back to the same bucket
-// does not hit the early-return guard in loadBucket before finally can clean up.
-function cancelInvisibleRequests(visibleKeys) {
-	const toRemove = []
-	for (const [bucket, controller] of abortControllers.entries()) {
-		if (!visibleKeys.has(bucket)) {
-			controller.abort()
-			abortControllers.delete(bucket)
-			toRemove.push(bucket)
-		}
-	}
-	if (toRemove.length > 0) {
-		const removed = new Set(toRemove)
-		loadingSet.value = new Set([...loadingSet.value].filter(b => !removed.has(b)))
-	}
+	return scheduler.request(timeBucket, signal => fetchBucket(timeBucket, signal, context), options)
 }
 
 function evictDistantBuckets(currentIndices) {
 	const loadedKeys = Object.keys(assetsCache.value)
-	if (loadedKeys.length <= MAX_LOADED_BUCKETS) return
-
 	const visibleKeys = new Set(
 		currentIndices.map(i => buckets.value[i].timeBucket),
 	)
-
-	let remaining = loadedKeys.length
-	// Evict buckets that are loaded but far from current view
-	for (const key of loadedKeys) {
-		if (remaining <= MAX_LOADED_BUCKETS) break
-		if (visibleKeys.has(key)) continue
-		unloadBucket(key)
-		remaining--
-	}
+	evictLoadedBuckets(loadedKeys, visibleKeys, MAX_LOADED_BUCKETS, unloadBucket)
 }
 
 // Watch visible window and trigger load/unload
 watch(windowIndices, (indices) => {
-	const visibleKeys = new Set(indices.map(i => buckets.value[i]?.timeBucket))
-
-	// Cancel any in-flight HTTP requests for buckets no longer visible
-	cancelInvisibleRequests(visibleKeys)
-
-	// Remove from pending queue any buckets that are no longer visible
-	for (let i = pendingQueue.length - 1; i >= 0; i--) {
-		if (!visibleKeys.has(pendingQueue[i]._bucket)) {
-			pendingQueue.splice(i, 1)
-		}
+	if (containerWidth.value <= 0) {
+		scheduler.setVisibleKeys([])
+		return
 	}
+	const visibleKeys = new Set(indices.map(i => buckets.value[i]?.timeBucket))
+	scheduler.setVisibleKeys(visibleKeys)
 
 	// Load visible buckets
-	for (const i of indices) {
+	const prioritizedIndices = [...indices].sort((a, b) => getWindowPriority(a, indices) - getWindowPriority(b, indices))
+	for (const i of prioritizedIndices) {
 		const bucket = buckets.value[i]
 		if (bucket && !assetsCache.value[bucket.timeBucket]) {
-			loadBucket(bucket.timeBucket)
+			loadBucket(bucket.timeBucket, { priority: getWindowPriority(i, indices) })
 		}
 	}
 
@@ -428,15 +293,14 @@ watch(windowIndices, (indices) => {
 }, { immediate: true })
 
 function openLightboxFromBucket(localIdx, bucketIndex) {
-	const allAssets = []
-	let globalIdx = 0
-	for (let i = 0; i < buckets.value.length; i++) {
-		const bucketAssets = assetsCache.value[buckets.value[i].timeBucket]
-		if (!bucketAssets) continue
-		if (i === bucketIndex) globalIdx = allAssets.length + localIdx
-		allAssets.push(...bucketAssets)
-	}
-	store.openLightbox(allAssets, globalIdx)
+	const { assets, index } = getLightboxAssetsInBucketOrder(
+		buckets.value,
+		assetsCache.value,
+		bucketIndex,
+		localIdx,
+		bucket => bucket.timeBucket,
+	)
+	store.openLightbox(assets, index)
 }
 
 function formatBucketDate(timeBucket) {
@@ -447,7 +311,9 @@ function formatBucketDate(timeBucket) {
 async function selectBucket(index) {
 	const bucket = buckets.value[index]
 	if (!bucket) return
-	await loadBucket(bucket.timeBucket)
+	const datasetId = getDatasetId()
+	const loaded = await loadBucket(bucket.timeBucket, { priority: -1, retain: true })
+	if (!loaded || datasetId !== getDatasetId()) return
 	const assets = assetsCache.value[bucket.timeBucket] || []
 	const userAssets = assets.filter(asset => !asset.ownerId || (store.currentUserId && asset.ownerId === store.currentUserId))
 	store.toggleAssetsSelection(userAssets.map(asset => asset.id))
@@ -455,10 +321,7 @@ async function selectBucket(index) {
 
 const currentBucketIndex = computed(() => {
 	if (buckets.value.length === 0) return 0
-	for (let i = buckets.value.length - 1; i >= 0; i--) {
-		if (bucketOffsets.value[i] <= scrollTop.value) return i
-	}
-	return 0
+	return getBucketIndexAtOffset(bucketOffsets.value, scrollTop.value, stickyOffset.value)
 })
 
 const currentBucketLabel = computed(() => {
@@ -471,25 +334,7 @@ const currentBucketCount = computed(() => {
 	return buckets.value[currentBucketIndex.value].count
 })
 
-// --- Lifecycle ---
-let resizeObserver = null
-
-// The scroll container is inside a v-else branch and only mounts after buckets
-// are loaded. onMounted fires before that, so we watch the ref instead.
-watch(scrollContainer, (el) => {
-	resizeObserver?.disconnect()
-	resizeObserver = null
-	if (el) {
-		containerWidth.value = el.clientWidth
-		viewportHeight.value = el.clientHeight
-		resizeObserver = new ResizeObserver(([entry]) => {
-			containerWidth.value = entry.contentRect.width
-			viewportHeight.value = entry.contentRect.height
-		})
-		resizeObserver.observe(el)
-	}
-})
-
+// Lifecycle ---
 onMounted(async () => {
 	await fetchBuckets()
 })
@@ -497,18 +342,8 @@ onMounted(async () => {
 // When navigating between timeline / photos / videos / favorites, Vue Router reuses this
 // component instance — onMounted does NOT fire again. Watch the props instead.
 watch([() => props.assetType, () => props.isFavorite, () => props.userId], async () => {
-	scrollTop.value = 0
-	lastScrollTop = 0
-	loadingSet.value = new Set()
-	for (const controller of abortControllers.values()) {
-		controller.abort()
-	}
-	abortControllers.clear()
-	pendingQueue.length = 0
-	activeRequests = 0
-	if (scrollContainer.value) {
-		scrollContainer.value.scrollTop = 0
-	}
+	scheduler.setDataset(getDatasetId())
+	resetScroll()
 	await fetchBuckets()
 })
 
@@ -521,17 +356,7 @@ watch(() => store.favoriteBuckets.length, (newLen, oldLen) => {
 })
 
 onBeforeUnmount(() => {
-	resizeObserver?.disconnect()
-	if (scrollRaf) {
-		cancelAnimationFrame(scrollRaf)
-	}
-	// Abort all in-flight requests
-	for (const controller of abortControllers.values()) {
-		controller.abort()
-	}
-	abortControllers.clear()
-	pendingQueue.length = 0
-	activeRequests = 0
+	scheduler.destroy()
 })
 
 function scrollToTop() {

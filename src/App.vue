@@ -205,7 +205,8 @@ const isAlbumDetailView = computed(() => route.name === 'album-detail')
 // v2: owner is identified via ownerId / owner.id (never in albumUsers).
 // v3: ownerId/owner were removed; the owner is now in albumUsers with role 'owner'.
 const currentAlbumMyRole = computed(() => {
-	if (!store.currentUserId || !store.currentAlbum) return 'viewer'
+	if (!store.currentUserId || !store.currentAlbum
+		|| store.currentAlbumDetailId !== route.params.id) return 'viewer'
 	// v2: check ownerId / owner.id directly
 	if (store.currentAlbum.ownerId === store.currentUserId
 		|| store.currentAlbum.owner?.id === store.currentUserId) return 'owner'

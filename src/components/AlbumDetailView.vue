@@ -4,7 +4,7 @@
 -->
 <template>
 	<div class="album-detail">
-		<NcLoadingIcon v-if="store.loading && !store.currentAlbum && store.albumBuckets.length === 0"
+		<NcLoadingIcon v-if="!currentAlbumDetails && !store.error"
 			:size="64"
 			class="album-detail__loading" />
 
@@ -16,14 +16,14 @@
 			</template>
 		</NcEmptyContent>
 
-		<template v-else-if="store.currentAlbum">
+		<template v-else-if="currentAlbumDetails">
 			<!-- Sticky Header -->
 			<div class="album-detail__header">
 				<!-- Top row: Breadcrumb + action buttons -->
 				<div class="album-detail__header-row">
 					<NcBreadcrumbs>
 						<NcBreadcrumb :name="t('integration_immich', 'Albums')" @click="goBack" />
-						<NcBreadcrumb :name="store.currentAlbum.albumName" :title="store.currentAlbum.albumName" />
+						<NcBreadcrumb :name="currentAlbumDetails.albumName" :title="currentAlbumDetails.albumName" />
 					</NcBreadcrumbs>
 
 					<!-- Desktop: Buttons direkt sichtbar -->
@@ -116,7 +116,7 @@
 			</NcDialog>
 
 			<!-- Scroll-Bereich -->
-			<NcEmptyContent v-if="store.albumBuckets.length === 0 && !store.loading"
+			<NcEmptyContent v-if="store.albumBuckets.length === 0 && !store.albumBucketsLoading"
 				:name="t('integration_immich', 'Album is empty')"
 				:description="t('integration_immich', 'This album does not contain any photos yet.')">
 				<template #icon>
@@ -137,7 +137,7 @@
 				class="album-detail__scroll"
 				@scroll="onScroll">
 				<!-- Sticky date bar -->
-				<div class="album-detail__sticky-date">
+				<div ref="stickyDate" class="album-detail__sticky-date">
 					<span class="album-detail__sticky-label">{{ currentBucketLabel }}</span>
 					<span v-if="currentBucketCount" class="album-detail__sticky-count">{{ currentBucketCount }}</span>
 				</div>
@@ -167,14 +167,14 @@
 							@click="(_, idx) => openLightboxFromBucket(idx, index)" />
 						<div v-else
 							class="album-detail__bucket-placeholder"
-							:style="{ height: (bucketHeights[index] - HEADER_HEIGHT) + 'px' }" />
+							:style="{ height: Math.max(0, bucketHeights[index] - bucketGeometry.verticalChrome) + 'px' }" />
 					</div>
 				</div>
 			</div>
 
 			<!-- Asset Picker Overlay für "Bilder hinzufügen" -->
 			<AssetPickerModal v-if="showPicker"
-				:album-name="store.currentAlbum.albumName"
+				:album-name="currentAlbumDetails.albumName"
 				:creating="addingAssets"
 				:existing-asset-ids="existingAssetIds"
 				@confirm="addAssetsToAlbum"
@@ -190,7 +190,21 @@ import { NcButton, NcEmptyContent, NcLoadingIcon, NcDialog, NcTextField, NcActio
 import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { showSuccess, showError } from '@nextcloud/dialogs'
 import { useImmichStore } from '../store/immich.js'
+import { useVirtualScroll } from '../composables/useVirtualScroll.js'
+import { BucketRequestScheduler } from '../services/BucketRequestScheduler.js'
 import { addAssetsToAlbum as apiAddAssetsToAlbum, renameAlbum as apiRenameAlbum } from '../services/api.js'
+import {
+	estimateGridBucketHeight,
+	estimateMasonryBucketHeight,
+	getBucketIndexAtOffset,
+	getCumulativeOffsets,
+	evictDistantBuckets as evictLoadedBuckets,
+	getLightboxAssetsInBucketOrder,
+	getResponsiveBucketGeometry,
+	getTotalHeight,
+	getWindowPriority,
+	getVirtualWindowIndices,
+} from '../services/virtualScrollGeometry.js'
 import PhotoGrid from './PhotoGrid.vue'
 import AssetPickerModal from './AssetPickerModal.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
@@ -216,6 +230,9 @@ const addingAssets = ref(false)
 const showRenameDialog = ref(false)
 const renameValue = ref('')
 const renaming = ref(false)
+const currentAlbumDetails = computed(() =>
+	store.currentAlbumDetailId === props.id ? store.currentAlbum : null,
+)
 
 /**
  * The current Immich user's role in this album.
@@ -223,12 +240,13 @@ const renaming = ref(false)
  * v3: ownerId/owner were removed; the owner is now in albumUsers with role 'owner'.
  */
 const myRole = computed(() => {
-	if (!store.currentUserId || !store.currentAlbum) return 'viewer'
+	if (!store.currentUserId || !currentAlbumDetails.value) return 'viewer'
+	const album = currentAlbumDetails.value
 	// v2: check ownerId / owner.id directly
-	if (store.currentAlbum.ownerId === store.currentUserId
-		|| store.currentAlbum.owner?.id === store.currentUserId) return 'owner'
+	if (album.ownerId === store.currentUserId
+		|| album.owner?.id === store.currentUserId) return 'owner'
 	// v3 (and v2 fallback): role is in albumUsers
-	const entry = store.currentAlbum.albumUsers?.find(u => u.user?.id === store.currentUserId)
+	const entry = album.albumUsers?.find(u => u.user?.id === store.currentUserId)
 	if (entry !== undefined) return entry.role
 	return 'viewer'
 })
@@ -236,26 +254,24 @@ const myRole = computed(() => {
 const canEdit  = computed(() => myRole.value === 'owner' || myRole.value === 'editor')
 const canAdmin = computed(() => myRole.value === 'owner')
 
-// --- Constants (same pattern as PersonDetailView) ---
-const HEADER_HEIGHT = 40
-const GRID_MIN_ITEM = 180
-const GRID_GAP = 3
-const BUCKET_PADDING_LR = 32
-const OVERSCAN = 800
-const MAX_CONCURRENT = 2
+// --- View-specific cache policy ---
 const MAX_LOADED_BUCKETS = 12
-const MASONRY_DEFAULT_RATIO = 1.0
 
 // --- Reactive state ---
-const scrollContainer = ref(null)
-const scrollTop = ref(0)
-const viewportHeight = ref(800)
-const containerWidth = ref(0)
-const loadingSet = ref(new Set())
-
-let activeRequests = 0
-const pendingQueue = []
-let resizeObserver = null
+const scheduler = new BucketRequestScheduler({ maxConcurrent: 2 })
+scheduler.setDataset(`album:${props.id}`)
+const loadingSet = scheduler.loadingKeys
+const stickyDate = ref(null)
+const {
+	scrollContainer,
+	scrollTop,
+	viewportHeight,
+	containerWidth,
+	viewportWidth,
+	stickyOffset,
+	onScroll,
+	resetScroll,
+} = useVirtualScroll({ stickyElement: stickyDate })
 
 // --- Computed ---
 const totalCount = computed(() =>
@@ -266,8 +282,8 @@ const totalCount = computed(() =>
 // v2: album.assets was part of AlbumResponseDto (removed in v3).
 // v3 fallback: collect IDs from the already-loaded album timeline bucket assets.
 const existingAssetIds = computed(() => {
-	if (store.currentAlbum?.assets) {
-		return new Set(store.currentAlbum.assets.map(a => a.id))
+	if (currentAlbumDetails.value?.assets) {
+		return new Set(currentAlbumDetails.value.assets.map(a => a.id))
 	}
 	const ids = new Set()
 	for (const assets of Object.values(store.albumBucketAssets)) {
@@ -276,99 +292,39 @@ const existingAssetIds = computed(() => {
 	return ids
 })
 
-function estimateBucketHeight(count) {
-	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)
-	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
-	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
-	const rows = Math.ceil(count / cols)
-	return HEADER_HEIGHT + rows * colWidth + (rows - 1) * GRID_GAP
-}
-
-function estimateBucketHeightMasonry(count, assets = null) {
-	const available = Math.max(GRID_MIN_ITEM, containerWidth.value - BUCKET_PADDING_LR)
-	const cols = Math.max(1, Math.floor((available + GRID_GAP) / (GRID_MIN_ITEM + GRID_GAP)))
-	const colWidth = (available - (cols - 1) * GRID_GAP) / cols
-
-	if (assets && assets.length > 0) {
-		const columnHeights = new Array(cols).fill(0)
-		for (const asset of assets) {
-			const ratio = (asset.ratio > 0) ? asset.ratio : MASONRY_DEFAULT_RATIO
-			const itemHeight = colWidth / ratio
-			let minIdx = 0
-			for (let i = 1; i < columnHeights.length; i++) {
-				if (columnHeights[i] < columnHeights[minIdx]) minIdx = i
-			}
-			columnHeights[minIdx] += itemHeight + GRID_GAP
-		}
-		return HEADER_HEIGHT + Math.max(...columnHeights)
-	}
-
-	const itemHeight = colWidth / MASONRY_DEFAULT_RATIO
-	const rows = Math.ceil(count / cols)
-	return HEADER_HEIGHT + rows * (itemHeight + GRID_GAP)
-}
+const bucketGeometry = computed(() => getResponsiveBucketGeometry({
+	containerWidth: containerWidth.value,
+	viewportWidth: viewportWidth.value,
+	gridBreakpoint: 480,
+	bucketPaddingBreakpoint: 680,
+	desktopVerticalChrome: 55,
+	mobileVerticalChrome: 40,
+}))
 
 const bucketHeights = computed(() =>
 	store.albumBuckets.map(b => {
 		if (store.gridLayout === 'masonry') {
-			return estimateBucketHeightMasonry(b.count, store.albumBucketAssets[b.timeBucket])
+			return estimateMasonryBucketHeight(b.count, store.albumBucketAssets[b.timeBucket], bucketGeometry.value)
 		}
-		return estimateBucketHeight(b.count)
+		return estimateGridBucketHeight(b.count, bucketGeometry.value)
 	}),
 )
 
-const bucketOffsets = computed(() => {
-	const offsets = []
-	let cumulative = 0
-	for (let i = 0; i < bucketHeights.value.length; i++) {
-		offsets.push(cumulative)
-		cumulative += bucketHeights.value[i]
-	}
-	return offsets
-})
-
-const totalHeight = computed(() => {
-	const h = bucketHeights.value
-	if (h.length === 0) return 0
-	return bucketOffsets.value[h.length - 1] + h[h.length - 1]
-})
-
-const windowIndices = computed(() => {
-	if (store.albumBuckets.length === 0) return []
-	const top = scrollTop.value - OVERSCAN
-	const bottom = scrollTop.value + viewportHeight.value + OVERSCAN
-	const indices = []
-	for (let i = 0; i < store.albumBuckets.length; i++) {
-		const bTop = bucketOffsets.value[i]
-		const bBottom = bTop + bucketHeights.value[i]
-		if (bBottom >= top && bTop <= bottom) indices.push(i)
-		if (bTop > bottom) break
-	}
-	return indices
-})
-
-// --- Scroll handler ---
-let scrollRaf = null
-function onScroll() {
-	if (scrollRaf) return
-	scrollRaf = requestAnimationFrame(() => {
-		if (scrollContainer.value) {
-			scrollTop.value = scrollContainer.value.scrollTop
-			viewportHeight.value = scrollContainer.value.clientHeight
-		}
-		scrollRaf = null
-	})
-}
+const bucketOffsets = computed(() => getCumulativeOffsets(bucketHeights.value))
+const totalHeight = computed(() => getTotalHeight(bucketHeights.value, bucketOffsets.value))
+const windowIndices = computed(() => getVirtualWindowIndices(
+	bucketHeights.value,
+	bucketOffsets.value,
+	scrollTop.value,
+	viewportHeight.value,
+	800,
+	stickyOffset.value,
+))
 
 // --- Sticky date label (which bucket is at top of viewport) ---
 const currentBucket = computed(() => {
 	if (store.albumBuckets.length === 0) return null
-	let idx = 0
-	for (let i = 0; i < bucketOffsets.value.length; i++) {
-		if (bucketOffsets.value[i] <= scrollTop.value) idx = i
-		else break
-	}
-	return store.albumBuckets[idx]
+	return store.albumBuckets[getBucketIndexAtOffset(bucketOffsets.value, scrollTop.value, stickyOffset.value)]
 })
 
 const currentBucketLabel = computed(() =>
@@ -380,64 +336,57 @@ const currentBucketCount = computed(() =>
 )
 
 // --- Lazy bucket loading ---
-async function loadBucket(timeBucket) {
-	if (store.albumBucketAssets[timeBucket] || loadingSet.value.has(timeBucket)) return
-
-	if (activeRequests >= MAX_CONCURRENT) {
-		return new Promise(resolve => {
-			pendingQueue.push(() => loadBucket(timeBucket).then(resolve))
-		})
-	}
-
-	activeRequests++
-	loadingSet.value = new Set([...loadingSet.value, timeBucket])
-	try {
-		await store.fetchAlbumBucketAssets(props.id, timeBucket)
-	} finally {
-		loadingSet.value = new Set([...loadingSet.value].filter(b => b !== timeBucket))
-		activeRequests--
-		if (pendingQueue.length > 0) pendingQueue.shift()()
-	}
+function loadBucket(timeBucket, options = {}) {
+	if (store.albumBucketAssets[timeBucket]) return Promise.resolve(true)
+	const albumId = props.id
+	return scheduler.request(
+		timeBucket,
+		signal => store.fetchAlbumBucketAssets(albumId, timeBucket, signal),
+		options,
+	)
 }
 
 async function selectBucket(index) {
 	const bucket = store.albumBuckets[index]
 	if (!bucket) return
-	await loadBucket(bucket.timeBucket)
+	const albumId = props.id
+	const datasetId = `album:${albumId}`
+	const loaded = await loadBucket(bucket.timeBucket, { priority: -1, retain: true })
+	if (!loaded || props.id !== albumId || scheduler.datasetId !== datasetId) return
 	store.toggleAssetsSelection((store.albumBucketAssets[bucket.timeBucket] || []).map(asset => asset.id))
 }
 
 function evictDistantBuckets(currentIndices) {
 	const loadedKeys = Object.keys(store.albumBucketAssets)
-	if (loadedKeys.length <= MAX_LOADED_BUCKETS) return
 	const visibleKeys = new Set(currentIndices.map(i => store.albumBuckets[i].timeBucket))
-	for (const key of loadedKeys) {
-		if (visibleKeys.has(key)) continue
-		if (Object.keys(store.albumBucketAssets).length <= MAX_LOADED_BUCKETS) break
-		store.unloadAlbumBucketAsset(key)
-	}
+	evictLoadedBuckets(loadedKeys, visibleKeys, MAX_LOADED_BUCKETS, key => store.unloadAlbumBucketAsset(key))
 }
 
 watch(windowIndices, (indices) => {
-	for (const i of indices) {
+	if (containerWidth.value <= 0) {
+		scheduler.setVisibleKeys([])
+		return
+	}
+	scheduler.setVisibleKeys(indices.map(i => store.albumBuckets[i]?.timeBucket).filter(key => key !== undefined))
+	const prioritizedIndices = [...indices].sort((a, b) => getWindowPriority(a, indices) - getWindowPriority(b, indices))
+	for (const i of prioritizedIndices) {
 		const bucket = store.albumBuckets[i]
 		if (bucket && !store.albumBucketAssets[bucket.timeBucket]) {
-			loadBucket(bucket.timeBucket)
+			loadBucket(bucket.timeBucket, { priority: getWindowPriority(i, indices) })
 		}
 	}
 	evictDistantBuckets(indices)
 }, { immediate: true })
 
 function openLightboxFromBucket(localIdx, bucketIndex) {
-	const allAssets = []
-	let globalIdx = 0
-	for (let i = 0; i < store.albumBuckets.length; i++) {
-		const bucketAssets = store.albumBucketAssets[store.albumBuckets[i].timeBucket]
-		if (!bucketAssets) continue
-		if (i === bucketIndex) globalIdx = allAssets.length + localIdx
-		allAssets.push(...bucketAssets)
-	}
-	store.openLightbox(allAssets, globalIdx)
+	const { assets, index } = getLightboxAssetsInBucketOrder(
+		store.albumBuckets,
+		store.albumBucketAssets,
+		bucketIndex,
+		localIdx,
+		bucket => bucket.timeBucket,
+	)
+	store.openLightbox(assets, index)
 }
 
 function formatBucketDate(timeBucket) {
@@ -450,7 +399,7 @@ function goBack() {
 }
 
 function startRename() {
-	renameValue.value = store.currentAlbum?.albumName ?? ''
+	renameValue.value = currentAlbumDetails.value?.albumName ?? ''
 	showRenameDialog.value = true
 }
 
@@ -488,27 +437,15 @@ async function addAssetsToAlbum(assetIds) {
 		} else {
 			showError(t('integration_immich', 'Error adding to album'))
 		}
-		await Promise.all([store.fetchAlbum(props.id), store.fetchAlbumBuckets(props.id)])
+		const albumId = props.id
+		scheduler.invalidateDataset(`album:${albumId}`)
+		await Promise.all([store.fetchAlbum(albumId), store.fetchAlbumBuckets(albumId)])
 	} catch (e) {
 		showError(t('integration_immich', 'Error adding: {msg}', { msg: e.message }))
 	} finally {
 		addingAssets.value = false
 	}
 }
-
-watch(scrollContainer, (el) => {
-	resizeObserver?.disconnect()
-	resizeObserver = null
-	if (el) {
-		containerWidth.value = el.clientWidth
-		viewportHeight.value = el.clientHeight
-		resizeObserver = new ResizeObserver(([entry]) => {
-			containerWidth.value = entry.contentRect.width
-			viewportHeight.value = entry.contentRect.height
-		})
-		resizeObserver.observe(el)
-	}
-})
 
 async function load() {
 	await Promise.all([
@@ -522,18 +459,13 @@ onMounted(() => {
 })
 
 watch(() => props.id, () => {
-	if (scrollContainer.value) scrollContainer.value.scrollTop = 0
-	scrollTop.value = 0
-	pendingQueue.length = 0
-	activeRequests = 0
+	scheduler.setDataset(`album:${props.id}`)
+	resetScroll()
 	load()
 })
 
 onBeforeUnmount(() => {
-	if (scrollRaf) cancelAnimationFrame(scrollRaf)
-	resizeObserver?.disconnect()
-	pendingQueue.length = 0
-	activeRequests = 0
+	scheduler.destroy()
 })
 </script>
 
