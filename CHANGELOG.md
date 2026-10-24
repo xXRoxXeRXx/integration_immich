@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-10-24
+
+### Added
+
+- Partners view for browsing libraries shared by Immich partners (requires the `partner.read` API-key permission)
+- Asset selection in the partner timeline
+
+### Improved
+
+- Unified virtual scrolling and bucket request handling across timeline, album and person views
+
+### Fixed
+
+- Partner-asset selection no longer depends on resolving the current Immich user; mutation actions remain limited to editable assets
+
 ## [1.5.2] - 2026-10-23
 
 ### Fixed
