@@ -133,8 +133,10 @@ function formatDate(asset) {
 	} catch { return '' }
 }
 
-function canSelect(asset) {
-	return props.selectable && (!asset.ownerId || (store.currentUserId && asset.ownerId === store.currentUserId))
+function canSelect() {
+	// Selection also supports read-only actions such as download and save.
+	// Ownership restrictions belong on the actions, not on the selection itself.
+	return props.selectable
 }
 </script>
 

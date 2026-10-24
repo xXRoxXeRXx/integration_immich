@@ -315,8 +315,7 @@ async function selectBucket(index) {
 	const loaded = await loadBucket(bucket.timeBucket, { priority: -1, retain: true })
 	if (!loaded || datasetId !== getDatasetId()) return
 	const assets = assetsCache.value[bucket.timeBucket] || []
-	const userAssets = assets.filter(asset => !asset.ownerId || (store.currentUserId && asset.ownerId === store.currentUserId))
-	store.toggleAssetsSelection(userAssets.map(asset => asset.id))
+	store.toggleAssetsSelection(assets.map(asset => asset.id))
 }
 
 const currentBucketIndex = computed(() => {

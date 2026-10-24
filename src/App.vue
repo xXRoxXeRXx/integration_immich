@@ -76,7 +76,7 @@
 									{{ t('integration_immich', 'Remove from album') }}
 								</NcActionButton>
 								<NcActionButton v-else-if="!isAlbumDetailView"
-									:disabled="store.selectedAssetIds.size === 0 || addingToAlbum"
+									:disabled="!store.selectedAssetsCanEdit || addingToAlbum"
 									@click="showAlbumPicker = true">
 									<template #icon>
 										<FolderPlusIcon :size="20" />
@@ -84,7 +84,7 @@
 									{{ t('integration_immich', 'Add to album') }}
 								</NcActionButton>
 								<NcActionButton
-									:disabled="store.selectedAssetIds.size === 0 || togglingFavorite"
+									:disabled="!store.selectedAssetsCanEdit || togglingFavorite"
 									@click="toggleFavoritesSelection">
 									<template #icon>
 										<HeartIcon v-if="selectedAllFavorited" :size="20" />
@@ -96,7 +96,7 @@
 								</NcActionButton>
 								<NcActionButton v-if="!isAlbumDetailView"
 									type="error"
-									:disabled="store.selectedAssetIds.size === 0 || deleting"
+									:disabled="!store.selectedAssetsCanEdit || deleting"
 									@click="deleteSelectedAssets">
 									<template #icon>
 										<DeleteIcon :size="20" />
@@ -347,6 +347,7 @@ watch(showAlbumPicker, async (val) => {
 })
 
 async function addToAlbum(albumId) {
+	if (!store.selectedAssetsCanEdit || addingToAlbum.value) return
 	addingToAlbum.value = true
 	showAlbumPicker.value = false
 	try {
@@ -399,7 +400,7 @@ async function removeFromCurrentAlbum() {
 }
 
 async function toggleFavoritesSelection() {
-	if (store.selectedAssetIds.size === 0) return
+	if (!store.selectedAssetsCanEdit || togglingFavorite.value) return
 	const removing = selectedAllFavorited.value
 	togglingFavorite.value = true
 	try {
@@ -436,7 +437,7 @@ function onDeleteDialogAction(confirmed) {
 }
 
 async function deleteSelectedAssets() {
-	if (store.selectedAssetIds.size === 0 || deleting.value) return
+	if (!store.selectedAssetsCanEdit || deleting.value) return
 
 	deleteConfirmCount.value = store.selectedAssetIds.size
 	const confirmed = await new Promise((resolve) => {
@@ -444,7 +445,7 @@ async function deleteSelectedAssets() {
 		showDeleteConfirm.value = true
 	})
 
-	if (!confirmed) return
+	if (!confirmed || !store.selectedAssetsCanEdit) return
 
 	deleting.value = true
 	const ids = Array.from(store.selectedAssetIds)

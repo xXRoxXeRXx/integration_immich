@@ -710,6 +710,17 @@ export const useImmichStore = defineStore('immich', {
 	},
 
 	getters: {
+		// Selection is allowed for readable partner assets. Mutations must still
+		// fail closed when ownership is foreign, unresolved, or no longer cached.
+		selectedAssetsCanEdit() {
+			if (this.selectedAssetIds.size === 0) return false
+			const assets = this.allLoadedAssetsMap
+			return [...this.selectedAssetIds].every(id => {
+				const asset = assets[id]
+				return asset && (!asset.ownerId || asset.ownerId === this.currentUserId)
+			})
+		},
+
 		// Flat map of all currently loaded assets (id → asset object) across all caches.
 		// Used to check isFavorite status of selected assets without extra API calls.
 		allLoadedAssetsMap(state) {
