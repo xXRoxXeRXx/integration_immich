@@ -39,7 +39,7 @@
 						<svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7z" /></svg>
 					</button>
 					<button
-						v-if="isOwnedAsset"
+						v-if="canOrganize"
 						class="ic-lb-btn"
 						:class="{ 'ic-lb-btn--active': isFavorite }"
 						:title="isFavorite ? t('integration_immich', 'Remove from favorites') : t('integration_immich', 'Add to favorites')"
@@ -53,7 +53,7 @@
 						</svg>
 					</button>
 					<button
-						v-if="isOwnedAsset"
+						v-if="canOrganize"
 						class="ic-lb-btn"
 						:class="{ 'ic-lb-btn--active': showAlbumPanel }"
 						:title="t('integration_immich', 'Add to album')"
@@ -111,8 +111,8 @@
 				@touchend.passive="onTouchEnd"
 			>
 				<!-- Preload neighbours -->
-				<link v-if="prevAsset && prevAsset.isImage !== false" rel="prefetch" :href="getPreviewUrl(prevAsset.id)" as="image">
-				<link v-if="nextAsset && nextAsset.isImage !== false" rel="prefetch" :href="getPreviewUrl(nextAsset.id)" as="image">
+				<link v-if="prevAsset && prevAsset.isImage !== false" rel="prefetch" :href="getPreviewUrl(prevAsset.id, isLockedAsset(prevAsset))" as="image">
+				<link v-if="nextAsset && nextAsset.isImage !== false" rel="prefetch" :href="getPreviewUrl(nextAsset.id, isLockedAsset(nextAsset))" as="image">
 
 				<img
 					v-if="currentAsset && currentAsset.isImage !== false"
@@ -239,7 +239,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useImmichStore } from '../store/immich.js'
 import { useRoute } from 'vue-router'
-import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset, createAlbum, deleteAssets } from '../services/api.js'
+import { getPreviewUrl, getVideoUrl, getAssetInfo, downloadAssets, saveAssetsToNextcloud, getAlbums, addAssetsToAlbum, updateAsset, createAlbum, deleteAssets, isLockedAsset } from '../services/api.js'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { translate as t, getCanonicalLocale } from '@nextcloud/l10n'
 import { NcButton, NcDialog, NcLoadingIcon, NcListItem, NcTextField } from '@nextcloud/vue'
@@ -389,10 +389,13 @@ const isOwnedAsset = computed(() => {
 	const ownerId = currentAsset.value?.ownerId
 	return !ownerId || Boolean(store.currentUserId && ownerId === store.currentUserId)
 })
+// The Locked Folder's assets are read with its session; they belong to no album or favorites.
+const isLocked = computed(() => isLockedAsset(currentAsset.value))
+const canOrganize = computed(() => isOwnedAsset.value && !isLocked.value)
 const prevAsset = computed(() => currentIndex.value > 0 ? assets.value[currentIndex.value - 1] : null)
 const nextAsset = computed(() => currentIndex.value < assets.value.length - 1 ? assets.value[currentIndex.value + 1] : null)
-const previewSrc = computed(() => currentAsset.value ? getPreviewUrl(currentAsset.value.id) : '')
-const videoSrc = computed(() => currentAsset.value ? getVideoUrl(currentAsset.value.id) : '')
+const previewSrc = computed(() => currentAsset.value ? getPreviewUrl(currentAsset.value.id, isLocked.value) : '')
+const videoSrc = computed(() => currentAsset.value ? getVideoUrl(currentAsset.value.id, isLocked.value) : '')
 
 function formatDate(asset) {
 	const raw = asset?.localDateTime || asset?.fileCreatedAt || asset?.exifInfo?.dateTimeOriginal
@@ -449,7 +452,7 @@ async function ensureExifInfo() {
 	if (!asset || asset.exifInfo || fetchingInfo.value) return
 	fetchingInfo.value = true
 	try {
-		const response = await getAssetInfo(asset.id)
+		const response = await getAssetInfo(asset.id, isLockedAsset(asset))
 		const full = response.data
 		if (full && full.exifInfo) {
 			// Use store action to avoid direct mutation
@@ -467,7 +470,7 @@ async function downloadCurrent() {
 	if (!currentAsset.value || downloadingAsset.value) return
 	downloadingAsset.value = true
 	try {
-		const response = await downloadAssets([currentAsset.value.id])
+		const response = await downloadAssets([currentAsset.value.id], isLocked.value)
 		const disposition = response.headers?.['content-disposition'] ?? ''
 		let fileName = currentAsset.value.originalFileName || 'immich-download.bin'
 		const match = disposition.match(/filename="?([^";\n]+)"?/)
@@ -517,7 +520,7 @@ async function saveCurrentToNextcloud() {
 
 	savingToNc.value = true
 	try {
-		const response = await saveAssetsToNextcloud([currentAsset.value.id], path)
+		const response = await saveAssetsToNextcloud([currentAsset.value.id], path, isLocked.value)
 		const { saved, failed } = response.data
 		if (failed === 0) {
 			showSuccess(t('integration_immich', 'File saved to Nextcloud'))
@@ -532,7 +535,7 @@ async function saveCurrentToNextcloud() {
 }
 
 async function toggleFavorite() {
-	if (!isOwnedAsset.value || togglingFavorite.value) return
+	if (!canOrganize.value || togglingFavorite.value) return
 	togglingFavorite.value = true
 	const newVal = !currentAsset.value.isFavorite
 	try {
@@ -569,7 +572,7 @@ async function deleteCurrent() {
 	const wasLastAsset = assets.value.length === 1
 
 	try {
-		await deleteAssets([assetId])
+		await deleteAssets([assetId], isLocked.value)
 		store.removeAssetFromLightbox(assetId)
 		showSuccess(t('integration_immich', 'File deleted'))
 
@@ -585,7 +588,7 @@ async function deleteCurrent() {
 }
 
 function toggleAlbumPanel() {
-	if (!isOwnedAsset.value) return
+	if (!canOrganize.value) return
 	if (showAlbumPanel.value) {
 		showAlbumPanel.value = false
 		creatingAlbum.value = false

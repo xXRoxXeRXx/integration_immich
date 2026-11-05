@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace OCA\IntegrationImmich\Tests\Unit\Controller;
 
 use OCA\IntegrationImmich\Controller\AssetsController;
+use OCA\IntegrationImmich\Service\ImmichHttpException;
 use OCA\IntegrationImmich\Service\ImmichService;
+use OCA\IntegrationImmich\Service\LockedSession;
 use OCP\AppFramework\Http;
 use OCP\Files\IRootFolder;
 use OCP\IRequest;
@@ -19,6 +21,7 @@ class AssetsControllerTest extends TestCase {
 	private ImmichService&MockObject $immichService;
 	private IRequest&MockObject $request;
 	private LoggerInterface&MockObject $logger;
+	private LockedSession&MockObject $lockedSession;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -26,6 +29,7 @@ class AssetsControllerTest extends TestCase {
 		$this->immichService = $this->createMock(ImmichService::class);
 		$this->request = $this->createMock(IRequest::class);
 		$this->logger = $this->createMock(LoggerInterface::class);
+		$this->lockedSession = $this->createMock(LockedSession::class);
 
 		$this->controller = new AssetsController(
 			$this->request,
@@ -33,6 +37,7 @@ class AssetsControllerTest extends TestCase {
 			$this->createMock(IRootFolder::class),
 			'testuser',
 			$this->logger,
+			$this->lockedSession,
 		);
 	}
 
@@ -296,6 +301,84 @@ class AssetsControllerTest extends TestCase {
 		$response = $this->controller->visibility();
 
 		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
+	}
+
+	// --- the Locked Folder ---
+
+	public function testLockedRequestWithoutSignInIsLocked(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([['locked', null, '1']]);
+		$this->lockedSession->method('token')->willReturn(null);
+
+		$response = $this->controller->thumbnail('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+
+		$this->assertEquals(Http::STATUS_LOCKED, $response->getStatus());
+		$this->assertTrue($response->getData()['locked']);
+	}
+
+	public function testLockedTimelineUsesTheSession(): void {
+		$session = $this->createMock(ImmichService::class);
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->immichService->method('getServerUrl')->willReturn('https://photos.example.com');
+		$this->immichService->method('withSession')->with('token')->willReturn($session);
+		$this->immichService->expects($this->never())->method('getTimelineBuckets');
+		$this->lockedSession->method('token')->with('https://photos.example.com')->willReturn('token');
+		$this->request->method('getParam')->willReturnMap([
+			['locked', null, '1'],
+			['timeBucket', null, null],
+			['size', 'MONTH', 'MONTH'],
+			['visibility', null, 'locked'],
+		]);
+		$session->expects($this->once())
+			->method('getTimelineBuckets')
+			->with('MONTH', null, null, null, false, null, false, 'locked')
+			->willReturn([['count' => 1]]);
+
+		$response = $this->controller->timeline();
+
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
+	}
+
+	public function testLockedVisibilityNeedsTheLockedRequest(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['timeBucket', null, null],
+			['size', 'MONTH', 'MONTH'],
+			['visibility', null, 'locked'],
+		]);
+		$this->immichService->expects($this->once())
+			->method('getTimelineBuckets')
+			->with('MONTH', null, null, null, false, null, false, 'timeline')
+			->willReturn([]);
+
+		$this->controller->timeline();
+	}
+
+	public function testExpiredPinAnswersLocked(): void {
+		$session = $this->createMock(ImmichService::class);
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->immichService->method('withSession')->willReturn($session);
+		$this->lockedSession->method('token')->willReturn('token');
+		$this->request->method('getParam')->willReturnMap([['locked', null, '1']]);
+		$session->method('getAssetThumbnail')->willThrowException(new ImmichHttpException(401, 'Elevated permission is required'));
+
+		$response = $this->controller->thumbnail('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+
+		$this->assertEquals(Http::STATUS_LOCKED, $response->getStatus());
+	}
+
+	public function testLockedThumbnailIsNotCached(): void {
+		$session = $this->createMock(ImmichService::class);
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->immichService->method('withSession')->willReturn($session);
+		$this->lockedSession->method('token')->willReturn('token');
+		$this->request->method('getParam')->willReturnMap([['locked', null, '1'], ['size', 'thumbnail', 'thumbnail']]);
+		$session->method('getAssetThumbnail')->willReturn(['body' => 'jpeg', 'contentType' => 'image/jpeg']);
+
+		$response = $this->controller->thumbnail('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
+		$this->assertStringNotContainsString('max-age=3600', $response->getHeaders()['Cache-Control'] ?? '');
 	}
 
 	// --- searchLocation() ---

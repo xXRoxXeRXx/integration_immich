@@ -22,6 +22,8 @@ const apiMocks = vi.hoisted(() => ({
 	removeAssetsFromAlbum: vi.fn(),
 	updateAsset: vi.fn(),
 	deleteAssets: vi.fn(),
+	setAssetsVisibility: vi.fn(),
+	isLockedAsset: vi.fn(() => false),
 }))
 
 vi.mock('../../src/services/api.js', () => apiMocks)

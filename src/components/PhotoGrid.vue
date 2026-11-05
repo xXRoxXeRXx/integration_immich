@@ -17,7 +17,7 @@
 			<!-- Skeleton shown until image loads -->
 			<div class="photo-grid__skeleton" />
 
-			<img :src="getThumbnailUrl(asset.id)"
+			<img :src="getThumbnailUrl(asset.id, isLockedAsset(asset))"
 				:alt="asset.originalFileName || ''"
 				loading="lazy"
 				class="photo-grid__image"
@@ -55,7 +55,7 @@
 </template>
 
 <script setup>
-import { getThumbnailUrl } from '../services/api.js'
+import { getThumbnailUrl, isLockedAsset } from '../services/api.js'
 import { useImmichStore } from '../store/immich.js'
 import { getCanonicalLocale, translate as t } from '@nextcloud/l10n'
 import { NcCheckboxRadioSwitch } from '@nextcloud/vue'

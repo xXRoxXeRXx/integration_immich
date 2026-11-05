@@ -13,6 +13,7 @@ import ExploreView from '../components/ExploreView.vue'
 import PlaceDetailView from '../components/PlaceDetailView.vue'
 import FoldersView from '../components/FoldersView.vue'
 import PartnersView from '../components/PartnersView.vue'
+import LockedFolderView from '../components/LockedFolderView.vue'
 
 const routes = [
 	{ path: '/', name: 'timeline', component: TimelineView },
@@ -20,6 +21,7 @@ const routes = [
 	{ path: '/videos', name: 'videos', component: TimelineView, props: { assetType: 'VIDEO' } },
 	{ path: '/favorites', name: 'favorites', component: TimelineView, props: { isFavorite: true } },
 	{ path: '/archive', name: 'archive', component: TimelineView, props: { visibility: 'archive' } },
+	{ path: '/locked', name: 'locked', component: LockedFolderView },
 	{ path: '/albums', name: 'albums', component: AlbumsView },
 	{ path: '/albums/:id', name: 'album-detail', component: AlbumDetailView, props: true },
 	{ path: '/people', name: 'people', component: PeopleView },

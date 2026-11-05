@@ -63,3 +63,33 @@ describe('archive', () => {
 		expect(storage.removeItem).toHaveBeenCalledTimes(2)
 	})
 })
+
+describe('locked folder', () => {
+	it('reads the Locked Folder with its session and marks its assets', async () => {
+		const store = useImmichStore()
+		apiMocks.getTimeline
+			.mockResolvedValueOnce({ data: [{ timeBucket: '2026-01-01', count: 1 }] })
+			.mockResolvedValueOnce({ data: [{ id: 'l1' }] })
+
+		await store.fetchVisibilityBuckets('locked')
+		await store.fetchVisibilityBucket('locked', '2026-01-01')
+
+		expect(apiMocks.getTimeline).toHaveBeenNthCalledWith(1, { visibility: 'locked', locked: '1' })
+		expect(apiMocks.getTimeline).toHaveBeenNthCalledWith(2, { visibility: 'locked', locked: '1', timeBucket: '2026-01-01' }, null)
+		expect(store.visibilityAssets.locked['2026-01-01']).toEqual([{ id: 'l1', visibility: 'locked' }])
+	})
+
+	it('asks for the PIN again when the folder answers that it is locked', async () => {
+		const store = useImmichStore()
+		store.visibilityAssets.locked = { '2026-01-01': [{ id: 'l1', visibility: 'locked' }] }
+		store.lightbox = { visible: true, assets: [{ id: 'l1', visibility: 'locked' }], currentIndex: 0 }
+		apiMocks.getTimeline.mockRejectedValueOnce({ response: { status: 423, data: { locked: true } } })
+
+		await store.fetchVisibilityBuckets('locked')
+
+		expect(store.lockedFolderNeedsUnlock).toBe(true)
+		expect(store.error).toBeNull()
+		expect(store.visibilityAssets.locked).toEqual({})
+		expect(store.lightbox.visible).toBe(false)
+	})
+})

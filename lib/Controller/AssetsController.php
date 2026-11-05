@@ -11,7 +11,9 @@ declare(strict_types=1);
 namespace OCA\IntegrationImmich\Controller;
 
 use OCA\IntegrationImmich\AppInfo\Application;
+use OCA\IntegrationImmich\Service\ImmichHttpException;
 use OCA\IntegrationImmich\Service\ImmichService;
+use OCA\IntegrationImmich\Service\LockedSession;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -31,11 +33,37 @@ class AssetsController extends Controller {
         private IRootFolder $rootFolder,
         private ?string $userId,
         private LoggerInterface $logger,
+        private LockedSession $lockedSession,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
 
+    /** A request for the Locked Folder's assets (locked=1), served by its unlocked session. */
+    private function isLockedRequest(): bool {
+        return $this->request->getParam('locked') === '1';
+    }
+
+    /**
+     * The service for this request: the Locked Folder's session for a locked request (null when
+     * the person has not signed in here), else the API key's.
+     */
+    private function immich(): ?ImmichService {
+        if (!$this->isLockedRequest()) {
+            return $this->immichService;
+        }
+        $token = $this->lockedSession->token($this->immichService->getServerUrl());
+        return $token === null ? null : $this->immichService->withSession($token);
+    }
+
+    /** 423: the Locked Folder needs the sign-in or the PIN again. */
+    private function lockedResponse(): JSONResponse {
+        return new JSONResponse(['error' => 'The Locked Folder is locked', 'locked' => true], Http::STATUS_LOCKED);
+    }
+
     private function errorResponse(string $context, \Exception $e): JSONResponse {
+        if ($e instanceof ImmichHttpException && $e->getStatus() === Http::STATUS_UNAUTHORIZED && $this->isLockedRequest()) {
+            return $this->lockedResponse();
+        }
         $this->logger->error('Immich ' . $context . ' failed: ' . $e->getMessage(), [
             'app' => Application::APP_ID,
             'exception' => $e,
@@ -55,6 +83,10 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        $immich = $this->immich();
+        if ($immich === null) {
+            return $this->lockedResponse();
+        }
 
         try {
             $timeBucket = $this->request->getParam('timeBucket');
@@ -66,14 +98,18 @@ class AssetsController extends Controller {
             $withPartners = $this->request->getParam('withPartners') === 'true';
             $isFavoriteParam = $this->request->getParam('isFavorite');
             $isFavorite = $isFavoriteParam === 'true';
-            $visibility = $this->request->getParam('visibility') === 'archive' ? 'archive' : 'timeline';
+            $visibility = match ($this->request->getParam('visibility')) {
+                'archive' => 'archive',
+                'locked' => $this->isLockedRequest() ? 'locked' : 'timeline',
+                default => 'timeline',
+            };
 
             if ($userId !== null && $userId !== '' && (!is_string($userId) || !preg_match(ImmichService::UUID_PATTERN, $userId))) {
                 return new JSONResponse(['error' => 'Invalid user ID format'], Http::STATUS_BAD_REQUEST);
             }
 
             if ($timeBucket) {
-                $data = $this->immichService->getTimelineBucket($timeBucket, $size, $personId, $albumId, null, $isFavorite, $userId, $withPartners, $visibility);
+                $data = $immich->getTimelineBucket($timeBucket, $size, $personId, $albumId, null, $isFavorite, $userId, $withPartners, $visibility);
                 // Immich timeline/bucket does not support assetType filtering.
                 // Immich returns isImage (bool) instead of a type field — filter in PHP.
                 if ($assetType === 'IMAGE') {
@@ -88,7 +124,7 @@ class AssetsController extends Controller {
                     ));
                 }
             } else {
-                $data = $this->immichService->getTimelineBuckets($size, $personId, $albumId, null, $isFavorite, $userId, $withPartners, $visibility);
+                $data = $immich->getTimelineBuckets($size, $personId, $albumId, null, $isFavorite, $userId, $withPartners, $visibility);
             }
 
             return new JSONResponse($data);
@@ -120,12 +156,16 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        $immich = $this->immich();
+        if ($immich === null) {
+            return $this->lockedResponse();
+        }
         if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
         }
 
         try {
-            $data = $this->immichService->getAsset($id);
+            $data = $immich->getAsset($id);
             return new JSONResponse($data);
         } catch (\Exception $e) {
             return $this->errorResponse('asset info', $e);
@@ -162,6 +202,10 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        $immich = $this->immich();
+        if ($immich === null) {
+            return $this->lockedResponse();
+        }
         if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
         }
@@ -169,13 +213,16 @@ class AssetsController extends Controller {
         try {
             $size = $this->request->getParam('size', 'thumbnail');
             $size = in_array($size, ['thumbnail', 'preview'], true) ? $size : 'thumbnail';
-            $result = $this->immichService->getAssetThumbnail($id, $size);
+            $result = $immich->getAssetThumbnail($id, $size);
             $response = new DataDownloadResponse(
                 $result['body'],
                 $id . '.jpg',
                 $result['contentType'] ?? 'image/jpeg'
             );
-            $response->cacheFor(3600);
+            // The Locked Folder's thumbnails stay out of the browser's cache once it is locked again.
+            if (!$this->isLockedRequest()) {
+                $response->cacheFor(3600);
+            }
             return $response;
         } catch (\Exception $e) {
             return $this->errorResponse('thumbnail', $e);
@@ -191,12 +238,16 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        $immich = $this->immich();
+        if ($immich === null) {
+            return $this->lockedResponse();
+        }
         if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
         }
 
         try {
-            $result = $this->immichService->getAssetOriginal($id);
+            $result = $immich->getAssetOriginal($id);
             $response = new DataDownloadResponse(
                 $result['body'],
                 $id,
@@ -217,6 +268,10 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        $immich = $this->immich();
+        if ($immich === null) {
+            return $this->lockedResponse();
+        }
         if (!preg_match(ImmichService::UUID_PATTERN, $id)) {
             return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
         }
@@ -226,7 +281,7 @@ class AssetsController extends Controller {
             if ($rangeHeader !== '' && !preg_match('/^bytes=(\d+-\d*|-\d+)(,\s*(\d+-\d*|-\d+))*$/', $rangeHeader)) {
                 $rangeHeader = '';
             }
-            $result = $this->immichService->getVideoStream($id, $rangeHeader);
+            $result = $immich->getVideoStream($id, $rangeHeader);
 
             $response = new DataDownloadResponse(
                 $result['body'],
@@ -326,6 +381,10 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        $immich = $this->immich();
+        if ($immich === null) {
+            return $this->lockedResponse();
+        }
 
         $assetIds = $this->request->getParam('assetIds', []);
         if (!is_array($assetIds)) {
@@ -346,10 +405,10 @@ class AssetsController extends Controller {
             if (count($assetIds) === 1) {
                 // Single asset → GET /api/assets/{id}/original
                 $assetId = (string) $assetIds[0];
-                $asset = $this->immichService->getAsset($assetId);
+                $asset = $immich->getAsset($assetId);
                 $fileName = basename($asset['originalFileName'] ?? ($assetId . '.bin'));
 
-                $result = $this->immichService->getAssetOriginal($assetId);
+                $result = $immich->getAssetOriginal($assetId);
                 $response = new DataDownloadResponse(
                     $result['body'],
                     $fileName,
@@ -360,7 +419,7 @@ class AssetsController extends Controller {
 
             // Multiple assets → POST /api/download/archive → Immich builds the ZIP
             $zipName = 'immich-download-' . date('Y-m-d') . '.zip';
-            $result = $this->immichService->downloadArchive(array_values(array_map('strval', $assetIds)));
+            $result = $immich->downloadArchive(array_values(array_map('strval', $assetIds)));
             $response = new DataDownloadResponse(
                 $result['body'],
                 $zipName,
@@ -380,6 +439,10 @@ class AssetsController extends Controller {
                 Http::STATUS_PRECONDITION_FAILED
             );
         }
+        $immich = $this->immich();
+        if ($immich === null) {
+            return $this->lockedResponse();
+        }
 
         $assetIds = $this->request->getParam('assetIds', []);
         if (!is_array($assetIds)) {
@@ -397,7 +460,7 @@ class AssetsController extends Controller {
         }
 
         try {
-            $this->immichService->deleteAssets(array_values(array_map('strval', $assetIds)));
+            $immich->deleteAssets(array_values(array_map('strval', $assetIds)));
             return new JSONResponse(['success' => true]);
         } catch (\Exception $e) {
             return $this->errorResponse('delete assets', $e);
@@ -411,6 +474,10 @@ class AssetsController extends Controller {
                 ['error' => 'Immich is not configured'],
                 Http::STATUS_PRECONDITION_FAILED
             );
+        }
+        $immich = $this->immich();
+        if ($immich === null) {
+            return $this->lockedResponse();
         }
 
         $assetIds = $this->request->getParam('assetIds', []);
@@ -429,7 +496,7 @@ class AssetsController extends Controller {
         }
 
         try {
-            $this->immichService->setAssetsVisibility(array_values(array_map('strval', $assetIds)), $visibility);
+            $immich->setAssetsVisibility(array_values(array_map('strval', $assetIds)), $visibility);
             return new JSONResponse(['success' => true]);
         } catch (\Exception $e) {
             return $this->errorResponse('asset visibility', $e);
@@ -443,6 +510,10 @@ class AssetsController extends Controller {
                 ['error' => 'Immich is not configured'],
                 Http::STATUS_PRECONDITION_FAILED
             );
+        }
+        $immich = $this->immich();
+        if ($immich === null) {
+            return $this->lockedResponse();
         }
 
         $assetIds = $this->request->getParam('assetIds', []);
@@ -483,14 +554,14 @@ class AssetsController extends Controller {
         foreach ($assetIds as $assetId) {
             try {
                 // Fetch metadata to get the original filename
-                $asset = $this->immichService->getAsset((string)$assetId);
+                $asset = $immich->getAsset((string)$assetId);
                 $fileName = basename($asset['originalFileName'] ?? ($assetId . '.bin'));
 
                 // Ensure unique filename in target folder
                 $fileName = $this->getUniqueFileName($targetNode, (string)$fileName);
 
                 // Fetch the original binary (works for images and videos)
-                $result = $this->immichService->getAssetOriginal((string)$assetId);
+                $result = $immich->getAssetOriginal((string)$assetId);
 
                 // Write to Nextcloud — body is a stream, putContent accepts resource
                 $file = $targetNode->newFile($fileName);

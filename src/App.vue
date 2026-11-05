@@ -75,7 +75,7 @@
 									</template>
 									{{ t('integration_immich', 'Remove from album') }}
 								</NcActionButton>
-								<NcActionButton v-else-if="!isAlbumDetailView"
+								<NcActionButton v-else-if="!isAlbumDetailView && !isLockedView"
 									:disabled="!store.selectedAssetsCanEdit || addingToAlbum"
 									@click="showAlbumPicker = true">
 									<template #icon>
@@ -83,7 +83,7 @@
 									</template>
 									{{ t('integration_immich', 'Add to album') }}
 								</NcActionButton>
-								<NcActionButton
+								<NcActionButton v-if="!isLockedView"
 									:disabled="!store.selectedAssetsCanEdit || togglingFavorite"
 									@click="toggleFavoritesSelection">
 									<template #icon>
@@ -94,7 +94,15 @@
 										? t('integration_immich', 'Remove from favorites')
 										: t('integration_immich', 'Add to favorites') }}
 								</NcActionButton>
-								<NcActionButton
+								<NcActionButton v-if="isLockedView"
+									:disabled="!store.selectedAssetsCanEdit || movingAssets"
+									@click="moveSelected('timeline')">
+									<template #icon>
+										<LockOpenIcon :size="20" />
+									</template>
+									{{ t('integration_immich', 'Move out of Locked Folder') }}
+								</NcActionButton>
+								<NcActionButton v-if="!isLockedView"
 									:disabled="!store.selectedAssetsCanEdit || movingAssets"
 									@click="moveSelected(isArchiveView ? 'timeline' : 'archive')">
 									<template #icon>
@@ -105,7 +113,7 @@
 										? t('integration_immich', 'Unarchive')
 										: t('integration_immich', 'Archive') }}
 								</NcActionButton>
-								<NcActionButton
+								<NcActionButton v-if="!isLockedView"
 									:disabled="!store.selectedAssetsCanEdit || movingAssets"
 									@click="moveSelectedToLockedFolder">
 									<template #icon>
@@ -209,6 +217,7 @@ import DeleteIcon from 'vue-material-design-icons/Delete.vue'
 import ArchiveArrowDownIcon from 'vue-material-design-icons/ArchiveArrowDownOutline.vue'
 import ArchiveArrowUpIcon from 'vue-material-design-icons/ArchiveArrowUpOutline.vue'
 import LockIcon from 'vue-material-design-icons/LockOutline.vue'
+import LockOpenIcon from 'vue-material-design-icons/LockOpenVariantOutline.vue'
 
 const store = useImmichStore()
 const route = useRoute()
@@ -243,6 +252,8 @@ const selectedAllFavorited = computed(() => {
 // True when we are inside an album detail view → album button becomes "remove"
 const isAlbumDetailView = computed(() => route.name === 'album-detail')
 const isArchiveView = computed(() => route.name === 'archive')
+// The Locked Folder's assets go through its unlocked session; they have no albums or favorites.
+const isLockedView = computed(() => route.name === 'locked')
 
 // Role of the current user in the currently open album (for album-detail view).
 // v2: owner is identified via ownerId / owner.id (never in albumUsers).
@@ -268,6 +279,7 @@ const pageTitles = {
 	'videos': t('integration_immich', 'Videos'),
 	'favorites': t('integration_immich', 'Favorites'),
 	'archive': t('integration_immich', 'Archive'),
+	'locked': t('integration_immich', 'Locked Folder'),
 	'albums': t('integration_immich', 'Albums'),
 	'album-detail': t('integration_immich', 'Albums'),
 	'people': t('integration_immich', 'People'),
@@ -280,7 +292,7 @@ const pageTitles = {
 }
 
 // Views that contain individual selectable assets (photos/videos)
-const photoViews = new Set(['timeline', 'photos', 'videos', 'favorites', 'archive', 'album-detail', 'person-detail', 'place-detail', 'partner-detail'])
+const photoViews = new Set(['timeline', 'photos', 'videos', 'favorites', 'archive', 'locked', 'album-detail', 'person-detail', 'place-detail', 'partner-detail'])
 
 const pageTitle = computed(() => pageTitles[route.name] ?? 'Immich')
 const isPhotoView = computed(() => photoViews.has(route.name))
@@ -323,7 +335,7 @@ async function saveToNextcloud() {
 	saving.value = true
 	try {
 		const assetIds = [...store.selectedAssetIds]
-		const response = await saveAssetsToNextcloud(assetIds, path)
+		const response = await saveAssetsToNextcloud(assetIds, path, isLockedView.value)
 		const { saved, failed } = response.data
 
 		if (failed === 0) {
@@ -347,7 +359,7 @@ async function downloadSelected() {
 
 	downloading.value = true
 	try {
-		const response = await downloadAssets(assetIds)
+		const response = await downloadAssets(assetIds, isLockedView.value)
 
 		// Derive filename from Content-Disposition or fall back to a default
 		const disposition = response.headers?.['content-disposition'] ?? ''
@@ -480,9 +492,11 @@ async function moveSelected(visibility) {
 	movingAssets.value = true
 	const ids = Array.from(store.selectedAssetIds)
 	try {
-		await setAssetsVisibility(ids, visibility)
+		await setAssetsVisibility(ids, visibility, isLockedView.value)
 		const messages = {
-			timeline: t('integration_immich', '{count} file(s) unarchived', { count: ids.length }),
+			timeline: isLockedView.value
+				? t('integration_immich', '{count} file(s) moved out of the Locked Folder', { count: ids.length })
+				: t('integration_immich', '{count} file(s) unarchived', { count: ids.length }),
 			archive: t('integration_immich', '{count} file(s) archived', { count: ids.length }),
 			locked: t('integration_immich', '{count} file(s) moved to the Locked Folder', { count: ids.length }),
 		}
@@ -534,7 +548,7 @@ async function deleteSelectedAssets() {
 	deleting.value = true
 	const ids = Array.from(store.selectedAssetIds)
 	try {
-		await deleteAssets(ids)
+		await deleteAssets(ids, isLockedView.value)
 		showSuccess(t('integration_immich', '{count} file(s) deleted', { count: ids.length }))
 		// Remove from all caches
 		ids.forEach(id => store.removeAssetFromAllCaches(id))

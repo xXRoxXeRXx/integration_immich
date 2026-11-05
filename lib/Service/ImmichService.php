@@ -32,6 +32,12 @@ class ImmichService {
     /** Max monthly buckets fetched in a single bulk person-assets request (~2 years). */
     private const MAX_PERSON_BUCKETS = 24;
 
+    /** Shown in Immich's list of the person's devices for the Locked Folder's session. */
+    private const SESSION_DEVICE = ['devicemodel' => 'Nextcloud', 'devicetype' => 'integration_immich', 'User-Agent' => 'Nextcloud integration_immich'];
+
+    /** An Immich session token used instead of the API key (the Locked Folder), or null. */
+    private ?string $sessionToken = null;
+
     /** TTL (seconds) for caching /view/folder/unique-paths per user. */
     private const UNIQUE_PATHS_CACHE_TTL = 300;
 
@@ -76,6 +82,24 @@ class ImmichService {
             ]);
             return $stored;
         }
+    }
+
+    /**
+     * The same service, authenticated with an Immich session instead of the API key: the only
+     * way to read the Locked Folder, once the session is unlocked with the PIN.
+     */
+    public function withSession(string $token): static {
+        $service = clone $this;
+        $service->sessionToken = $token;
+        return $service;
+    }
+
+    /** @return array<string, string> */
+    private function authHeaders(): array {
+        if ($this->sessionToken !== null) {
+            return ['Authorization' => 'Bearer ' . $this->sessionToken];
+        }
+        return ['x-api-key' => $this->getApiKey()];
     }
 
     public function setServerUrl(string $url): void {
@@ -332,7 +356,7 @@ class ImmichService {
         $client = $this->clientService->newClient();
         $url = $this->getServerUrl() . '/api/assets/' . $id . '/video/playback';
 
-        $headers = ['x-api-key' => $this->getApiKey()];
+        $headers = $this->authHeaders();
         if ($rangeHeader !== '') {
             $headers['Range'] = $rangeHeader;
         }
@@ -611,6 +635,80 @@ class ImmichService {
         return is_array($result) ? $result : [];
     }
 
+    // ---- Locked Folder ----
+
+    /** Which sign-ins the Immich server offers: ['passwordLogin' => bool, 'oauth' => bool, ...]. */
+    public function getServerFeatures(): array {
+        return $this->request('GET', '/server/features', ['anonymous' => true]);
+    }
+
+    /** Signs in with e-mail and password; the new session's token. */
+    public function login(string $email, string $password): string {
+        $result = $this->request('POST', '/auth/login', [
+            'anonymous' => true,
+            'body' => ['email' => $email, 'password' => $password],
+        ]);
+        return $this->accessToken($result);
+    }
+
+    /** The identity provider's URL that starts an OAuth sign-in (PKCE). */
+    public function oauthAuthorize(string $redirectUri, string $state, string $codeChallenge): string {
+        $result = $this->request('POST', '/oauth/authorize', [
+            'anonymous' => true,
+            'body' => ['redirectUri' => $redirectUri, 'state' => $state, 'codeChallenge' => $codeChallenge],
+        ]);
+        if (!is_string($result['url'] ?? null) || $result['url'] === '') {
+            throw new \RuntimeException('Immich did not return an OAuth URL');
+        }
+        return $result['url'];
+    }
+
+    /** Completes an OAuth sign-in from the URL the identity provider redirected to; the session's token. */
+    public function oauthCallback(string $url, string $state, string $codeVerifier): string {
+        $result = $this->request('POST', '/oauth/callback', [
+            'anonymous' => true,
+            'body' => ['url' => $url, 'state' => $state, 'codeVerifier' => $codeVerifier],
+        ]);
+        return $this->accessToken($result);
+    }
+
+    private function accessToken(array $loginResponse): string {
+        $token = $loginResponse['accessToken'] ?? null;
+        if (!is_string($token) || $token === '') {
+            throw new \RuntimeException('Immich did not return a session');
+        }
+        return $token;
+    }
+
+    /** The API key's own entry (its id); needs no permission, unlike /users/me. */
+    public function getApiKeyInfo(): array {
+        return $this->request('GET', '/api-keys/me');
+    }
+
+    /** The account's API keys (a session may list them). */
+    public function getApiKeys(): array {
+        return $this->request('GET', '/api-keys');
+    }
+
+    /** The session's state: ['pinCode' => bool, 'isElevated' => bool, 'pinExpiresAt' => ?string, ...]. */
+    public function getAuthStatus(): array {
+        return $this->request('GET', '/auth/status');
+    }
+
+    /** Opens the Locked Folder for this session (15 minutes, extended while used). */
+    public function unlockSession(string $pinCode): void {
+        $this->request('POST', '/auth/session/unlock', ['body' => ['pinCode' => $pinCode]]);
+    }
+
+    public function lockSession(): void {
+        $this->request('POST', '/auth/session/lock');
+    }
+
+    /** Ends this session in Immich (it leaves the person's list of devices). */
+    public function logout(): void {
+        $this->request('POST', '/auth/logout');
+    }
+
     // ---- Upload ----
 
     public function uploadAsset(
@@ -642,8 +740,7 @@ class ImmichService {
 
         try {
             $response = $client->post($url, [
-                'headers' => [
-                    'x-api-key' => $this->getApiKey(),
+                'headers' => $this->authHeaders() + [
                     'Accept'    => 'application/json',
                 ],
                 'multipart'   => $multipart,
@@ -682,8 +779,8 @@ class ImmichService {
         }
 
         $requestOptions = [
-            'headers' => [
-                'x-api-key' => $this->getApiKey(),
+            // Sign-in calls (login, OAuth) go without any credentials.
+            'headers' => (empty($options['anonymous']) ? $this->authHeaders() : self::SESSION_DEVICE) + [
                 'Accept' => 'application/json',
             ],
             // Prevent the worker from hanging indefinitely if Immich is slow or
@@ -732,7 +829,8 @@ class ImmichService {
                     'query'    => $options['query'] ?? [],
                     'responseBody' => substr($responseBody, 0, 2000),
                 ]);
-                throw new \RuntimeException('Immich API error: HTTP ' . $statusCode);
+                $message = json_decode($responseBody, true)['message'] ?? '';
+                throw new ImmichHttpException($statusCode, is_string($message) ? $message : '');
             }
 
             $body = $response->getBody();
@@ -755,7 +853,7 @@ class ImmichService {
 
         try {
             $response = $client->get($url, [
-                'headers'     => ['x-api-key' => $this->getApiKey()],
+                'headers'     => $this->authHeaders(),
                 'timeout'     => 60,
                 'http_errors' => false,
             ]);
@@ -773,7 +871,7 @@ class ImmichService {
                 'app'      => Application::APP_ID,
                 'endpoint' => $endpoint,
             ]);
-            throw new \RuntimeException('Immich API error: HTTP ' . $statusCode);
+            throw new ImmichHttpException($statusCode);
         }
 
         return [
@@ -788,8 +886,7 @@ class ImmichService {
 
         try {
             $response = $client->post($url, [
-                'headers' => [
-                    'x-api-key'    => $this->getApiKey(),
+                'headers' => $this->authHeaders() + [
                     'Content-Type' => 'application/json',
                     'Accept'       => 'application/octet-stream',
                 ],
@@ -810,7 +907,7 @@ class ImmichService {
                 'app'      => Application::APP_ID,
                 'endpoint' => $endpoint,
             ]);
-            throw new \RuntimeException('Immich API error: HTTP ' . $statusCode);
+            throw new ImmichHttpException($statusCode);
         }
 
         return [

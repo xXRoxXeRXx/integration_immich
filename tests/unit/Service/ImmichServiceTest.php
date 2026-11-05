@@ -294,6 +294,55 @@ class ImmichServiceTest extends TestCase {
 		$this->assertSame('locked', $fields[1]['visibility']);
 	}
 
+	public function testSessionReplacesTheApiKey(): void {
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->expects($this->once())
+			->method('get')
+			->with(
+				'https://photos.example.com/api/timeline/buckets?visibility=locked&withStacked=true',
+				$this->callback(static fn (array $options): bool =>
+					($options['headers']['Authorization'] ?? null) === 'Bearer session-token'
+					&& !isset($options['headers']['x-api-key']))
+			)
+			->willReturn($this->okResponse('[]'));
+		$service = $this->serviceWithClient($client);
+
+		$service->withSession('session-token')->getTimelineBuckets(visibility: 'locked');
+	}
+
+	public function testLoginSendsNoCredentialsButTheDevice(): void {
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->expects($this->once())
+			->method('post')
+			->with(
+				'https://photos.example.com/api/auth/login',
+				$this->callback(static fn (array $options): bool =>
+					!isset($options['headers']['x-api-key'])
+					&& !isset($options['headers']['Authorization'])
+					&& ($options['headers']['devicemodel'] ?? null) === 'Nextcloud'
+					&& json_decode($options['body'], true) === ['email' => 'anna@example.org', 'password' => 'secret'])
+			)
+			->willReturn($this->okResponse('{"accessToken":"session-token","userId":"u1"}'));
+
+		$this->assertSame('session-token', $this->serviceWithClient($client)->login('anna@example.org', 'secret'));
+	}
+
+	public function testHttpErrorsCarryTheirStatus(): void {
+		$response = $this->createMock(\OCP\Http\Client\IResponse::class);
+		$response->method('getStatusCode')->willReturn(400);
+		$response->method('getBody')->willReturn('{"message":"Wrong PIN code"}');
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->method('post')->willReturn($response);
+
+		try {
+			$this->serviceWithClient($client)->withSession('session-token')->unlockSession('0000');
+			$this->fail('expected an ImmichHttpException');
+		} catch (\OCA\IntegrationImmich\Service\ImmichHttpException $e) {
+			$this->assertSame(400, $e->getStatus());
+			$this->assertStringContainsString('Wrong PIN code', $e->getMessage());
+		}
+	}
+
 	public function testTimelineDoesNotDropValidPartnerFlagAfterBadRequest(): void {
 		$badResponse = $this->createMock(\OCP\Http\Client\IResponse::class);
 		$badResponse->method('getStatusCode')->willReturn(400);

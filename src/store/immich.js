@@ -12,6 +12,11 @@ const BUCKET_CACHE_KEY = includePartners => `timeline_buckets_${includePartners 
 const BUCKET_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const LAYOUT_STORAGE_KEY = 'grid_layout'
 
+// The Locked Folder is read with its unlocked session (locked=1), the archive with the API key.
+const visibilityParams = visibility => visibility === 'locked'
+	? { visibility, locked: '1' }
+	: { visibility }
+
 export const useImmichStore = defineStore('immich', {
 	state: () => ({
 		// Timeline
@@ -29,9 +34,11 @@ export const useImmichStore = defineStore('immich', {
 		// Favorites
 		favoriteBuckets: [],
 		favoriteAssets: {},
-		// Hidden from the timeline (keyed by visibility: 'archive')
-		visibilityBuckets: { archive: [] },
-		visibilityAssets: { archive: {} },
+		// Hidden from the timeline (keyed by visibility: 'archive', 'locked')
+		visibilityBuckets: { archive: [], locked: [] },
+		visibilityAssets: { archive: {}, locked: {} },
+		// The Locked Folder answered 423: it needs the Immich sign-in or the PIN again
+		lockedFolderNeedsUnlock: false,
 		// Counts moves between the timeline, the archive and the Locked Folder: the open view reloads
 		assetsMovedGeneration: 0,
 		// Albums
@@ -295,15 +302,16 @@ export const useImmichStore = defineStore('immich', {
 			delete this.favoriteAssets[timeBucket]
 		},
 
-		// ---- Archive ----
+		// ---- Archive and Locked Folder ----
 
 		async fetchVisibilityBuckets(visibility) {
 			this.loading = true
 			this.error = null
 			try {
-				const response = await getTimeline({ visibility })
+				const response = await getTimeline(visibilityParams(visibility))
 				this.visibilityBuckets[visibility] = Array.isArray(response.data) ? response.data : []
 			} catch (e) {
+				if (this.lockedFolderAnswer(visibility, e)) return
 				const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout')
 				this.error = isTimeout
 					? t('integration_immich', 'Request timed out — Immich may be slow or unreachable. Check your server connection.')
@@ -316,11 +324,16 @@ export const useImmichStore = defineStore('immich', {
 		async fetchVisibilityBucket(visibility, timeBucket, signal = null) {
 			if (this.visibilityAssets[visibility][timeBucket]) return true
 			try {
-				const response = await getTimeline({ visibility, timeBucket }, signal)
-				this.visibilityAssets[visibility][timeBucket] = Array.isArray(response.data) ? response.data : []
+				const response = await getTimeline({ ...visibilityParams(visibility), timeBucket }, signal)
+				const assets = Array.isArray(response.data) ? response.data : []
+				// Marked, so that thumbnails and the lightbox fetch them with the Locked Folder's session.
+				this.visibilityAssets[visibility][timeBucket] = visibility === 'locked'
+					? assets.map(asset => ({ ...asset, visibility: 'locked' }))
+					: assets
 				return true
 			} catch (e) {
 				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return false
+				if (this.lockedFolderAnswer(visibility, e)) return false
 				this.error = e.response?.data?.error || e.message
 				throw e
 			}
@@ -328,6 +341,23 @@ export const useImmichStore = defineStore('immich', {
 
 		unloadVisibilityBucket(visibility, timeBucket) {
 			delete this.visibilityAssets[visibility][timeBucket]
+		},
+
+		// True when the Locked Folder answered that it is locked (423): its view asks again.
+		lockedFolderAnswer(visibility, e) {
+			if (visibility !== 'locked' || e?.response?.status !== 423) return false
+			this.forgetLockedFolder()
+			this.lockedFolderNeedsUnlock = true
+			return true
+		},
+
+		// Drops everything loaded from the Locked Folder (locked again, or signed out).
+		forgetLockedFolder() {
+			this.visibilityBuckets.locked = []
+			this.visibilityAssets.locked = {}
+			if (this.lightbox.visible && this.lightbox.assets.some(asset => asset.visibility === 'locked')) {
+				this.lightbox = { visible: false, assets: [], currentIndex: 0 }
+			}
 		},
 
 		// After assets moved between the timeline, the archive and the Locked Folder:

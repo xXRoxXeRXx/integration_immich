@@ -12,11 +12,13 @@ namespace OCA\IntegrationImmich\AppInfo;
 
 use OCA\Files\Event\LoadAdditionalScriptsEvent;
 use OCA\IntegrationImmich\Listener\LoadAdditionalScriptsListener;
+use OCA\IntegrationImmich\Listener\LogoutListener;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\Security\CSP\AddContentSecurityPolicyEvent;
+use OCP\User\Events\BeforeUserLoggedOutEvent;
 
 class Application extends App implements IBootstrap {
     public const APP_ID = 'integration_immich';
@@ -33,6 +35,11 @@ class Application extends App implements IBootstrap {
         $context->registerEventListener(
             AddContentSecurityPolicyEvent::class,
             \OCA\IntegrationImmich\Listener\CspListener::class
+        );
+        // Signing out of Nextcloud signs the Locked Folder's session out of Immich.
+        $context->registerEventListener(
+            BeforeUserLoggedOutEvent::class,
+            LogoutListener::class
         );
     }
 

@@ -52,6 +52,15 @@ return [
         // Folders
         ['name' => 'folders#content', 'url' => '/api/v1/folders/content', 'verb' => 'GET'],
 
+        // Locked Folder: sign in to Immich, unlock with the PIN, lock again
+        ['name' => 'locked#status',        'url' => '/api/v1/locked/status',         'verb' => 'GET'],
+        ['name' => 'locked#login',         'url' => '/api/v1/locked/login',          'verb' => 'POST'],
+        ['name' => 'locked#oauthStart',    'url' => '/api/v1/locked/oauth',          'verb' => 'POST'],
+        ['name' => 'locked#oauthCallback', 'url' => '/api/v1/locked/oauth/callback', 'verb' => 'GET'],
+        ['name' => 'locked#unlock',        'url' => '/api/v1/locked/unlock',         'verb' => 'POST'],
+        ['name' => 'locked#lock',          'url' => '/api/v1/locked/lock',           'verb' => 'POST'],
+        ['name' => 'locked#signOut',       'url' => '/api/v1/locked/signout',        'verb' => 'POST'],
+
         // Upload NC → Immich
         ['name' => 'upload#upload', 'url' => '/api/v1/upload', 'verb' => 'POST'],
     ],
