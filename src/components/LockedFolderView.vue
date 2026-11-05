@@ -145,6 +145,8 @@ const pin = ref('')
 const waitingForOAuth = ref(false)
 let oauthTimer = null
 let expiryTimer = null
+// When the expiry check is due, by the browser's clock (only durations are measured with it).
+let expiryDue = 0
 
 // loading | error | signed-out | no-pin | locked | unlocked
 const state = computed(() => {
@@ -185,19 +187,30 @@ function stopExpiryCheck() {
 	expiryTimer = null
 }
 
+async function checkExpiry() {
+	stopExpiryCheck()
+	await refresh()
+	if (state.value !== 'unlocked') openDialog()
+}
+
 // Immich locks the session when the PIN's time is up, but extends that time while the session
 // is used. So the view asks once, just after the expiry it was told, instead of polling: still
 // open (with a later expiry), or locked, which hides the photos and asks for the PIN again.
 function scheduleExpiryCheck() {
 	stopExpiryCheck()
 	if (state.value !== 'unlocked') return
-	const delay = expiryDelay(status.value.expiresAt)
+	const delay = expiryDelay(status.value.expiresIn)
 	if (delay === null) return
-	expiryTimer = setTimeout(async () => {
-		expiryTimer = null
-		await refresh()
-		if (state.value !== 'unlocked') openDialog()
-	}, delay)
+	expiryDue = Date.now() + delay
+	expiryTimer = setTimeout(checkExpiry, delay)
+}
+
+// Browsers hold back timers in background tabs and while the computer sleeps: a tab shown again
+// after the expiry asks at once, before its photos stay on screen.
+function onVisibilityChange() {
+	if (document.visibilityState === 'visible' && expiryTimer && Date.now() >= expiryDue) {
+		checkExpiry()
+	}
 }
 
 function openDialog() {
@@ -339,12 +352,14 @@ watch(() => store.lockedFolderNeedsUnlock, async (needed) => {
 })
 
 onMounted(async () => {
+	document.addEventListener('visibilitychange', onVisibilityChange)
 	store.lockedFolderNeedsUnlock = false
 	await refresh()
 	openDialog()
 })
 
 onBeforeUnmount(() => {
+	document.removeEventListener('visibilitychange', onVisibilityChange)
 	stopOAuthPolling()
 	stopExpiryCheck()
 })

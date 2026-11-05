@@ -79,6 +79,29 @@ class LockedControllerTest extends TestCase {
 		$this->assertSame('2026-11-05T12:00:00.000Z', $data['expiresAt']);
 	}
 
+	public function testStatusTellsTheSecondsLeftByTheServersClock(): void {
+		$this->lockedSession->method('token')->willReturn('token');
+		$this->session->method('getAuthStatus')->willReturn([
+			'pinCode' => true, 'isElevated' => true, 'pinExpiresAt' => gmdate('Y-m-d\\TH:i:s.000\\Z', time() + 600),
+		]);
+
+		$expiresIn = $this->controller->status()->getData()['expiresIn'];
+
+		$this->assertGreaterThanOrEqual(598, $expiresIn);
+		$this->assertLessThanOrEqual(600, $expiresIn);
+	}
+
+	public function testStatusOfAPastOrMissingExpiry(): void {
+		$this->lockedSession->method('token')->willReturn('token');
+		$this->session->method('getAuthStatus')->willReturnOnConsecutiveCalls(
+			['pinCode' => true, 'isElevated' => false, 'pinExpiresAt' => '2020-01-01T00:00:00.000Z'],
+			['pinCode' => true, 'isElevated' => false],
+		);
+
+		$this->assertSame(0, $this->controller->status()->getData()['expiresIn']);
+		$this->assertNull($this->controller->status()->getData()['expiresIn']);
+	}
+
 	public function testStatusForgetsASessionSignedOutInImmich(): void {
 		$this->lockedSession->method('token')->willReturn('token');
 		$this->session->method('getAuthStatus')->willThrowException(new ImmichHttpException(401));

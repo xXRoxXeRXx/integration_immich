@@ -102,6 +102,16 @@ class LockedController extends Controller {
         }
     }
 
+    /**
+     * The seconds until the PIN's expiry, by this server's clock. The browser times this instead
+     * of comparing the date with its own clock, which may be off: a check that came early would
+     * itself extend the PIN (Immich extends it on any use in its last minutes).
+     */
+    private function secondsLeft(mixed $expiresAt): ?int {
+        $at = is_string($expiresAt) ? strtotime($expiresAt) : false;
+        return $at === false ? null : max(0, $at - time());
+    }
+
     #[NoAdminRequired]
     #[UseSession]
     public function status(): JSONResponse {
@@ -118,6 +128,7 @@ class LockedController extends Controller {
                 'pinCode' => true,
                 'unlocked' => false,
                 'expiresAt' => null,
+                'expiresIn' => null,
             ];
             $session = $this->session();
             if ($session !== null) {
@@ -127,6 +138,7 @@ class LockedController extends Controller {
                     $state['pinCode'] = ($status['pinCode'] ?? false) === true;
                     $state['unlocked'] = ($status['isElevated'] ?? false) === true;
                     $state['expiresAt'] = $status['pinExpiresAt'] ?? null;
+                    $state['expiresIn'] = $this->secondsLeft($state['expiresAt']);
                 } catch (ImmichHttpException $e) {
                     if ($e->getStatus() !== Http::STATUS_UNAUTHORIZED) {
                         throw $e;
