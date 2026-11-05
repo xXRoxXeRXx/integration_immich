@@ -92,4 +92,26 @@ describe('locked folder', () => {
 		expect(store.visibilityAssets.locked).toEqual({})
 		expect(store.lightbox.visible).toBe(false)
 	})
+
+	it('keeps the unsaved files selected when a save stops at a locked folder', () => {
+		const store = useImmichStore()
+		store.visibilityAssets.locked = { '2026-01-01': [{ id: 'l1', visibility: 'locked' }] }
+		store.selectedAssetIds = new Set(['l1', 'l2', 'l3'])
+
+		const saved = store.lockedSaveAnswer({ response: { status: 423, data: { locked: true, saved: 1, savedIds: ['l1'] } } })
+
+		expect(saved).toBe(1)
+		expect([...store.selectedAssetIds]).toEqual(['l2', 'l3'])
+		expect(store.lockedFolderNeedsUnlock).toBe(true)
+		expect(store.visibilityAssets.locked).toEqual({})
+	})
+
+	it('leaves other save errors to the caller', () => {
+		const store = useImmichStore()
+		store.selectedAssetIds = new Set(['l1'])
+
+		expect(store.lockedSaveAnswer({ response: { status: 500, data: {} } })).toBeNull()
+		expect([...store.selectedAssetIds]).toEqual(['l1'])
+		expect(store.lockedFolderNeedsUnlock).toBe(false)
+	})
 })

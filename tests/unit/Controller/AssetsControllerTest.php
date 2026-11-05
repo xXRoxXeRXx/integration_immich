@@ -9,6 +9,8 @@ use OCA\IntegrationImmich\Service\ImmichHttpException;
 use OCA\IntegrationImmich\Service\ImmichService;
 use OCA\IntegrationImmich\Service\LockedSession;
 use OCP\AppFramework\Http;
+use OCP\Files\File;
+use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\IRequest;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -379,6 +381,118 @@ class AssetsControllerTest extends TestCase {
 
 		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
 		$this->assertStringNotContainsString('max-age=3600', $response->getHeaders()['Cache-Control'] ?? '');
+	}
+
+	public function testLockedVideoAnswersLockedWhenThePinLapsed(): void {
+		$session = $this->createMock(ImmichService::class);
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->immichService->method('withSession')->willReturn($session);
+		$this->lockedSession->method('token')->willReturn('token');
+		$this->request->method('getParam')->willReturnMap([['locked', null, '1']]);
+		$this->request->method('getHeader')->willReturn('');
+		$session->method('getVideoStream')->willReturn([
+			'body' => '', 'statusCode' => 401, 'contentType' => 'application/json',
+			'contentLength' => '', 'contentRange' => '', 'acceptRanges' => '',
+		]);
+
+		$response = $this->controller->videoStream('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+
+		$this->assertEquals(Http::STATUS_LOCKED, $response->getStatus());
+		$this->assertTrue($response->getData()['locked']);
+	}
+
+	public function testVideoPassesOnUnauthorizedOutsideTheLockedFolder(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getHeader')->willReturn('');
+		$this->immichService->method('getVideoStream')->willReturn([
+			'body' => '', 'statusCode' => 401, 'contentType' => 'application/json',
+			'contentLength' => '', 'contentRange' => '', 'acceptRanges' => '',
+		]);
+
+		$response = $this->controller->videoStream('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+
+		$this->assertEquals(Http::STATUS_UNAUTHORIZED, $response->getStatus());
+	}
+
+	// --- saveToNextcloud() ---
+
+	/** A controller whose user folder holds the folder "Photos", which takes the new files. */
+	private function saveController(Folder&MockObject $target): AssetsController {
+		$userFolder = $this->createMock(Folder::class);
+		$userFolder->method('get')->with('Photos')->willReturn($target);
+		$rootFolder = $this->createMock(IRootFolder::class);
+		$rootFolder->method('getUserFolder')->willReturn($userFolder);
+		return new AssetsController(
+			$this->request,
+			$this->immichService,
+			$rootFolder,
+			'testuser',
+			$this->logger,
+			$this->lockedSession,
+		);
+	}
+
+	public function testLockedSaveStopsWhenThePinLapsedAndNamesWhatWasSaved(): void {
+		$first = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+		$second = 'b1b2c3d4-e5f6-7890-abcd-ef1234567890';
+		$third = 'c1b2c3d4-e5f6-7890-abcd-ef1234567890';
+		$session = $this->createMock(ImmichService::class);
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->immichService->method('withSession')->willReturn($session);
+		$this->lockedSession->method('token')->willReturn('token');
+		$this->request->method('getParam')->willReturnMap([
+			['locked', null, '1'],
+			['assetIds', [], [$first, $second, $third]],
+			['path', '', 'Photos'],
+		]);
+		$session->method('getAsset')->willReturnCallback(static function (string $id) use ($second): array {
+			if ($id === $second) {
+				throw new ImmichHttpException(401, 'Elevated permission is required');
+			}
+			return ['originalFileName' => $id . '.jpg'];
+		});
+		$session->method('getAssetOriginal')->willReturn(['body' => 'jpeg']);
+		$target = $this->createMock(Folder::class);
+		$target->method('nodeExists')->willReturn(false);
+		// Only the first file is written; the third is not tried once the session is locked.
+		$target->expects($this->once())->method('newFile')->with($first . '.jpg')
+			->willReturn($this->createMock(File::class));
+
+		$response = $this->saveController($target)->saveToNextcloud();
+
+		$this->assertEquals(Http::STATUS_LOCKED, $response->getStatus());
+		$data = $response->getData();
+		$this->assertTrue($data['locked']);
+		$this->assertSame(1, $data['saved']);
+		$this->assertSame([$first], $data['savedIds']);
+	}
+
+	public function testSaveCountsOtherFailuresAndGoesOn(): void {
+		$first = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+		$second = 'b1b2c3d4-e5f6-7890-abcd-ef1234567890';
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['assetIds', [], [$first, $second]],
+			['path', '', 'Photos'],
+		]);
+		$this->immichService->method('getAsset')->willReturnCallback(static function (string $id) use ($first): array {
+			if ($id === $first) {
+				throw new ImmichHttpException(401);
+			}
+			return ['originalFileName' => $id . '.jpg'];
+		});
+		$this->immichService->method('getAssetOriginal')->willReturn(['body' => 'jpeg']);
+		$target = $this->createMock(Folder::class);
+		$target->method('nodeExists')->willReturn(false);
+		$target->method('newFile')->willReturn($this->createMock(File::class));
+
+		$response = $this->saveController($target)->saveToNextcloud();
+
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
+		$data = $response->getData();
+		$this->assertSame(1, $data['saved']);
+		$this->assertSame([$second], $data['savedIds']);
+		$this->assertSame(1, $data['failed']);
 	}
 
 	// --- searchLocation() ---

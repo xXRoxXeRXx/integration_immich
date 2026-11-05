@@ -351,6 +351,18 @@ export const useImmichStore = defineStore('immich', {
 			return true
 		},
 
+		// A save into Nextcloud stopped because the Locked Folder locked itself (423): the files
+		// it saved leave the selection, so that saving again after the PIN does not repeat them.
+		// Returns how many were saved, or null when the answer was not the locked one.
+		lockedSaveAnswer(e) {
+			if (!this.lockedFolderAnswer('locked', e)) return null
+			const savedIds = e.response.data?.savedIds ?? []
+			const next = new Set(this.selectedAssetIds)
+			savedIds.forEach(id => next.delete(id))
+			this.selectedAssetIds = next
+			return savedIds.length
+		},
+
 		// Drops everything loaded from the Locked Folder (locked again, or signed out).
 		forgetLockedFolder() {
 			this.visibilityBuckets.locked = []

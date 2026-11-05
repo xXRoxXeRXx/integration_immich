@@ -196,7 +196,9 @@ OC.L10N.register(
     "Immich Locked Folder": "Dossier verrouillé d’Immich",
     "Signed in to Immich. You can close this window and enter your PIN in Nextcloud.": "Connecté à Immich. Vous pouvez fermer cette fenêtre et saisir votre code PIN dans Nextcloud.",
     "This Immich account is not the one of your API key. Close this window and sign in with your own account.": "Ce compte Immich n’est pas celui de votre clé d’API. Fermez cette fenêtre et connectez-vous avec votre propre compte.",
-    "The sign-in to Immich failed. Close this window and try again.": "La connexion à Immich a échoué. Fermez cette fenêtre et réessayez."
+    "The sign-in to Immich failed. Close this window and try again.": "La connexion à Immich a échoué. Fermez cette fenêtre et réessayez.",
+    "{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.": "{count} fichier(s) enregistré(s), puis le dossier verrouillé s'est verrouillé. Saisissez votre code PIN et enregistrez à nouveau pour enregistrer le reste.",
+    "The Locked Folder locked itself. Enter your PIN and save again.": "Le dossier verrouillé s'est verrouillé. Saisissez votre code PIN et enregistrez à nouveau."
   },
   "nplurals=2; plural=(n > 1);"
 );

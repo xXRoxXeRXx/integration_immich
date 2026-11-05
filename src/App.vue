@@ -347,7 +347,14 @@ async function saveToNextcloud() {
 		}
 		store.clearSelection()
 	} catch (e) {
-		showError(t('integration_immich', 'Error saving: {msg}', { msg: e.message }))
+		const saved = store.lockedSaveAnswer(e)
+		if (saved === null) {
+			showError(t('integration_immich', 'Error saving: {msg}', { msg: e.message }))
+		} else if (saved > 0) {
+			showError(t('integration_immich', '{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.', { count: saved }))
+		} else {
+			showError(t('integration_immich', 'The Locked Folder locked itself. Enter your PIN and save again.'))
+		}
 	} finally {
 		saving.value = false
 	}

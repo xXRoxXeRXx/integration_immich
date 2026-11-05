@@ -130,7 +130,9 @@ password, or single sign-on when Immich uses OAuth), then for the PIN:
   database). It is used for the Locked Folder alone, and only when it belongs to the same Immich
   account as the API key.
 - **Lock** locks the folder again; the PIN alone opens it until the person signs out of Nextcloud
-  or chooses **Sign out of Immich**. Immich also locks it after 15 minutes without use.
+  or chooses **Sign out of Immich**. Immich also locks it after 15 minutes without use; the view
+  then hides the folder's photos and videos and asks for the PIN again. A save into Nextcloud that
+  the lock interrupts keeps the files it saved and leaves the rest selected for the next try.
 - The session shows in Immich's list of devices (*Account Settings → Authorized devices*) as
   *Nextcloud*.
 - Putting files into the Locked Folder (the selection's *Move to Locked Folder*, the Files action

@@ -528,7 +528,11 @@ async function saveCurrentToNextcloud() {
 			showError(t('integration_immich', 'Save failed'))
 		}
 	} catch (e) {
-		showError(t('integration_immich', 'Error saving: {msg}', { msg: e.message }))
+		if (store.lockedSaveAnswer(e) === null) {
+			showError(t('integration_immich', 'Error saving: {msg}', { msg: e.message }))
+		} else {
+			showError(t('integration_immich', 'The Locked Folder locked itself. Enter your PIN and save again.'))
+		}
 	} finally {
 		savingToNc.value = false
 	}

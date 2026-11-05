@@ -56,12 +56,17 @@ class AssetsController extends Controller {
     }
 
     /** 423: the Locked Folder needs the sign-in or the PIN again. */
-    private function lockedResponse(): JSONResponse {
-        return new JSONResponse(['error' => 'The Locked Folder is locked', 'locked' => true], Http::STATUS_LOCKED);
+    private function lockedResponse(array $data = []): JSONResponse {
+        return new JSONResponse(['error' => 'The Locked Folder is locked', 'locked' => true] + $data, Http::STATUS_LOCKED);
+    }
+
+    /** Immich refused the Locked Folder's session: its PIN lapsed, or it was signed out. */
+    private function isLockedRefusal(\Exception $e): bool {
+        return $e instanceof ImmichHttpException && $e->getStatus() === Http::STATUS_UNAUTHORIZED && $this->isLockedRequest();
     }
 
     private function errorResponse(string $context, \Exception $e): JSONResponse {
-        if ($e instanceof ImmichHttpException && $e->getStatus() === Http::STATUS_UNAUTHORIZED && $this->isLockedRequest()) {
+        if ($this->isLockedRefusal($e)) {
             return $this->lockedResponse();
         }
         $this->logger->error('Immich ' . $context . ' failed: ' . $e->getMessage(), [
@@ -282,6 +287,10 @@ class AssetsController extends Controller {
                 $rangeHeader = '';
             }
             $result = $immich->getVideoStream($id, $rangeHeader);
+            // Immich's status is passed on as it is, but a lapsed PIN must ask for it again.
+            if ($this->isLockedRequest() && (int)($result['statusCode'] ?? 0) === Http::STATUS_UNAUTHORIZED) {
+                return $this->lockedResponse();
+            }
 
             $response = new DataDownloadResponse(
                 $result['body'],
@@ -548,6 +557,7 @@ class AssetsController extends Controller {
         }
 
         $saved = 0;
+        $savedIds = [];
         $failed = 0;
         $errors = [];
 
@@ -568,7 +578,13 @@ class AssetsController extends Controller {
                 $file->putContent($result['body']);
 
                 $saved++;
+                $savedIds[] = (string)$assetId;
             } catch (\Exception $e) {
+                if ($this->isLockedRefusal($e)) {
+                    // The PIN lapsed during the batch: the files saved so far stay, and the
+                    // answer names them, so that saving again after the PIN skips them.
+                    return $this->lockedResponse(['saved' => $saved, 'savedIds' => $savedIds, 'failed' => $failed, 'errors' => $errors]);
+                }
                 $failed++;
                 $this->logger->error('Immich save-to-nextcloud failed for asset ' . $assetId . ': ' . $e->getMessage(), [
                     'app' => Application::APP_ID,
@@ -578,7 +594,7 @@ class AssetsController extends Controller {
             }
         }
 
-        return new JSONResponse(['saved' => $saved, 'failed' => $failed, 'errors' => $errors]);
+        return new JSONResponse(['saved' => $saved, 'savedIds' => $savedIds, 'failed' => $failed, 'errors' => $errors]);
     }
 
     private function getUniqueFileName(Folder $folder, string $fileName): string {

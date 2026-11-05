@@ -195,7 +195,9 @@
     "Immich Locked Folder": "Gesperrter Ordner in Immich",
     "Signed in to Immich. You can close this window and enter your PIN in Nextcloud.": "Bei Immich angemeldet. Sie können dieses Fenster schließen und Ihre PIN in Nextcloud eingeben.",
     "This Immich account is not the one of your API key. Close this window and sign in with your own account.": "Dieses Immich-Konto ist nicht das Ihres API-Schlüssels. Schließen Sie dieses Fenster und melden Sie sich mit Ihrem eigenen Konto an.",
-    "The sign-in to Immich failed. Close this window and try again.": "Die Anmeldung bei Immich ist fehlgeschlagen. Schließen Sie dieses Fenster und versuchen Sie es erneut."
+    "The sign-in to Immich failed. Close this window and try again.": "Die Anmeldung bei Immich ist fehlgeschlagen. Schließen Sie dieses Fenster und versuchen Sie es erneut.",
+    "{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.": "{count} Datei(en) gespeichert, dann hat sich der gesperrte Ordner gesperrt. Geben Sie Ihre PIN ein und speichern Sie erneut, um den Rest zu speichern.",
+    "The Locked Folder locked itself. Enter your PIN and save again.": "Der gesperrte Ordner hat sich gesperrt. Geben Sie Ihre PIN ein und speichern Sie erneut."
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }

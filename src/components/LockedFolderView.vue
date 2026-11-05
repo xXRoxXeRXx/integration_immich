@@ -122,6 +122,7 @@ import { NcButton, NcDialog, NcEmptyContent, NcLoadingIcon, NcNoteCard, NcPasswo
 import { translate as t } from '@nextcloud/l10n'
 import { useImmichStore } from '../store/immich.js'
 import { getLockedStatus, lockedLogin, lockedOAuthStart, lockedUnlock, lockedLock, lockedSignOut } from '../services/api.js'
+import { expiryDelay } from '../services/lockedExpiry.js'
 import TimelineView from './TimelineView.vue'
 import AlertIcon from 'vue-material-design-icons/Alert.vue'
 import LockIcon from 'vue-material-design-icons/LockOutline.vue'
@@ -143,6 +144,7 @@ const password = ref('')
 const pin = ref('')
 const waitingForOAuth = ref(false)
 let oauthTimer = null
+let expiryTimer = null
 
 // loading | error | signed-out | no-pin | locked | unlocked
 const state = computed(() => {
@@ -173,6 +175,29 @@ async function refresh() {
 	} finally {
 		loaded.value = true
 	}
+	// Nothing loaded from the Locked Folder stays in memory once it is no longer open.
+	if (state.value !== 'unlocked') store.forgetLockedFolder()
+	scheduleExpiryCheck()
+}
+
+function stopExpiryCheck() {
+	if (expiryTimer) clearTimeout(expiryTimer)
+	expiryTimer = null
+}
+
+// Immich locks the session when the PIN's time is up, but extends that time while the session
+// is used. So the view asks once, just after the expiry it was told, instead of polling: still
+// open (with a later expiry), or locked, which hides the photos and asks for the PIN again.
+function scheduleExpiryCheck() {
+	stopExpiryCheck()
+	if (state.value !== 'unlocked') return
+	const delay = expiryDelay(status.value.expiresAt)
+	if (delay === null) return
+	expiryTimer = setTimeout(async () => {
+		expiryTimer = null
+		await refresh()
+		if (state.value !== 'unlocked') openDialog()
+	}, delay)
 }
 
 function openDialog() {
@@ -321,6 +346,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
 	stopOAuthPolling()
+	stopExpiryCheck()
 })
 </script>
 

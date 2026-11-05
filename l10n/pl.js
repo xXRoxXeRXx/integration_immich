@@ -207,7 +207,9 @@ OC.L10N.register(
     "Select photo": "Zaznacz zdjęcie",
     "Square grid": "Siatka kwadratowa",
     "Uploading to Immich ({done}/{total})": "Wysyłanie do Immich ({done}/{total})",
-    "{count} asset(s) added to album": "Dodano do albumu: {count}"
+    "{count} asset(s) added to album": "Dodano do albumu: {count}",
+    "{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.": "Zapisano plików: {count}, po czym folder zablokowany się zablokował. Wpisz swój PIN i zapisz ponownie, aby zapisać resztę.",
+    "The Locked Folder locked itself. Enter your PIN and save again.": "Folder zablokowany się zablokował. Wpisz swój PIN i zapisz ponownie."
   },
   "nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);"
 );

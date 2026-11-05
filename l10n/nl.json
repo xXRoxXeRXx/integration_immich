@@ -195,7 +195,9 @@
     "Immich Locked Folder": "Vergrendelde map in Immich",
     "Signed in to Immich. You can close this window and enter your PIN in Nextcloud.": "Aangemeld bij Immich. Je kunt dit venster sluiten en je pincode invoeren in Nextcloud.",
     "This Immich account is not the one of your API key. Close this window and sign in with your own account.": "Dit Immich-account is niet dat van je API-sleutel. Sluit dit venster en meld je aan met je eigen account.",
-    "The sign-in to Immich failed. Close this window and try again.": "Aanmelden bij Immich is mislukt. Sluit dit venster en probeer het opnieuw."
+    "The sign-in to Immich failed. Close this window and try again.": "Aanmelden bij Immich is mislukt. Sluit dit venster en probeer het opnieuw.",
+    "{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.": "{count} bestand(en) opgeslagen, daarna is de vergrendelde map vergrendeld. Voer je pincode in en sla opnieuw op om de rest op te slaan.",
+    "The Locked Folder locked itself. Enter your PIN and save again.": "De vergrendelde map is vergrendeld. Voer je pincode in en sla opnieuw op."
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }

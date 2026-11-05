@@ -195,7 +195,9 @@
     "Immich Locked Folder": "Pasta bloqueada do Immich",
     "Signed in to Immich. You can close this window and enter your PIN in Nextcloud.": "Sessão iniciada no Immich. Pode fechar esta janela e introduzir o seu PIN no Nextcloud.",
     "This Immich account is not the one of your API key. Close this window and sign in with your own account.": "Esta conta Immich não é a da sua chave de API. Feche esta janela e inicie sessão com a sua própria conta.",
-    "The sign-in to Immich failed. Close this window and try again.": "O início de sessão no Immich falhou. Feche esta janela e tente novamente."
+    "The sign-in to Immich failed. Close this window and try again.": "O início de sessão no Immich falhou. Feche esta janela e tente novamente.",
+    "{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.": "{count} ficheiro(s) guardado(s); depois, a pasta bloqueada bloqueou-se. Introduza o seu PIN e guarde novamente para guardar o resto.",
+    "The Locked Folder locked itself. Enter your PIN and save again.": "A pasta bloqueada bloqueou-se. Introduza o seu PIN e guarde novamente."
   },
   "pluralForm": "nplurals=2; plural=(n > 1);"
 }
