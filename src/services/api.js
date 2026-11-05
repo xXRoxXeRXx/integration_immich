@@ -115,6 +115,11 @@ export function downloadAssets(assetIds) {
 	return axios.post(`${baseUrl}/download`, { assetIds }, { responseType: 'blob' })
 }
 
+// visibility: 'timeline' | 'archive' | 'locked' (into the Locked Folder needs no PIN)
+export function setAssetsVisibility(assetIds, visibility) {
+	return axios.post(`${baseUrl}/assets/visibility`, { assetIds, visibility })
+}
+
 export function deleteAssets(assetIds) {
 	return axios.post(`${baseUrl}/assets/delete`, { assetIds })
 }

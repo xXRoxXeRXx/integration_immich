@@ -29,6 +29,11 @@ export const useImmichStore = defineStore('immich', {
 		// Favorites
 		favoriteBuckets: [],
 		favoriteAssets: {},
+		// Hidden from the timeline (keyed by visibility: 'archive')
+		visibilityBuckets: { archive: [] },
+		visibilityAssets: { archive: {} },
+		// Counts moves between the timeline, the archive and the Locked Folder: the open view reloads
+		assetsMovedGeneration: 0,
 		// Albums
 		albums: [],
 		currentAlbum: null,
@@ -288,6 +293,61 @@ export const useImmichStore = defineStore('immich', {
 
 		unloadFavoriteBucket(timeBucket) {
 			delete this.favoriteAssets[timeBucket]
+		},
+
+		// ---- Archive ----
+
+		async fetchVisibilityBuckets(visibility) {
+			this.loading = true
+			this.error = null
+			try {
+				const response = await getTimeline({ visibility })
+				this.visibilityBuckets[visibility] = Array.isArray(response.data) ? response.data : []
+			} catch (e) {
+				const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout')
+				this.error = isTimeout
+					? t('integration_immich', 'Request timed out — Immich may be slow or unreachable. Check your server connection.')
+					: (e.response?.data?.error || e.message)
+			} finally {
+				this.loading = false
+			}
+		},
+
+		async fetchVisibilityBucket(visibility, timeBucket, signal = null) {
+			if (this.visibilityAssets[visibility][timeBucket]) return true
+			try {
+				const response = await getTimeline({ visibility, timeBucket }, signal)
+				this.visibilityAssets[visibility][timeBucket] = Array.isArray(response.data) ? response.data : []
+				return true
+			} catch (e) {
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return false
+				this.error = e.response?.data?.error || e.message
+				throw e
+			}
+		},
+
+		unloadVisibilityBucket(visibility, timeBucket) {
+			delete this.visibilityAssets[visibility][timeBucket]
+		},
+
+		// After assets moved between the timeline, the archive and the Locked Folder:
+		// gone from every loaded view, and the views they may now appear in load afresh.
+		assetsMoved(ids) {
+			ids.forEach(id => this.removeAssetFromAllCaches(id))
+			this.timelineBuckets = []
+			this.timelineAssets = {}
+			this.filteredBuckets = { IMAGE: [], VIDEO: [] }
+			this.filteredAssets = { IMAGE: {}, VIDEO: {} }
+			this.invalidateFavoriteCache()
+			for (const visibility of Object.keys(this.visibilityBuckets)) {
+				this.visibilityBuckets[visibility] = []
+				this.visibilityAssets[visibility] = {}
+			}
+			try {
+				appStorage.removeItem(BUCKET_CACHE_KEY(true))
+				appStorage.removeItem(BUCKET_CACHE_KEY(false))
+			} catch { /* storage unavailable — non-fatal */ }
+			this.assetsMovedGeneration++
 		},
 
 		// ---- Albums ----
@@ -597,6 +657,13 @@ export const useImmichStore = defineStore('immich', {
 				this.favoriteAssets[bucket] = this.favoriteAssets[bucket].filter(a => a.id !== assetId)
 			}
 
+			// Remove from the archive
+			for (const cache of Object.values(this.visibilityAssets)) {
+				for (const bucket in cache) {
+					cache[bucket] = cache[bucket].filter(a => a.id !== assetId)
+				}
+			}
+
 			// Remove from person bucket assets
 			for (const bucket in this.personBucketAssets) {
 				this.personBucketAssets[bucket] = this.personBucketAssets[bucket].filter(a => a.id !== assetId)
@@ -690,6 +757,12 @@ export const useImmichStore = defineStore('immich', {
 			for (const key of Object.keys(this.favoriteAssets)) {
 				patchList(this.favoriteAssets[key])
 			}
+			// Archive
+			for (const cache of Object.values(this.visibilityAssets)) {
+				for (const key of Object.keys(cache)) {
+					patchList(cache[key])
+				}
+			}
 			// Person detail
 			for (const key of Object.keys(this.personBucketAssets)) {
 				patchList(this.personBucketAssets[key])
@@ -738,6 +811,12 @@ export const useImmichStore = defineStore('immich', {
 			// Favorites
 			for (const assets of Object.values(state.favoriteAssets)) {
 				for (const a of assets) map[a.id] = a
+			}
+			// Archive
+			for (const cache of Object.values(state.visibilityAssets)) {
+				for (const assets of Object.values(cache)) {
+					for (const a of assets) map[a.id] = a
+				}
 			}
 			// Person detail
 			for (const assets of Object.values(state.personBucketAssets)) {

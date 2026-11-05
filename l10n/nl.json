@@ -157,7 +157,19 @@
     "_{count} photo_::_{count} photos_": ["{count} foto", "{count} foto's"],
     "_{count} folder_::_{count} folders_": ["{count} map", "{count} mappen"],
     "_{count} photo added to album_::_{count} photos added to album_": ["{count} foto toegevoegd aan album", "{count} foto's toegevoegd aan album"],
-    "_{count} photo with location_::_{count} photos with location_": ["{count} foto met locatie", "{count} foto's met locatie"]
+    "_{count} photo with location_::_{count} photos with location_": ["{count} foto met locatie", "{count} foto's met locatie"],
+    "Archive": "Archief",
+    "Unarchive": "Uit archief halen",
+    "Move to Locked Folder": "Naar vergrendelde map verplaatsen",
+    "Move {count} file(s) to the Locked Folder? They disappear from the timeline, albums and search, and only show again behind your Immich PIN.": "{count} bestand(en) naar de vergrendelde map verplaatsen? Ze verdwijnen uit de tijdlijn, albums en zoekresultaten en zijn alleen nog met je Immich-pincode te zien.",
+    "{count} file(s) unarchived": "{count} bestand(en) uit archief gehaald",
+    "{count} file(s) archived": "{count} bestand(en) gearchiveerd",
+    "{count} file(s) moved to the Locked Folder": "{count} bestand(en) naar de vergrendelde map verplaatst",
+    "Error moving files: {msg}": "Fout bij verplaatsen: {msg}",
+    "Archived photos and videos are hidden from the timeline and show up here.": "Gearchiveerde foto's en video's staan niet in de tijdlijn, maar hier.",
+    "Add to Immich Locked Folder": "Toevoegen aan vergrendelde map in Immich",
+    "\"{name}\" added to the Immich Locked Folder": "\"{name}\" toegevoegd aan de vergrendelde map in Immich",
+    "{count} files added to the Immich Locked Folder": "{count} bestanden toegevoegd aan de vergrendelde map in Immich"
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }

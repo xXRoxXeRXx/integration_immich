@@ -58,7 +58,7 @@ class UploadControllerTest extends TestCase {
 
 	public function testUploadReturns400WhenFileIdMissing(): void {
 		$this->immichService->method('isConfigured')->willReturn(true);
-		$this->request->method('getParam')->with('fileId')->willReturn(null);
+		$this->request->method('getParam')->willReturnCallback(fn (string $key, $default = null) => $key === 'fileId' ? null : $default);
 
 		$response = $this->controller->upload();
 
@@ -68,7 +68,7 @@ class UploadControllerTest extends TestCase {
 
 	public function testUploadReturns404WhenFileNotFound(): void {
 		$this->immichService->method('isConfigured')->willReturn(true);
-		$this->request->method('getParam')->with('fileId')->willReturn('999');
+		$this->request->method('getParam')->willReturnCallback(fn (string $key, $default = null) => $key === 'fileId' ? '999' : $default);
 
 		$userFolder = $this->createUserFolderMock();
 		$userFolder->method('getById')->with(999)->willReturn([]);
@@ -81,7 +81,7 @@ class UploadControllerTest extends TestCase {
 
 	public function testUploadReturns400WhenNotAFile(): void {
 		$this->immichService->method('isConfigured')->willReturn(true);
-		$this->request->method('getParam')->with('fileId')->willReturn('42');
+		$this->request->method('getParam')->willReturnCallback(fn (string $key, $default = null) => $key === 'fileId' ? '42' : $default);
 
 		// Return a Folder (not a File) to simulate the "not a file" case
 		$folder = $this->createMock(Folder::class);
@@ -96,7 +96,7 @@ class UploadControllerTest extends TestCase {
 
 	public function testUploadSucceeds(): void {
 		$this->immichService->method('isConfigured')->willReturn(true);
-		$this->request->method('getParam')->with('fileId')->willReturn('42');
+		$this->request->method('getParam')->willReturnCallback(fn (string $key, $default = null) => $key === 'fileId' ? '42' : $default);
 
 		$file = $this->createMock(File::class);
 		$file->method('getContent')->willReturn('binary-data');
@@ -115,5 +115,45 @@ class UploadControllerTest extends TestCase {
 
 		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
 		$this->assertArrayHasKey('id', $response->getData());
+	}
+
+	public function testUploadReturns400OnInvalidVisibility(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['fileId', null, '42'],
+			['visibility', 'timeline', 'hidden'],
+		]);
+		$this->immichService->expects($this->never())->method('uploadAsset');
+
+		$response = $this->controller->upload();
+
+		$this->assertEquals(Http::STATUS_BAD_REQUEST, $response->getStatus());
+	}
+
+	public function testUploadIntoLockedFolderPassesVisibility(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['fileId', null, '42'],
+			['visibility', 'timeline', 'locked'],
+		]);
+
+		$file = $this->createMock(File::class);
+		$file->method('getName')->willReturn('photo.jpg');
+		$file->method('getMimeType')->willReturn('image/jpeg');
+		$file->method('getCreationTime')->willReturn(0);
+		$file->method('getMTime')->willReturn(1700000000);
+
+		$userFolder = $this->createUserFolderMock();
+		$userFolder->method('getById')->with(42)->willReturn([$file]);
+		$this->rootFolder->method('getUserFolder')->with('testuser')->willReturn($userFolder);
+
+		$this->immichService->expects($this->once())
+			->method('uploadAsset')
+			->with($this->anything(), 'photo.jpg', 'image/jpeg', $this->anything(), $this->anything(), 'locked')
+			->willReturn(['id' => 'new-asset-uuid', 'status' => 'created']);
+
+		$response = $this->controller->upload();
+
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
 	}
 }

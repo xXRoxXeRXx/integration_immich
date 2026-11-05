@@ -66,13 +66,14 @@ class AssetsController extends Controller {
             $withPartners = $this->request->getParam('withPartners') === 'true';
             $isFavoriteParam = $this->request->getParam('isFavorite');
             $isFavorite = $isFavoriteParam === 'true';
+            $visibility = $this->request->getParam('visibility') === 'archive' ? 'archive' : 'timeline';
 
             if ($userId !== null && $userId !== '' && (!is_string($userId) || !preg_match(ImmichService::UUID_PATTERN, $userId))) {
                 return new JSONResponse(['error' => 'Invalid user ID format'], Http::STATUS_BAD_REQUEST);
             }
 
             if ($timeBucket) {
-                $data = $this->immichService->getTimelineBucket($timeBucket, $size, $personId, $albumId, null, $isFavorite, $userId, $withPartners);
+                $data = $this->immichService->getTimelineBucket($timeBucket, $size, $personId, $albumId, null, $isFavorite, $userId, $withPartners, $visibility);
                 // Immich timeline/bucket does not support assetType filtering.
                 // Immich returns isImage (bool) instead of a type field — filter in PHP.
                 if ($assetType === 'IMAGE') {
@@ -87,7 +88,7 @@ class AssetsController extends Controller {
                     ));
                 }
             } else {
-                $data = $this->immichService->getTimelineBuckets($size, $personId, $albumId, null, $isFavorite, $userId, $withPartners);
+                $data = $this->immichService->getTimelineBuckets($size, $personId, $albumId, null, $isFavorite, $userId, $withPartners, $visibility);
             }
 
             return new JSONResponse($data);
@@ -400,6 +401,38 @@ class AssetsController extends Controller {
             return new JSONResponse(['success' => true]);
         } catch (\Exception $e) {
             return $this->errorResponse('delete assets', $e);
+        }
+    }
+
+    #[NoAdminRequired]
+    public function visibility(): JSONResponse {
+        if (!$this->immichService->isConfigured()) {
+            return new JSONResponse(
+                ['error' => 'Immich is not configured'],
+                Http::STATUS_PRECONDITION_FAILED
+            );
+        }
+
+        $assetIds = $this->request->getParam('assetIds', []);
+        if (!is_array($assetIds) || empty($assetIds)) {
+            return new JSONResponse(['error' => 'assetIds must be a non-empty array'], Http::STATUS_BAD_REQUEST);
+        }
+        foreach ($assetIds as $id) {
+            if (!preg_match(ImmichService::UUID_PATTERN, (string)$id)) {
+                return new JSONResponse(['error' => 'Invalid asset ID format'], Http::STATUS_BAD_REQUEST);
+            }
+        }
+
+        $visibility = $this->request->getParam('visibility', '');
+        if (!in_array($visibility, ImmichService::VISIBILITIES, true)) {
+            return new JSONResponse(['error' => 'Invalid visibility'], Http::STATUS_BAD_REQUEST);
+        }
+
+        try {
+            $this->immichService->setAssetsVisibility(array_values(array_map('strval', $assetIds)), $visibility);
+            return new JSONResponse(['success' => true]);
+        } catch (\Exception $e) {
+            return $this->errorResponse('asset visibility', $e);
         }
     }
 

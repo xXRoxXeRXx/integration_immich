@@ -33,6 +33,13 @@
 					<HeartIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
+			<NcAppNavigationItem :name="t('integration_immich', 'Archive')"
+				:to="{ name: 'archive' }"
+				:active="$route.name === 'archive'">
+				<template #icon>
+					<ArchiveIcon :size="20" />
+				</template>
+			</NcAppNavigationItem>
 			<NcAppNavigationItem :name="t('integration_immich', 'Albums')"
 				:to="{ name: 'albums' }"
 				:active="$route.name === 'albums' || $route.name === 'album-detail'">
@@ -101,6 +108,7 @@ import ImageIcon from 'vue-material-design-icons/ImageFrame.vue'
 import PhotosIcon from 'vue-material-design-icons/ImageOutline.vue'
 import VideoIcon from 'vue-material-design-icons/PlayCircleOutline.vue'
 import HeartIcon from 'vue-material-design-icons/HeartOutline.vue'
+import ArchiveIcon from 'vue-material-design-icons/ArchiveOutline.vue'
 import FolderIcon from 'vue-material-design-icons/ViewGalleryOutline.vue'
 import FolderTreeIcon from 'vue-material-design-icons/FolderOutline.vue'
 import AccountGroupIcon from 'vue-material-design-icons/FaceWomanShimmerOutline.vue'

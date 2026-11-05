@@ -24,6 +24,7 @@ return [
         ['name' => 'assets#downloadAssets',  'url' => '/api/v1/download',                    'verb' => 'POST'],
         ['name' => 'assets#saveToNextcloud', 'url' => '/api/v1/assets/save',                 'verb' => 'POST'],
         ['name' => 'assets#deleteAssets',    'url' => '/api/v1/assets/delete',               'verb' => 'POST'],
+        ['name' => 'assets#visibility',      'url' => '/api/v1/assets/visibility',           'verb' => 'POST'],
         ['name' => 'assets#update',          'url' => '/api/v1/assets/{id}/update',          'verb' => 'POST'],
         ['name' => 'assets#show',            'url' => '/api/v1/assets/{id}/info',            'verb' => 'GET'],
         ['name' => 'assets#thumbnail',       'url' => '/api/v1/assets/{id}/thumbnail',       'verb' => 'GET'],

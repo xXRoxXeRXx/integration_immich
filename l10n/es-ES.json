@@ -157,7 +157,19 @@
     "_{count} photo_::_{count} photos_": ["{count} foto", "{count} fotos"],
     "_{count} folder_::_{count} folders_": ["{count} carpeta", "{count} carpetas"],
     "_{count} photo added to album_::_{count} photos added to album_": ["{count} foto añadida al álbum", "{count} fotos añadidas al álbum"],
-    "_{count} photo with location_::_{count} photos with location_": ["{count} foto con ubicación", "{count} fotos con ubicación"]
+    "_{count} photo with location_::_{count} photos with location_": ["{count} foto con ubicación", "{count} fotos con ubicación"],
+    "Archive": "Archivo",
+    "Unarchive": "Desarchivar",
+    "Move to Locked Folder": "Mover a la carpeta bloqueada",
+    "Move {count} file(s) to the Locked Folder? They disappear from the timeline, albums and search, and only show again behind your Immich PIN.": "¿Mover {count} archivo(s) a la carpeta bloqueada? Desaparecen de la línea de tiempo, los álbumes y la búsqueda, y solo se vuelven a ver con tu PIN de Immich.",
+    "{count} file(s) unarchived": "{count} archivo(s) desarchivado(s)",
+    "{count} file(s) archived": "{count} archivo(s) archivado(s)",
+    "{count} file(s) moved to the Locked Folder": "{count} archivo(s) movido(s) a la carpeta bloqueada",
+    "Error moving files: {msg}": "Error al mover los archivos: {msg}",
+    "Archived photos and videos are hidden from the timeline and show up here.": "Las fotos y los vídeos archivados no aparecen en la línea de tiempo, sino aquí.",
+    "Add to Immich Locked Folder": "Añadir a la carpeta bloqueada de Immich",
+    "\"{name}\" added to the Immich Locked Folder": "«{name}» añadido a la carpeta bloqueada de Immich",
+    "{count} files added to the Immich Locked Folder": "{count} archivos añadidos a la carpeta bloqueada de Immich"
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }

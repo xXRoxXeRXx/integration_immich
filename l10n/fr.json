@@ -157,7 +157,19 @@
     "_{count} photo_::_{count} photos_": ["{count} photo", "{count} photos"],
     "_{count} folder_::_{count} folders_": ["{count} dossier", "{count} dossiers"],
     "_{count} photo added to album_::_{count} photos added to album_": ["{count} photo ajoutée à l'album", "{count} photos ajoutées à l'album"],
-    "_{count} photo with location_::_{count} photos with location_": ["{count} photo avec emplacement", "{count} photos avec emplacement"]
+    "_{count} photo with location_::_{count} photos with location_": ["{count} photo avec emplacement", "{count} photos avec emplacement"],
+    "Archive": "Archives",
+    "Unarchive": "Désarchiver",
+    "Move to Locked Folder": "Déplacer vers le dossier verrouillé",
+    "Move {count} file(s) to the Locked Folder? They disappear from the timeline, albums and search, and only show again behind your Immich PIN.": "Déplacer {count} fichier(s) vers le dossier verrouillé ? Ils disparaissent de la chronologie, des albums et de la recherche, et ne s’affichent plus qu’avec votre code PIN Immich.",
+    "{count} file(s) unarchived": "{count} fichier(s) désarchivé(s)",
+    "{count} file(s) archived": "{count} fichier(s) archivé(s)",
+    "{count} file(s) moved to the Locked Folder": "{count} fichier(s) déplacé(s) vers le dossier verrouillé",
+    "Error moving files: {msg}": "Erreur lors du déplacement : {msg}",
+    "Archived photos and videos are hidden from the timeline and show up here.": "Les photos et vidéos archivées sont masquées de la chronologie et apparaissent ici.",
+    "Add to Immich Locked Folder": "Ajouter au dossier verrouillé d’Immich",
+    "\"{name}\" added to the Immich Locked Folder": "« {name} » ajouté au dossier verrouillé d’Immich",
+    "{count} files added to the Immich Locked Folder": "{count} fichiers ajoutés au dossier verrouillé d’Immich"
   },
   "pluralForm": "nplurals=2; plural=(n > 1);"
 }

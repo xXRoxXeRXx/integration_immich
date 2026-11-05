@@ -94,6 +94,25 @@
 										? t('integration_immich', 'Remove from favorites')
 										: t('integration_immich', 'Add to favorites') }}
 								</NcActionButton>
+								<NcActionButton
+									:disabled="!store.selectedAssetsCanEdit || movingAssets"
+									@click="moveSelected(isArchiveView ? 'timeline' : 'archive')">
+									<template #icon>
+										<ArchiveArrowUpIcon v-if="isArchiveView" :size="20" />
+										<ArchiveArrowDownIcon v-else :size="20" />
+									</template>
+									{{ isArchiveView
+										? t('integration_immich', 'Unarchive')
+										: t('integration_immich', 'Archive') }}
+								</NcActionButton>
+								<NcActionButton
+									:disabled="!store.selectedAssetsCanEdit || movingAssets"
+									@click="moveSelectedToLockedFolder">
+									<template #icon>
+										<LockIcon :size="20" />
+									</template>
+									{{ t('integration_immich', 'Move to Locked Folder') }}
+								</NcActionButton>
 								<NcActionButton v-if="!isAlbumDetailView"
 									type="error"
 									:disabled="!store.selectedAssetsCanEdit || deleting"
@@ -136,6 +155,22 @@
 		</div>
 	</NcDialog>
 
+	<NcDialog v-if="showLockConfirm"
+		:name="t('integration_immich', 'Move to Locked Folder')"
+		@closing="onLockDialogAction(false)">
+		<p style="padding: 8px 0">
+			{{ t('integration_immich', 'Move {count} file(s) to the Locked Folder? They disappear from the timeline, albums and search, and only show again behind your Immich PIN.', { count: lockConfirmCount }) }}
+		</p>
+		<template #actions>
+			<NcButton variant="tertiary" @click="onLockDialogAction(false)">
+				{{ t('integration_immich', 'Cancel') }}
+			</NcButton>
+			<NcButton variant="primary" @click="onLockDialogAction(true)">
+				{{ t('integration_immich', 'Move to Locked Folder') }}
+			</NcButton>
+		</template>
+	</NcDialog>
+
 	<NcDialog v-if="showDeleteConfirm"
 		:name="t('integration_immich', 'Delete files')"
 		@closing="onDeleteDialogAction(false)">
@@ -160,7 +195,7 @@ import { NcContent, NcAppContent, NcButton, NcLoadingIcon, NcDialog, NcActions, 
 import { translate as t } from '@nextcloud/l10n'
 import { showSuccess, showError, getFilePickerBuilder, FilePickerClosed } from '@nextcloud/dialogs'
 import { useImmichStore } from './store/immich.js'
-import { saveAssetsToNextcloud, downloadAssets, addAssetsToAlbum, removeAssetsFromAlbum, getAlbums, updateAsset, deleteAssets } from './services/api.js'
+import { saveAssetsToNextcloud, downloadAssets, addAssetsToAlbum, removeAssetsFromAlbum, getAlbums, updateAsset, deleteAssets, setAssetsVisibility } from './services/api.js'
 import Navigation from './components/Navigation.vue'
 import LightboxView from './components/LightboxView.vue'
 import CheckboxMultipleOutlineIcon from 'vue-material-design-icons/CheckboxMultipleOutline.vue'
@@ -171,6 +206,9 @@ import FolderRemoveIcon from 'vue-material-design-icons/FolderMinus.vue'
 import HeartOutlineIcon from 'vue-material-design-icons/HeartOutline.vue'
 import HeartIcon from 'vue-material-design-icons/Heart.vue'
 import DeleteIcon from 'vue-material-design-icons/Delete.vue'
+import ArchiveArrowDownIcon from 'vue-material-design-icons/ArchiveArrowDownOutline.vue'
+import ArchiveArrowUpIcon from 'vue-material-design-icons/ArchiveArrowUpOutline.vue'
+import LockIcon from 'vue-material-design-icons/LockOutline.vue'
 
 const store = useImmichStore()
 const route = useRoute()
@@ -183,6 +221,10 @@ const deleting = ref(false)
 const showDeleteConfirm = ref(false)
 const deleteConfirmCount = ref(0)
 let pendingDeleteResolve = null
+const movingAssets = ref(false)
+const showLockConfirm = ref(false)
+const lockConfirmCount = ref(0)
+let pendingLockResolve = null
 const showAlbumPicker = ref(false)
 const albums = ref([])
 const loadingAlbums = ref(false)
@@ -200,6 +242,7 @@ const selectedAllFavorited = computed(() => {
 
 // True when we are inside an album detail view → album button becomes "remove"
 const isAlbumDetailView = computed(() => route.name === 'album-detail')
+const isArchiveView = computed(() => route.name === 'archive')
 
 // Role of the current user in the currently open album (for album-detail view).
 // v2: owner is identified via ownerId / owner.id (never in albumUsers).
@@ -224,6 +267,7 @@ const pageTitles = {
 	'photos': t('integration_immich', 'Photos'),
 	'videos': t('integration_immich', 'Videos'),
 	'favorites': t('integration_immich', 'Favorites'),
+	'archive': t('integration_immich', 'Archive'),
 	'albums': t('integration_immich', 'Albums'),
 	'album-detail': t('integration_immich', 'Albums'),
 	'people': t('integration_immich', 'People'),
@@ -236,7 +280,7 @@ const pageTitles = {
 }
 
 // Views that contain individual selectable assets (photos/videos)
-const photoViews = new Set(['timeline', 'photos', 'videos', 'favorites', 'album-detail', 'person-detail', 'place-detail', 'partner-detail'])
+const photoViews = new Set(['timeline', 'photos', 'videos', 'favorites', 'archive', 'album-detail', 'person-detail', 'place-detail', 'partner-detail'])
 
 const pageTitle = computed(() => pageTitles[route.name] ?? 'Immich')
 const isPhotoView = computed(() => photoViews.has(route.name))
@@ -427,6 +471,46 @@ async function toggleFavoritesSelection() {
 		showError(t('integration_immich', 'Error updating favorites: {msg}', { msg: e.message }))
 	} finally {
 		togglingFavorite.value = false
+	}
+}
+
+// visibility: 'timeline' (unarchive), 'archive' or 'locked'
+async function moveSelected(visibility) {
+	if (!store.selectedAssetsCanEdit || movingAssets.value) return
+	movingAssets.value = true
+	const ids = Array.from(store.selectedAssetIds)
+	try {
+		await setAssetsVisibility(ids, visibility)
+		const messages = {
+			timeline: t('integration_immich', '{count} file(s) unarchived', { count: ids.length }),
+			archive: t('integration_immich', '{count} file(s) archived', { count: ids.length }),
+			locked: t('integration_immich', '{count} file(s) moved to the Locked Folder', { count: ids.length }),
+		}
+		showSuccess(messages[visibility])
+		store.clearSelection()
+		store.assetsMoved(ids)
+	} catch (e) {
+		showError(t('integration_immich', 'Error moving files: {msg}', { msg: e.response?.data?.error || e.message }))
+	} finally {
+		movingAssets.value = false
+	}
+}
+
+function onLockDialogAction(confirmed) {
+	showLockConfirm.value = false
+	pendingLockResolve?.(confirmed)
+	pendingLockResolve = null
+}
+
+async function moveSelectedToLockedFolder() {
+	if (!store.selectedAssetsCanEdit || movingAssets.value) return
+	lockConfirmCount.value = store.selectedAssetIds.size
+	const confirmed = await new Promise((resolve) => {
+		pendingLockResolve = resolve
+		showLockConfirm.value = true
+	})
+	if (confirmed) {
+		await moveSelected('locked')
 	}
 }
 

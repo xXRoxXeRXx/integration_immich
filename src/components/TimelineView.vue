@@ -18,7 +18,7 @@
 
 		<NcEmptyContent v-else-if="buckets.length === 0"
 			:name="t('integration_immich', 'No photos')"
-			:description="t('integration_immich', 'Your Immich library does not contain any photos yet.')">
+			:description="emptyDescription">
 			<template #icon>
 				<ImageIcon :size="64" />
 			</template>
@@ -128,18 +128,26 @@ const props = defineProps({
 	assetType: { type: String, default: null },
 	isFavorite: { type: Boolean, default: false },
 	userId: { type: String, default: null },
+	// 'archive': the assets hidden from the timeline
+	visibility: { type: String, default: null },
 })
 
 const store = useImmichStore()
 
+const emptyDescription = computed(() => props.visibility === 'archive'
+	? t('integration_immich', 'Archived photos and videos are hidden from the timeline and show up here.')
+	: t('integration_immich', 'Your Immich library does not contain any photos yet.'))
+
 // Point to the right store state based on assetType / isFavorite prop
 const buckets = computed(() => {
+	if (props.visibility) return store.visibilityBuckets[props.visibility] || []
 	if (props.userId) return store.partnerBuckets[props.userId] || []
 	if (props.isFavorite) return store.favoriteBuckets
 	if (props.assetType) return store.filteredBuckets[props.assetType]
 	return store.timelineBuckets
 })
 const assetsCache = computed(() => {
+	if (props.visibility) return store.visibilityAssets[props.visibility] || {}
 	if (props.userId) return store.partnerAssets[props.userId] || {}
 	if (props.isFavorite) return store.favoriteAssets
 	if (props.assetType) return store.filteredAssets[props.assetType]
@@ -152,6 +160,7 @@ const MAX_LOADED_BUCKETS = 12 // max buckets with loaded assets in memory
 // --- Reactive state ---
 const scheduler = new BucketRequestScheduler({ maxConcurrent: 2 })
 function getDatasetId() {
+	if (props.visibility) return `visibility:${props.visibility}`
 	if (props.userId) return `partner:${props.userId}`
 	if (props.isFavorite) return 'favorites'
 	if (props.assetType) return `filtered:${props.assetType}`
@@ -215,7 +224,9 @@ const windowIndices = computed(() => getVirtualWindowIndices(
 
 // --- Fetch/unload helpers depending on assetType / isFavorite ---
 async function fetchBuckets() {
-	if (props.userId) {
+	if (props.visibility) {
+		await store.fetchVisibilityBuckets(props.visibility)
+	} else if (props.userId) {
 		await store.fetchPartnerBuckets(props.userId)
 	} else if (props.isFavorite) {
 		await store.fetchFavoriteBuckets()
@@ -227,7 +238,9 @@ async function fetchBuckets() {
 }
 
 async function fetchBucket(timeBucket, signal, context) {
-	if (context.userId) {
+	if (context.visibility) {
+		return store.fetchVisibilityBucket(context.visibility, timeBucket, signal)
+	} else if (context.userId) {
 		return store.fetchPartnerBucket(context.userId, timeBucket, signal)
 	} else if (context.isFavorite) {
 		return store.fetchFavoriteBucket(timeBucket, signal)
@@ -239,7 +252,9 @@ async function fetchBucket(timeBucket, signal, context) {
 }
 
 function unloadBucket(timeBucket) {
-	if (props.userId) {
+	if (props.visibility) {
+		store.unloadVisibilityBucket(props.visibility, timeBucket)
+	} else if (props.userId) {
 		store.unloadPartnerBucket(props.userId, timeBucket)
 	} else if (props.isFavorite) {
 		store.unloadFavoriteBucket(timeBucket)
@@ -254,6 +269,7 @@ function unloadBucket(timeBucket) {
 function loadBucket(timeBucket, options = {}) {
 	if (assetsCache.value[timeBucket]) return Promise.resolve(true)
 	const context = {
+		visibility: props.visibility,
 		userId: props.userId,
 		isFavorite: props.isFavorite,
 		assetType: props.assetType,
@@ -339,7 +355,7 @@ onMounted(async () => {
 
 // When navigating between timeline / photos / videos / favorites, Vue Router reuses this
 // component instance — onMounted does NOT fire again. Watch the props instead.
-watch([() => props.assetType, () => props.isFavorite, () => props.userId], async () => {
+watch([() => props.assetType, () => props.isFavorite, () => props.userId, () => props.visibility, () => store.assetsMovedGeneration], async () => {
 	scheduler.setDataset(getDatasetId())
 	resetScroll()
 	await fetchBuckets()

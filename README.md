@@ -44,6 +44,8 @@ Timeline, albums, people, map, explore — all seamlessly integrated.
 | 🔍 **Explore** | Browse by city, country, state, object or tag |
 | 🔎 **Lightbox** | Full-screen viewer with keyboard navigation, pinch-to-zoom and EXIF metadata panel |
 | ⭐ **Favorites** | Mark and unmark photos as favorites directly from Nextcloud |
+| 🗄️ **Archive** | Browse archived photos and videos; archive or unarchive a selection |
+| 🔒 **Locked Folder** | Move a selection into Immich's Locked Folder, or upload into it from Nextcloud Files (*Add to Immich Locked Folder*); no PIN needed to put files in |
 | 🗑️ **Delete** | Delete files from Immich (moved to trash if enabled) via lightbox or selection menu |
 | 💾 **Save to Nextcloud** | Select photos and videos and save the originals directly to your Nextcloud Files |
 | ⬆️ **Upload to Immich** | Send photos and videos from Nextcloud Files to Immich via the file action menu |

@@ -26,6 +26,9 @@ class ImmichService {
     /** Regex for a canonical UUID v4 string. */
     public const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
 
+    /** Where an asset is shown: the timeline, the archive, or the Locked Folder (PIN). */
+    public const VISIBILITIES = ['timeline', 'archive', 'locked'];
+
     /** Max monthly buckets fetched in a single bulk person-assets request (~2 years). */
     private const MAX_PERSON_BUCKETS = 24;
 
@@ -226,10 +229,10 @@ class ImmichService {
         return $this->request('GET', '/partners', ['query' => ['direction' => 'shared-with']]);
     }
 
-    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false, ?string $userId = null, bool $withPartners = false): array {
+    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false, ?string $userId = null, bool $withPartners = false, string $visibility = 'timeline'): array {
         // Immich's current timeline API infers bucket grouping and rejects the legacy `size` query parameter.
         $query = [
-            'visibility' => 'timeline',
+            'visibility' => $visibility,
             'withStacked' => 'true',
         ];
         if ($personId !== null && $personId !== '') {
@@ -250,7 +253,7 @@ class ImmichService {
         return $this->request('GET', '/timeline/buckets', ['query' => $query]);
     }
 
-    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false, ?string $userId = null, bool $withPartners = false): array {
+    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false, ?string $userId = null, bool $withPartners = false, string $visibility = 'timeline'): array {
         // Immich v2 requires ISO-8601 format (YYYY-MM-DDTHH:MM:SS.000Z) for timeBucket.
         // Older API responses returned short dates (YYYY-MM-DD); normalize them here.
         if (strlen($timeBucket) === 10) {
@@ -259,7 +262,7 @@ class ImmichService {
         // Immich's current timeline API infers bucket grouping and rejects the legacy `size` query parameter.
         $query = [
             'timeBucket' => $timeBucket,
-            'visibility' => 'timeline',
+            'visibility' => $visibility,
             'withStacked' => 'true',
         ];
         if ($personId !== null && $personId !== '') {
@@ -426,6 +429,14 @@ class ImmichService {
 
     public function updateAsset(string $id, array $data): array {
         return $this->request('PUT', '/assets/' . $id, ['body' => $data]);
+    }
+
+    /**
+     * Moves assets to the timeline, the archive or the Locked Folder (Immich v2+).
+     * Moving into the Locked Folder needs no PIN; only reading it or moving out does.
+     */
+    public function setAssetsVisibility(array $assetIds, string $visibility): void {
+        $this->request('PUT', '/assets', ['body' => ['ids' => $assetIds, 'visibility' => $visibility]]);
     }
 
     public function deleteAssets(array $assetIds): void {
@@ -608,6 +619,7 @@ class ImmichService {
         string $mimeType,
         string $createdAt,
         string $modifiedAt,
+        string $visibility = 'timeline',
     ): array {
         $client = $this->clientService->newClient();
         $url = $this->getServerUrl() . '/api/assets';
@@ -623,6 +635,10 @@ class ImmichService {
             ['name' => 'deviceAssetId', 'contents' => $fileName . '-' . bin2hex(random_bytes(8))],
             ['name' => 'deviceId',      'contents' => 'nextcloud-integration'],
         ];
+        // Straight into the archive or the Locked Folder; the latter needs no PIN to upload.
+        if ($visibility !== 'timeline') {
+            $multipart[] = ['name' => 'visibility', 'contents' => $visibility];
+        }
 
         try {
             $response = $client->post($url, [

@@ -200,6 +200,104 @@ class AssetsControllerTest extends TestCase {
 		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
 	}
 
+	// --- timeline(visibility) ---
+
+	public function testTimelineForwardsArchiveVisibility(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['timeBucket', null, null],
+			['size', 'MONTH', 'MONTH'],
+			['visibility', null, 'archive'],
+		]);
+		$this->immichService->expects($this->once())
+			->method('getTimelineBuckets')
+			->with('MONTH', null, null, null, false, null, false, 'archive')
+			->willReturn([['count' => 2]]);
+
+		$response = $this->controller->timeline();
+
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
+	}
+
+	public function testTimelineIgnoresUnknownVisibility(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['timeBucket', null, null],
+			['size', 'MONTH', 'MONTH'],
+			['visibility', null, 'hidden'],
+		]);
+		$this->immichService->expects($this->once())
+			->method('getTimelineBuckets')
+			->with('MONTH', null, null, null, false, null, false, 'timeline')
+			->willReturn([]);
+
+		$this->controller->timeline();
+	}
+
+	// --- visibility() ---
+
+	public function testVisibilityReturns412WhenNotConfigured(): void {
+		$this->immichService->method('isConfigured')->willReturn(false);
+
+		$response = $this->controller->visibility();
+
+		$this->assertEquals(Http::STATUS_PRECONDITION_FAILED, $response->getStatus());
+	}
+
+	public function testVisibilityReturns400WithoutAssets(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['assetIds', [], []],
+			['visibility', '', 'archive'],
+		]);
+
+		$response = $this->controller->visibility();
+
+		$this->assertEquals(Http::STATUS_BAD_REQUEST, $response->getStatus());
+	}
+
+	public function testVisibilityReturns400OnInvalidUuid(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['assetIds', [], ['not-a-uuid']],
+			['visibility', '', 'archive'],
+		]);
+		$this->immichService->expects($this->never())->method('setAssetsVisibility');
+
+		$response = $this->controller->visibility();
+
+		$this->assertEquals(Http::STATUS_BAD_REQUEST, $response->getStatus());
+	}
+
+	public function testVisibilityReturns400OnUnknownVisibility(): void {
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['assetIds', [], ['a1b2c3d4-e5f6-7890-abcd-ef1234567890']],
+			['visibility', '', 'hidden'],
+		]);
+		$this->immichService->expects($this->never())->method('setAssetsVisibility');
+
+		$response = $this->controller->visibility();
+
+		$this->assertEquals(Http::STATUS_BAD_REQUEST, $response->getStatus());
+	}
+
+	public function testVisibilityMovesAssetsToLockedFolder(): void {
+		$ids = ['a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'b1b2c3d4-e5f6-7890-abcd-ef1234567890'];
+		$this->immichService->method('isConfigured')->willReturn(true);
+		$this->request->method('getParam')->willReturnMap([
+			['assetIds', [], $ids],
+			['visibility', '', 'locked'],
+		]);
+		$this->immichService->expects($this->once())
+			->method('setAssetsVisibility')
+			->with($ids, 'locked');
+
+		$response = $this->controller->visibility();
+
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
+	}
+
 	// --- searchLocation() ---
 
 	public function testSearchLocationReturns412WhenNotConfigured(): void {
