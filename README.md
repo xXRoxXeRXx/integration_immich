@@ -50,7 +50,7 @@ Timeline, albums, people, map, explore — all seamlessly integrated.
 | 💾 **Save to Nextcloud** | Select photos and videos and save the originals directly to your Nextcloud Files |
 | ⬆️ **Upload to Immich** | Send photos and videos from Nextcloud Files to Immich via the file action menu |
 | ☑️ **Multi-select** | Select multiple assets across any view for batch operations |
-| 🌍 **Translations** | German, French, Spanish, Dutch and Portuguese included |
+| 🌍 **Translations** | German, French, Spanish, Dutch, Portuguese and Polish included |
 | ⚙️ **Admin Settings** | Configure Immich server URL and API key per user |
 
 ---
