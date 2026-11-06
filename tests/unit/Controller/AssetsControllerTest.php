@@ -12,6 +12,7 @@ use OCP\AppFramework\Http;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
+use OCP\Files\IUserFolder;
 use OCP\IRequest;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
@@ -418,7 +419,8 @@ class AssetsControllerTest extends TestCase {
 
 	/** A controller whose user folder holds the folder "Photos", which takes the new files. */
 	private function saveController(Folder&MockObject $target): AssetsController {
-		$userFolder = $this->createMock(Folder::class);
+		// Nextcloud 36 declares the user folder an IUserFolder (a Folder); older versions a Folder.
+		$userFolder = $this->createMock(interface_exists(IUserFolder::class) ? IUserFolder::class : Folder::class);
 		$userFolder->method('get')->with('Photos')->willReturn($target);
 		$rootFolder = $this->createMock(IRootFolder::class);
 		$rootFolder->method('getUserFolder')->willReturn($userFolder);
