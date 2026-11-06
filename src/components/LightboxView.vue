@@ -122,6 +122,7 @@
 					:style="zoomStyle"
 					draggable="false"
 					@mousedown.prevent="onImgMouseDown"
+					@error="onMediaError"
 				/>
 				<video
 					v-else-if="currentAsset"
@@ -129,6 +130,7 @@
 					controls
 					autoplay
 					class="ic-lb-video"
+					@error="onMediaError"
 				/>
 			</div>
 
@@ -536,6 +538,11 @@ async function saveCurrentToNextcloud() {
 	} finally {
 		savingToNc.value = false
 	}
+}
+
+// A Locked Folder photo or video that fails to load may mean a lapsed PIN (423): its view asks.
+function onMediaError() {
+	if (isLocked.value) store.checkLockedFolder()
 }
 
 async function toggleFavorite() {

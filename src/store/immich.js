@@ -37,7 +37,8 @@ export const useImmichStore = defineStore('immich', {
 		// Hidden from the timeline (keyed by visibility: 'archive', 'locked')
 		visibilityBuckets: { archive: [], locked: [] },
 		visibilityAssets: { archive: {}, locked: {} },
-		// The Locked Folder answered 423: it needs the Immich sign-in or the PIN again
+		// The Locked Folder answered 423 (it needs the Immich sign-in or the PIN again), or one of
+		// its photos or videos failed to load: its view asks Immich whether it is still open
 		lockedFolderNeedsUnlock: false,
 		// Counts moves between the timeline, the archive and the Locked Folder: the open view reloads
 		assetsMovedGeneration: 0,
@@ -361,6 +362,13 @@ export const useImmichStore = defineStore('immich', {
 			savedIds.forEach(id => next.delete(id))
 			this.selectedAssetIds = next
 			return savedIds.length
+		},
+
+		// A photo or video of the Locked Folder failed to load. A media element does not tell the
+		// status (a 423 for a lapsed PIN, or another error), so the view asks whether the folder
+		// is still open, and asks for the PIN when it is not.
+		checkLockedFolder() {
+			this.lockedFolderNeedsUnlock = true
 		},
 
 		// Drops everything loaded from the Locked Folder (locked again, or signed out).

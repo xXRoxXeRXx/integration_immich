@@ -362,6 +362,9 @@ onBeforeUnmount(() => {
 	document.removeEventListener('visibilitychange', onVisibilityChange)
 	stopOAuthPolling()
 	stopExpiryCheck()
+	// Without this view nothing watches the PIN's expiry: what it loaded goes, and so does a
+	// lightbox left open on its photos (it lies over every view and stays on navigation).
+	store.forgetLockedFolder()
 })
 </script>
 
