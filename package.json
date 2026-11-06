@@ -14,7 +14,7 @@
     },
     "dependencies": {
         "@nextcloud/axios": "^2.6.0",
-        "@nextcloud/dialogs": "^7.5.0",
+        "@nextcloud/dialogs": "^8.0.0",
         "@nextcloud/files": "^4.1.0",
         "@nextcloud/files-v3": "npm:@nextcloud/files@^3.12.2",
         "@nextcloud/initial-state": "^3.0.0",
