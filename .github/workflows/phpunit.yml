@@ -31,14 +31,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-versions: ['8.2', '8.3', '8.4']
+        php-versions: ['8.2', '8.3', '8.4', '8.5']
         databases: ['sqlite', 'mysql', 'pgsql']
-        server-versions: ['stable30', 'stable31', 'stable32', 'stable33', 'master']
+        server-versions: ['stable33', 'stable34', 'stable35', 'master']
         exclude:
-          # NC 30 does not support PHP 8.4
-          - php-versions: '8.4'
-            server-versions: 'stable30'
-          # NC master requires PHP 8.3+
+          # Nextcloud 35 supports PHP 8.3 and newer
+          - php-versions: '8.2'
+            server-versions: 'stable35'
+          # Nextcloud master requires PHP 8.3+
           - php-versions: '8.2'
             server-versions: 'master'
 
