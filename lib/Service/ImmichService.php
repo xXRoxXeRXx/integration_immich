@@ -26,8 +26,17 @@ class ImmichService {
     /** Regex for a canonical UUID v4 string. */
     public const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
 
+    /** Where an asset is shown: the timeline, the archive, or the Locked Folder (PIN). */
+    public const VISIBILITIES = ['timeline', 'archive', 'locked'];
+
     /** Max monthly buckets fetched in a single bulk person-assets request (~2 years). */
     private const MAX_PERSON_BUCKETS = 24;
+
+    /** Shown in Immich's list of the person's devices for the Locked Folder's session. */
+    private const SESSION_DEVICE = ['devicemodel' => 'Nextcloud', 'devicetype' => 'integration_immich', 'User-Agent' => 'Nextcloud integration_immich'];
+
+    /** An Immich session token used instead of the API key (the Locked Folder), or null. */
+    private ?string $sessionToken = null;
 
     /** TTL (seconds) for caching /view/folder/unique-paths per user. */
     private const UNIQUE_PATHS_CACHE_TTL = 300;
@@ -73,6 +82,24 @@ class ImmichService {
             ]);
             return $stored;
         }
+    }
+
+    /**
+     * The same service, authenticated with an Immich session instead of the API key: the only
+     * way to read the Locked Folder, once the session is unlocked with the PIN.
+     */
+    public function withSession(string $token): static {
+        $service = clone $this;
+        $service->sessionToken = $token;
+        return $service;
+    }
+
+    /** @return array<string, string> */
+    private function authHeaders(): array {
+        if ($this->sessionToken !== null) {
+            return ['Authorization' => 'Bearer ' . $this->sessionToken];
+        }
+        return ['x-api-key' => $this->getApiKey()];
     }
 
     public function setServerUrl(string $url): void {
@@ -226,10 +253,10 @@ class ImmichService {
         return $this->request('GET', '/partners', ['query' => ['direction' => 'shared-with']]);
     }
 
-    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false, ?string $userId = null, bool $withPartners = false): array {
+    public function getTimelineBuckets(string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false, ?string $userId = null, bool $withPartners = false, string $visibility = 'timeline'): array {
         // Immich's current timeline API infers bucket grouping and rejects the legacy `size` query parameter.
         $query = [
-            'visibility' => 'timeline',
+            'visibility' => $visibility,
             'withStacked' => 'true',
         ];
         if ($personId !== null && $personId !== '') {
@@ -250,7 +277,7 @@ class ImmichService {
         return $this->request('GET', '/timeline/buckets', ['query' => $query]);
     }
 
-    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false, ?string $userId = null, bool $withPartners = false): array {
+    public function getTimelineBucket(string $timeBucket, string $size = 'MONTH', ?string $personId = null, ?string $albumId = null, ?string $assetType = null, bool $isFavorite = false, ?string $userId = null, bool $withPartners = false, string $visibility = 'timeline'): array {
         // Immich v2 requires ISO-8601 format (YYYY-MM-DDTHH:MM:SS.000Z) for timeBucket.
         // Older API responses returned short dates (YYYY-MM-DD); normalize them here.
         if (strlen($timeBucket) === 10) {
@@ -259,7 +286,7 @@ class ImmichService {
         // Immich's current timeline API infers bucket grouping and rejects the legacy `size` query parameter.
         $query = [
             'timeBucket' => $timeBucket,
-            'visibility' => 'timeline',
+            'visibility' => $visibility,
             'withStacked' => 'true',
         ];
         if ($personId !== null && $personId !== '') {
@@ -329,7 +356,7 @@ class ImmichService {
         $client = $this->clientService->newClient();
         $url = $this->getServerUrl() . '/api/assets/' . $id . '/video/playback';
 
-        $headers = ['x-api-key' => $this->getApiKey()];
+        $headers = $this->authHeaders();
         if ($rangeHeader !== '') {
             $headers['Range'] = $rangeHeader;
         }
@@ -426,6 +453,14 @@ class ImmichService {
 
     public function updateAsset(string $id, array $data): array {
         return $this->request('PUT', '/assets/' . $id, ['body' => $data]);
+    }
+
+    /**
+     * Moves assets to the timeline, the archive or the Locked Folder (Immich v2+).
+     * Moving into the Locked Folder needs no PIN; only reading it or moving out does.
+     */
+    public function setAssetsVisibility(array $assetIds, string $visibility): void {
+        $this->request('PUT', '/assets', ['body' => ['ids' => $assetIds, 'visibility' => $visibility]]);
     }
 
     public function deleteAssets(array $assetIds): void {
@@ -600,6 +635,80 @@ class ImmichService {
         return is_array($result) ? $result : [];
     }
 
+    // ---- Locked Folder ----
+
+    /** Which sign-ins the Immich server offers: ['passwordLogin' => bool, 'oauth' => bool, ...]. */
+    public function getServerFeatures(): array {
+        return $this->request('GET', '/server/features', ['anonymous' => true]);
+    }
+
+    /** Signs in with e-mail and password; the new session's token. */
+    public function login(string $email, string $password): string {
+        $result = $this->request('POST', '/auth/login', [
+            'anonymous' => true,
+            'body' => ['email' => $email, 'password' => $password],
+        ]);
+        return $this->accessToken($result);
+    }
+
+    /** The identity provider's URL that starts an OAuth sign-in (PKCE). */
+    public function oauthAuthorize(string $redirectUri, string $state, string $codeChallenge): string {
+        $result = $this->request('POST', '/oauth/authorize', [
+            'anonymous' => true,
+            'body' => ['redirectUri' => $redirectUri, 'state' => $state, 'codeChallenge' => $codeChallenge],
+        ]);
+        if (!is_string($result['url'] ?? null) || $result['url'] === '') {
+            throw new \RuntimeException('Immich did not return an OAuth URL');
+        }
+        return $result['url'];
+    }
+
+    /** Completes an OAuth sign-in from the URL the identity provider redirected to; the session's token. */
+    public function oauthCallback(string $url, string $state, string $codeVerifier): string {
+        $result = $this->request('POST', '/oauth/callback', [
+            'anonymous' => true,
+            'body' => ['url' => $url, 'state' => $state, 'codeVerifier' => $codeVerifier],
+        ]);
+        return $this->accessToken($result);
+    }
+
+    private function accessToken(array $loginResponse): string {
+        $token = $loginResponse['accessToken'] ?? null;
+        if (!is_string($token) || $token === '') {
+            throw new \RuntimeException('Immich did not return a session');
+        }
+        return $token;
+    }
+
+    /** The API key's own entry (its id); needs no permission, unlike /users/me. */
+    public function getApiKeyInfo(): array {
+        return $this->request('GET', '/api-keys/me');
+    }
+
+    /** The account's API keys (a session may list them). */
+    public function getApiKeys(): array {
+        return $this->request('GET', '/api-keys');
+    }
+
+    /** The session's state: ['pinCode' => bool, 'isElevated' => bool, 'pinExpiresAt' => ?string, ...]. */
+    public function getAuthStatus(): array {
+        return $this->request('GET', '/auth/status');
+    }
+
+    /** Opens the Locked Folder for this session (15 minutes, extended while used). */
+    public function unlockSession(string $pinCode): void {
+        $this->request('POST', '/auth/session/unlock', ['body' => ['pinCode' => $pinCode]]);
+    }
+
+    public function lockSession(): void {
+        $this->request('POST', '/auth/session/lock');
+    }
+
+    /** Ends this session in Immich (it leaves the person's list of devices). */
+    public function logout(): void {
+        $this->request('POST', '/auth/logout');
+    }
+
     // ---- Upload ----
 
     public function uploadAsset(
@@ -608,6 +717,7 @@ class ImmichService {
         string $mimeType,
         string $createdAt,
         string $modifiedAt,
+        string $visibility = 'timeline',
     ): array {
         $client = $this->clientService->newClient();
         $url = $this->getServerUrl() . '/api/assets';
@@ -623,11 +733,14 @@ class ImmichService {
             ['name' => 'deviceAssetId', 'contents' => $fileName . '-' . bin2hex(random_bytes(8))],
             ['name' => 'deviceId',      'contents' => 'nextcloud-integration'],
         ];
+        // Straight into the archive or the Locked Folder; the latter needs no PIN to upload.
+        if ($visibility !== 'timeline') {
+            $multipart[] = ['name' => 'visibility', 'contents' => $visibility];
+        }
 
         try {
             $response = $client->post($url, [
-                'headers' => [
-                    'x-api-key' => $this->getApiKey(),
+                'headers' => $this->authHeaders() + [
                     'Accept'    => 'application/json',
                 ],
                 'multipart'   => $multipart,
@@ -666,8 +779,8 @@ class ImmichService {
         }
 
         $requestOptions = [
-            'headers' => [
-                'x-api-key' => $this->getApiKey(),
+            // Sign-in calls (login, OAuth) go without any credentials.
+            'headers' => (empty($options['anonymous']) ? $this->authHeaders() : self::SESSION_DEVICE) + [
                 'Accept' => 'application/json',
             ],
             // Prevent the worker from hanging indefinitely if Immich is slow or
@@ -716,7 +829,8 @@ class ImmichService {
                     'query'    => $options['query'] ?? [],
                     'responseBody' => substr($responseBody, 0, 2000),
                 ]);
-                throw new \RuntimeException('Immich API error: HTTP ' . $statusCode);
+                $message = json_decode($responseBody, true)['message'] ?? '';
+                throw new ImmichHttpException($statusCode, is_string($message) ? $message : '');
             }
 
             $body = $response->getBody();
@@ -739,7 +853,7 @@ class ImmichService {
 
         try {
             $response = $client->get($url, [
-                'headers'     => ['x-api-key' => $this->getApiKey()],
+                'headers'     => $this->authHeaders(),
                 'timeout'     => 60,
                 'http_errors' => false,
             ]);
@@ -757,7 +871,7 @@ class ImmichService {
                 'app'      => Application::APP_ID,
                 'endpoint' => $endpoint,
             ]);
-            throw new \RuntimeException('Immich API error: HTTP ' . $statusCode);
+            throw new ImmichHttpException($statusCode);
         }
 
         return [
@@ -772,8 +886,7 @@ class ImmichService {
 
         try {
             $response = $client->post($url, [
-                'headers' => [
-                    'x-api-key'    => $this->getApiKey(),
+                'headers' => $this->authHeaders() + [
                     'Content-Type' => 'application/json',
                     'Accept'       => 'application/octet-stream',
                 ],
@@ -794,7 +907,7 @@ class ImmichService {
                 'app'      => Application::APP_ID,
                 'endpoint' => $endpoint,
             ]);
-            throw new \RuntimeException('Immich API error: HTTP ' . $statusCode);
+            throw new ImmichHttpException($statusCode);
         }
 
         return [

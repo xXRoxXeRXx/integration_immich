@@ -48,6 +48,11 @@ class UploadController extends Controller {
             );
         }
 
+        $visibility = $this->request->getParam('visibility', 'timeline');
+        if (!in_array($visibility, ImmichService::VISIBILITIES, true)) {
+            return new JSONResponse(['error' => 'Invalid visibility'], Http::STATUS_BAD_REQUEST);
+        }
+
         try {
             if ($this->userId === null) {
                 return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
@@ -83,6 +88,7 @@ class UploadController extends Controller {
                     $file->getMimeType(),
                     date('c', $creationTime),
                     date('c', $file->getMTime()),
+                    $visibility,
                 );
             } finally {
                 if (is_resource($stream)) {

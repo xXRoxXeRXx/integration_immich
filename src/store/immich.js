@@ -12,6 +12,11 @@ const BUCKET_CACHE_KEY = includePartners => `timeline_buckets_${includePartners 
 const BUCKET_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const LAYOUT_STORAGE_KEY = 'grid_layout'
 
+// The Locked Folder is read with its unlocked session (locked=1), the archive with the API key.
+const visibilityParams = visibility => visibility === 'locked'
+	? { visibility, locked: '1' }
+	: { visibility }
+
 export const useImmichStore = defineStore('immich', {
 	state: () => ({
 		// Timeline
@@ -29,6 +34,14 @@ export const useImmichStore = defineStore('immich', {
 		// Favorites
 		favoriteBuckets: [],
 		favoriteAssets: {},
+		// Hidden from the timeline (keyed by visibility: 'archive', 'locked')
+		visibilityBuckets: { archive: [], locked: [] },
+		visibilityAssets: { archive: {}, locked: {} },
+		// The Locked Folder answered 423 (it needs the Immich sign-in or the PIN again), or one of
+		// its photos or videos failed to load: its view asks Immich whether it is still open
+		lockedFolderNeedsUnlock: false,
+		// Counts moves between the timeline, the archive and the Locked Folder: the open view reloads
+		assetsMovedGeneration: 0,
 		// Albums
 		albums: [],
 		currentAlbum: null,
@@ -288,6 +301,103 @@ export const useImmichStore = defineStore('immich', {
 
 		unloadFavoriteBucket(timeBucket) {
 			delete this.favoriteAssets[timeBucket]
+		},
+
+		// ---- Archive and Locked Folder ----
+
+		async fetchVisibilityBuckets(visibility) {
+			this.loading = true
+			this.error = null
+			try {
+				const response = await getTimeline(visibilityParams(visibility))
+				this.visibilityBuckets[visibility] = Array.isArray(response.data) ? response.data : []
+			} catch (e) {
+				if (this.lockedFolderAnswer(visibility, e)) return
+				const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout')
+				this.error = isTimeout
+					? t('integration_immich', 'Request timed out — Immich may be slow or unreachable. Check your server connection.')
+					: (e.response?.data?.error || e.message)
+			} finally {
+				this.loading = false
+			}
+		},
+
+		async fetchVisibilityBucket(visibility, timeBucket, signal = null) {
+			if (this.visibilityAssets[visibility][timeBucket]) return true
+			try {
+				const response = await getTimeline({ ...visibilityParams(visibility), timeBucket }, signal)
+				const assets = Array.isArray(response.data) ? response.data : []
+				// Marked, so that thumbnails and the lightbox fetch them with the Locked Folder's session.
+				this.visibilityAssets[visibility][timeBucket] = visibility === 'locked'
+					? assets.map(asset => ({ ...asset, visibility: 'locked' }))
+					: assets
+				return true
+			} catch (e) {
+				if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return false
+				if (this.lockedFolderAnswer(visibility, e)) return false
+				this.error = e.response?.data?.error || e.message
+				throw e
+			}
+		},
+
+		unloadVisibilityBucket(visibility, timeBucket) {
+			delete this.visibilityAssets[visibility][timeBucket]
+		},
+
+		// True when the Locked Folder answered that it is locked (423): its view asks again.
+		lockedFolderAnswer(visibility, e) {
+			if (visibility !== 'locked' || e?.response?.status !== 423) return false
+			this.forgetLockedFolder()
+			this.lockedFolderNeedsUnlock = true
+			return true
+		},
+
+		// A save into Nextcloud stopped because the Locked Folder locked itself (423): the files
+		// it saved leave the selection, so that saving again after the PIN does not repeat them.
+		// Returns how many were saved, or null when the answer was not the locked one.
+		lockedSaveAnswer(e) {
+			if (!this.lockedFolderAnswer('locked', e)) return null
+			const savedIds = e.response.data?.savedIds ?? []
+			const next = new Set(this.selectedAssetIds)
+			savedIds.forEach(id => next.delete(id))
+			this.selectedAssetIds = next
+			return savedIds.length
+		},
+
+		// A photo or video of the Locked Folder failed to load. A media element does not tell the
+		// status (a 423 for a lapsed PIN, or another error), so the view asks whether the folder
+		// is still open, and asks for the PIN when it is not.
+		checkLockedFolder() {
+			this.lockedFolderNeedsUnlock = true
+		},
+
+		// Drops everything loaded from the Locked Folder (locked again, or signed out).
+		forgetLockedFolder() {
+			this.visibilityBuckets.locked = []
+			this.visibilityAssets.locked = {}
+			if (this.lightbox.visible && this.lightbox.assets.some(asset => asset.visibility === 'locked')) {
+				this.lightbox = { visible: false, assets: [], currentIndex: 0 }
+			}
+		},
+
+		// After assets moved between the timeline, the archive and the Locked Folder:
+		// gone from every loaded view, and the views they may now appear in load afresh.
+		assetsMoved(ids) {
+			ids.forEach(id => this.removeAssetFromAllCaches(id))
+			this.timelineBuckets = []
+			this.timelineAssets = {}
+			this.filteredBuckets = { IMAGE: [], VIDEO: [] }
+			this.filteredAssets = { IMAGE: {}, VIDEO: {} }
+			this.invalidateFavoriteCache()
+			for (const visibility of Object.keys(this.visibilityBuckets)) {
+				this.visibilityBuckets[visibility] = []
+				this.visibilityAssets[visibility] = {}
+			}
+			try {
+				appStorage.removeItem(BUCKET_CACHE_KEY(true))
+				appStorage.removeItem(BUCKET_CACHE_KEY(false))
+			} catch { /* storage unavailable — non-fatal */ }
+			this.assetsMovedGeneration++
 		},
 
 		// ---- Albums ----
@@ -597,6 +707,13 @@ export const useImmichStore = defineStore('immich', {
 				this.favoriteAssets[bucket] = this.favoriteAssets[bucket].filter(a => a.id !== assetId)
 			}
 
+			// Remove from the archive
+			for (const cache of Object.values(this.visibilityAssets)) {
+				for (const bucket in cache) {
+					cache[bucket] = cache[bucket].filter(a => a.id !== assetId)
+				}
+			}
+
 			// Remove from person bucket assets
 			for (const bucket in this.personBucketAssets) {
 				this.personBucketAssets[bucket] = this.personBucketAssets[bucket].filter(a => a.id !== assetId)
@@ -690,6 +807,12 @@ export const useImmichStore = defineStore('immich', {
 			for (const key of Object.keys(this.favoriteAssets)) {
 				patchList(this.favoriteAssets[key])
 			}
+			// Archive
+			for (const cache of Object.values(this.visibilityAssets)) {
+				for (const key of Object.keys(cache)) {
+					patchList(cache[key])
+				}
+			}
 			// Person detail
 			for (const key of Object.keys(this.personBucketAssets)) {
 				patchList(this.personBucketAssets[key])
@@ -738,6 +861,12 @@ export const useImmichStore = defineStore('immich', {
 			// Favorites
 			for (const assets of Object.values(state.favoriteAssets)) {
 				for (const a of assets) map[a.id] = a
+			}
+			// Archive
+			for (const cache of Object.values(state.visibilityAssets)) {
+				for (const assets of Object.values(cache)) {
+					for (const a of assets) map[a.id] = a
+				}
 			}
 			// Person detail
 			for (const assets of Object.values(state.personBucketAssets)) {

@@ -7,6 +7,15 @@ import { generateUrl } from '@nextcloud/router'
 
 const baseUrl = generateUrl('/apps/integration_immich/api/v1')
 
+// Assets in the Locked Folder are fetched with its unlocked Immich session (locked=1).
+export function isLockedAsset(asset) {
+	return asset?.visibility === 'locked'
+}
+
+function lockedQuery(locked, separator = '?') {
+	return locked ? `${separator}locked=1` : ''
+}
+
 export function getTimeline(params = {}, signal = null) {
 	return axios.get(`${baseUrl}/timeline`, { params, signal, timeout: 65000 })
 }
@@ -47,28 +56,28 @@ export function removeAssetsFromAlbum(albumId, assetIds) {
 	return axios.post(`${baseUrl}/albums/${albumId}/assets/remove`, { assetIds })
 }
 
-export function getAssetInfo(assetId) {
-	return axios.get(`${baseUrl}/assets/${assetId}/info`)
+export function getAssetInfo(assetId, locked = false) {
+	return axios.get(`${baseUrl}/assets/${assetId}/info${lockedQuery(locked)}`)
 }
 
 export function updateAsset(assetId, data) {
 	return axios.post(`${baseUrl}/assets/${assetId}/update`, data)
 }
 
-export function getThumbnailUrl(assetId) {
-	return generateUrl(`/apps/integration_immich/api/v1/assets/${assetId}/thumbnail`)
+export function getThumbnailUrl(assetId, locked = false) {
+	return generateUrl(`/apps/integration_immich/api/v1/assets/${assetId}/thumbnail`) + lockedQuery(locked)
 }
 
-export function getPreviewUrl(assetId) {
-	return generateUrl(`/apps/integration_immich/api/v1/assets/${assetId}/thumbnail`) + '?size=preview'
+export function getPreviewUrl(assetId, locked = false) {
+	return generateUrl(`/apps/integration_immich/api/v1/assets/${assetId}/thumbnail`) + '?size=preview' + lockedQuery(locked, '&')
 }
 
-export function getOriginalUrl(assetId) {
-	return generateUrl(`/apps/integration_immich/api/v1/assets/${assetId}/original`)
+export function getOriginalUrl(assetId, locked = false) {
+	return generateUrl(`/apps/integration_immich/api/v1/assets/${assetId}/original`) + lockedQuery(locked)
 }
 
-export function getVideoUrl(assetId) {
-	return generateUrl(`/apps/integration_immich/api/v1/assets/${assetId}/video`)
+export function getVideoUrl(assetId, locked = false) {
+	return generateUrl(`/apps/integration_immich/api/v1/assets/${assetId}/video`) + lockedQuery(locked)
 }
 
 export function getAlbumThumbnailUrl(albumId) {
@@ -107,16 +116,48 @@ export function getFolderContent(path = '/') {
 	return axios.get(`${baseUrl}/folders/content`, { params: { path } })
 }
 
-export function saveAssetsToNextcloud(assetIds, path) {
-	return axios.post(`${baseUrl}/assets/save`, { assetIds, path })
+export function saveAssetsToNextcloud(assetIds, path, locked = false) {
+	return axios.post(`${baseUrl}/assets/save${lockedQuery(locked)}`, { assetIds, path })
 }
 
-export function downloadAssets(assetIds) {
-	return axios.post(`${baseUrl}/download`, { assetIds }, { responseType: 'blob' })
+export function downloadAssets(assetIds, locked = false) {
+	return axios.post(`${baseUrl}/download${lockedQuery(locked)}`, { assetIds }, { responseType: 'blob' })
 }
 
-export function deleteAssets(assetIds) {
-	return axios.post(`${baseUrl}/assets/delete`, { assetIds })
+// visibility: 'timeline' | 'archive' | 'locked' (into the Locked Folder needs no PIN, out of it
+// the unlocked session: locked = true)
+export function setAssetsVisibility(assetIds, visibility, locked = false) {
+	return axios.post(`${baseUrl}/assets/visibility${lockedQuery(locked)}`, { assetIds, visibility })
+}
+
+export function deleteAssets(assetIds, locked = false) {
+	return axios.post(`${baseUrl}/assets/delete${lockedQuery(locked)}`, { assetIds })
+}
+
+// ---- Locked Folder: sign in to Immich, unlock with the PIN, lock again ----
+
+export function getLockedStatus() {
+	return axios.get(`${baseUrl}/locked/status`)
+}
+
+export function lockedLogin(email, password) {
+	return axios.post(`${baseUrl}/locked/login`, { email, password })
+}
+
+export function lockedOAuthStart() {
+	return axios.post(`${baseUrl}/locked/oauth`)
+}
+
+export function lockedUnlock(pinCode) {
+	return axios.post(`${baseUrl}/locked/unlock`, { pinCode })
+}
+
+export function lockedLock() {
+	return axios.post(`${baseUrl}/locked/lock`)
+}
+
+export function lockedSignOut() {
+	return axios.post(`${baseUrl}/locked/signout`)
 }
 
 export function getConfig() {

@@ -223,6 +223,126 @@ class ImmichServiceTest extends TestCase {
 		$this->assertSame([], $service->getTimelineBucket('2026-10-01T00:00:00.000Z', withPartners: true));
 	}
 
+	private function serviceWithClient(\OCP\Http\Client\IClient $client): ImmichService {
+		$clientService = $this->createMock(IClientService::class);
+		$clientService->method('newClient')->willReturn($client);
+		$this->config->method('getUserValue')->willReturnCallback(
+			fn(string $uid, string $app, string $key, string $default) => match ($key) {
+				'server_url' => 'https://photos.example.com',
+				'api_key' => 'test-key',
+				default => $default,
+			}
+		);
+		return new ImmichService(
+			$clientService,
+			$this->config,
+			$this->userSession,
+			$this->createMock(LoggerInterface::class),
+			$this->crypto,
+			$this->createMock(ICacheFactory::class),
+		);
+	}
+
+	private function okResponse(string $body): \OCP\Http\Client\IResponse {
+		$response = $this->createMock(\OCP\Http\Client\IResponse::class);
+		$response->method('getStatusCode')->willReturn(200);
+		$response->method('getBody')->willReturn($body);
+		return $response;
+	}
+
+	public function testArchiveTimelineRequestsArchiveVisibility(): void {
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->expects($this->once())
+			->method('get')
+			->with('https://photos.example.com/api/timeline/buckets?visibility=archive&withStacked=true', $this->anything())
+			->willReturn($this->okResponse('[]'));
+
+		$this->assertSame([], $this->serviceWithClient($client)->getTimelineBuckets(visibility: 'archive'));
+	}
+
+	public function testSetAssetsVisibilityUpdatesAssetsInBulk(): void {
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->expects($this->once())
+			->method('put')
+			->with(
+				'https://photos.example.com/api/assets',
+				$this->callback(static fn (array $options): bool =>
+					json_decode($options['body'], true) === ['ids' => ['id-1'], 'visibility' => 'locked']
+					&& ($options['headers']['x-api-key'] ?? null) === 'test-key')
+			)
+			->willReturn($this->okResponse(''));
+
+		$this->serviceWithClient($client)->setAssetsVisibility(['id-1'], 'locked');
+	}
+
+	public function testUploadAssetSendsVisibilityOnlyWhenNotTimeline(): void {
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$fields = [];
+		$client->expects($this->exactly(2))
+			->method('post')
+			->willReturnCallback(function (string $url, array $options) use (&$fields): \OCP\Http\Client\IResponse {
+				$this->assertSame('https://photos.example.com/api/assets', $url);
+				$fields[] = array_column($options['multipart'], 'contents', 'name');
+				return $this->okResponse('{"id":"new","status":"created"}');
+			});
+		$service = $this->serviceWithClient($client);
+
+		$service->uploadAsset('data', 'a.jpg', 'image/jpeg', 'c', 'm');
+		$service->uploadAsset('data', 'a.jpg', 'image/jpeg', 'c', 'm', 'locked');
+
+		$this->assertArrayNotHasKey('visibility', $fields[0]);
+		$this->assertSame('locked', $fields[1]['visibility']);
+	}
+
+	public function testSessionReplacesTheApiKey(): void {
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->expects($this->once())
+			->method('get')
+			->with(
+				'https://photos.example.com/api/timeline/buckets?visibility=locked&withStacked=true',
+				$this->callback(static fn (array $options): bool =>
+					($options['headers']['Authorization'] ?? null) === 'Bearer session-token'
+					&& !isset($options['headers']['x-api-key']))
+			)
+			->willReturn($this->okResponse('[]'));
+		$service = $this->serviceWithClient($client);
+
+		$service->withSession('session-token')->getTimelineBuckets(visibility: 'locked');
+	}
+
+	public function testLoginSendsNoCredentialsButTheDevice(): void {
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->expects($this->once())
+			->method('post')
+			->with(
+				'https://photos.example.com/api/auth/login',
+				$this->callback(static fn (array $options): bool =>
+					!isset($options['headers']['x-api-key'])
+					&& !isset($options['headers']['Authorization'])
+					&& ($options['headers']['devicemodel'] ?? null) === 'Nextcloud'
+					&& json_decode($options['body'], true) === ['email' => 'anna@example.org', 'password' => 'secret'])
+			)
+			->willReturn($this->okResponse('{"accessToken":"session-token","userId":"u1"}'));
+
+		$this->assertSame('session-token', $this->serviceWithClient($client)->login('anna@example.org', 'secret'));
+	}
+
+	public function testHttpErrorsCarryTheirStatus(): void {
+		$response = $this->createMock(\OCP\Http\Client\IResponse::class);
+		$response->method('getStatusCode')->willReturn(400);
+		$response->method('getBody')->willReturn('{"message":"Wrong PIN code"}');
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->method('post')->willReturn($response);
+
+		try {
+			$this->serviceWithClient($client)->withSession('session-token')->unlockSession('0000');
+			$this->fail('expected an ImmichHttpException');
+		} catch (\OCA\IntegrationImmich\Service\ImmichHttpException $e) {
+			$this->assertSame(400, $e->getStatus());
+			$this->assertStringContainsString('Wrong PIN code', $e->getMessage());
+		}
+	}
+
 	public function testTimelineDoesNotDropValidPartnerFlagAfterBadRequest(): void {
 		$badResponse = $this->createMock(\OCP\Http\Client\IResponse::class);
 		$badResponse->method('getStatusCode')->willReturn(400);

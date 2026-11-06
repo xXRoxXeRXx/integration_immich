@@ -15,6 +15,8 @@ Seamlessly integrates your [Immich](https://immich.app) photo library into Nextc
 - 🔍 **Explore** — browse by city, country, state, object or tag
 - 🔎 **Lightbox** — full-screen viewer with keyboard navigation, pinch-to-zoom and EXIF metadata
 - ⭐ **Favorites** — mark and unmark photos as favorites
+- 🗄️ **Archive** — browse, archive and unarchive photos
+- 🔒 **Locked Folder** — browse it with your Immich PIN; move or upload photos into it
 - 💾 **Save to Nextcloud** — save Immich originals directly to your Nextcloud Files
 - ⬆️ **Upload to Immich** — send photos and videos from Nextcloud Files to Immich
 - ☑️ **Multi-select** — batch operations across any view

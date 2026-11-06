@@ -44,11 +44,13 @@ Timeline, albums, people, map, explore — all seamlessly integrated.
 | 🔍 **Explore** | Browse by city, country, state, object or tag |
 | 🔎 **Lightbox** | Full-screen viewer with keyboard navigation, pinch-to-zoom and EXIF metadata panel |
 | ⭐ **Favorites** | Mark and unmark photos as favorites directly from Nextcloud |
+| 🗄️ **Archive** | Browse archived photos and videos; archive or unarchive a selection |
+| 🔒 **Locked Folder** | Browse the Locked Folder after signing in to Immich and entering your PIN; move a selection in or out, or upload into it from Nextcloud Files (*Add to Immich Locked Folder*), which needs no PIN |
 | 🗑️ **Delete** | Delete files from Immich (moved to trash if enabled) via lightbox or selection menu |
 | 💾 **Save to Nextcloud** | Select photos and videos and save the originals directly to your Nextcloud Files |
 | ⬆️ **Upload to Immich** | Send photos and videos from Nextcloud Files to Immich via the file action menu |
 | ☑️ **Multi-select** | Select multiple assets across any view for batch operations |
-| 🌍 **Translations** | German, French, Spanish, Dutch and Portuguese included |
+| 🌍 **Translations** | German, French, Spanish, Dutch, Portuguese and Polish included |
 | ⚙️ **Admin Settings** | Configure Immich server URL and API key per user |
 
 ---
@@ -105,7 +107,7 @@ When creating an API key in Immich (*Account Settings → API Keys → New API k
 | `asset.delete` | Delete assets from Immich (moves to trash if enabled) |
 | `asset.download` | Download originals and archives to Nextcloud |
 | `asset.read` | Timeline, asset details, EXIF metadata |
-| `asset.update` | Mark / unmark favorites |
+| `asset.update` | Mark / unmark favorites, archive, move into the Locked Folder |
 | `asset.upload` | Upload files from Nextcloud to Immich |
 | `asset.view` | Thumbnails and video streaming |
 | `folder.read` | Browse the folder structure in the Folders view (requires *Administration → Features → Folder view* enabled in Immich) |
@@ -117,6 +119,28 @@ When creating an API key in Immich (*Account Settings → API Keys → New API k
 > **Tip:** Immich lets you create multiple API keys with different scopes. Creating a dedicated key for the Nextcloud integration (with only the permissions above) is recommended over using a full-access key.
 >
 > The connection validation on the settings page (`POST /auth/validateToken`) does not require any additional permission — it works with any valid API key.
+
+### 🔒 Locked Folder
+
+Immich opens its Locked Folder only to a signed-in session unlocked with the person's PIN, never
+to an API key. The **Locked Folder** view therefore asks once for an Immich sign-in (e-mail and
+password, or single sign-on when Immich uses OAuth), then for the PIN:
+
+- The session's token is kept encrypted in the person's Nextcloud session only (never in the
+  database). It is used for the Locked Folder alone, and only when it belongs to the same Immich
+  account as the API key.
+- **Lock** locks the folder again; the PIN alone opens it until the person signs out of Nextcloud
+  or chooses **Sign out of Immich**. Immich also locks it after 15 minutes without use; the view
+  then hides the folder's photos and videos and asks for the PIN again. A save into Nextcloud that
+  the lock interrupts keeps the files it saved and leaves the rest selected for the next try.
+- The session shows in Immich's list of devices (*Account Settings → Authorized devices*) as
+  *Nextcloud*.
+- Putting files into the Locked Folder (the selection's *Move to Locked Folder*, the Files action
+  *Add to Immich Locked Folder*) works with the API key alone, without a PIN.
+- **Single sign-on** returns to Nextcloud, so the identity provider must allow this redirect URI
+  for Immich's OAuth client (the dialog shows the exact address):
+  `https://<nextcloud>/apps/integration_immich/api/v1/locked/oauth/callback`
+  (with `/index.php` before `/apps` when Nextcloud has no pretty URLs).
 
 ---
 

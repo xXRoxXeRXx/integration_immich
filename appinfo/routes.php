@@ -24,6 +24,7 @@ return [
         ['name' => 'assets#downloadAssets',  'url' => '/api/v1/download',                    'verb' => 'POST'],
         ['name' => 'assets#saveToNextcloud', 'url' => '/api/v1/assets/save',                 'verb' => 'POST'],
         ['name' => 'assets#deleteAssets',    'url' => '/api/v1/assets/delete',               'verb' => 'POST'],
+        ['name' => 'assets#visibility',      'url' => '/api/v1/assets/visibility',           'verb' => 'POST'],
         ['name' => 'assets#update',          'url' => '/api/v1/assets/{id}/update',          'verb' => 'POST'],
         ['name' => 'assets#show',            'url' => '/api/v1/assets/{id}/info',            'verb' => 'GET'],
         ['name' => 'assets#thumbnail',       'url' => '/api/v1/assets/{id}/thumbnail',       'verb' => 'GET'],
@@ -50,6 +51,15 @@ return [
 
         // Folders
         ['name' => 'folders#content', 'url' => '/api/v1/folders/content', 'verb' => 'GET'],
+
+        // Locked Folder: sign in to Immich, unlock with the PIN, lock again
+        ['name' => 'locked#status',        'url' => '/api/v1/locked/status',         'verb' => 'GET'],
+        ['name' => 'locked#login',         'url' => '/api/v1/locked/login',          'verb' => 'POST'],
+        ['name' => 'locked#oauthStart',    'url' => '/api/v1/locked/oauth',          'verb' => 'POST'],
+        ['name' => 'locked#oauthCallback', 'url' => '/api/v1/locked/oauth/callback', 'verb' => 'GET'],
+        ['name' => 'locked#unlock',        'url' => '/api/v1/locked/unlock',         'verb' => 'POST'],
+        ['name' => 'locked#lock',          'url' => '/api/v1/locked/lock',           'verb' => 'POST'],
+        ['name' => 'locked#signOut',       'url' => '/api/v1/locked/signout',        'verb' => 'POST'],
 
         // Upload NC → Immich
         ['name' => 'upload#upload', 'url' => '/api/v1/upload', 'verb' => 'POST'],
