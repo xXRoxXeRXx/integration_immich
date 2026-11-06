@@ -18,7 +18,8 @@ use OCP\Security\ICrypto;
  * The Immich session that opens the Locked Folder.
  *
  * An API key cannot read the Locked Folder: Immich requires a session unlocked with the
- * person's PIN. The person signs in to Immich once (password or OAuth); its session token is
+ * person's PIN. The person signs in to Immich once (password or OAuth), or, when they signed in
+ * with their account in the settings, the app makes a session from that one; its session token is
  * kept encrypted in this browser's Nextcloud session only, never stored in the database. Locking
  * keeps the sign-in (the PIN alone opens the folder again); it is signed out of Immich with
  * "Sign out of Immich" or when the person signs out of Nextcloud.
@@ -26,6 +27,10 @@ use OCP\Security\ICrypto;
 class LockedSession {
     private const KEY = 'integration_immich_locked_session';
     private const OAUTH_KEY = 'integration_immich_locked_oauth';
+
+    /** What an OAuth sign-in is for: the Locked Folder of this browser, or the account (settings). */
+    public const PURPOSE_LOCKED = 'locked';
+    public const PURPOSE_ACCOUNT = 'account';
 
     /** How long an OAuth sign-in may take, in seconds. */
     private const OAUTH_TTL = 600;
@@ -68,20 +73,31 @@ class LockedSession {
         $this->session->remove(self::KEY);
     }
 
-    /** Remembers an OAuth sign-in in progress (its state and PKCE verifier). */
-    public function startOAuth(string $state, string $verifier, string $redirectUri): void {
+    /**
+     * Remembers an OAuth sign-in in progress (its state and PKCE verifier), what it is for and,
+     * for the account, the server it was started with (not saved yet).
+     */
+    public function startOAuth(
+        string $state,
+        string $verifier,
+        string $redirectUri,
+        string $purpose = self::PURPOSE_LOCKED,
+        string $serverUrl = '',
+    ): void {
         $this->session->set(self::OAUTH_KEY, [
             'user' => $this->userId(),
             'state' => $state,
             'verifier' => $this->crypto->encrypt($verifier),
             'redirectUri' => $redirectUri,
+            'purpose' => $purpose,
+            'server' => $serverUrl,
             'at' => time(),
         ]);
     }
 
     /**
      * The OAuth sign-in in progress whose state matches, at most once:
-     * ['verifier' => ..., 'redirectUri' => ...], or null.
+     * ['verifier' => ..., 'redirectUri' => ..., 'purpose' => ..., 'server' => ...], or null.
      */
     public function takeOAuth(string $state): ?array {
         $pending = $this->session->get(self::OAUTH_KEY);
@@ -96,6 +112,8 @@ class LockedSession {
             return [
                 'verifier' => $this->crypto->decrypt((string)$pending['verifier']),
                 'redirectUri' => (string)$pending['redirectUri'],
+                'purpose' => (string)($pending['purpose'] ?? self::PURPOSE_LOCKED),
+                'server' => (string)($pending['server'] ?? ''),
             ];
         } catch (\Exception $e) {
             return null;

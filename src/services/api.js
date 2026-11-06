@@ -167,3 +167,22 @@ export function getConfig() {
 export function setConfig(config) {
 	return axios.put(`${baseUrl}/config`, config)
 }
+
+// ---- Sign-in with the Immich account instead of an API key (settings) ----
+
+// serverUrl: the address in the form, which the sign-in saves when it succeeds
+export function getAccountFeatures(serverUrl) {
+	return axios.get(`${baseUrl}/account/features`, { params: { server_url: serverUrl } })
+}
+
+export function accountLogin(serverUrl, email, password) {
+	return axios.post(`${baseUrl}/account/login`, { server_url: serverUrl, email, password })
+}
+
+export function accountOAuthStart(serverUrl) {
+	return axios.post(`${baseUrl}/account/oauth`, { server_url: serverUrl })
+}
+
+export function accountSignOut() {
+	return axios.post(`${baseUrl}/account/signout`)
+}

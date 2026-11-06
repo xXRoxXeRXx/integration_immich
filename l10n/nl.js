@@ -198,7 +198,14 @@ OC.L10N.register(
     "This Immich account is not the one of your API key. Close this window and sign in with your own account.": "Dit Immich-account is niet dat van je API-sleutel. Sluit dit venster en meld je aan met je eigen account.",
     "The sign-in to Immich failed. Close this window and try again.": "Aanmelden bij Immich is mislukt. Sluit dit venster en probeer het opnieuw.",
     "{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.": "{count} bestand(en) opgeslagen, daarna is de vergrendelde map vergrendeld. Voer je pincode in en sla opnieuw op om de rest op te slaan.",
-    "The Locked Folder locked itself. Enter your PIN and save again.": "De vergrendelde map is vergrendeld. Voer je pincode in en sla opnieuw op."
+    "The Locked Folder locked itself. Enter your PIN and save again.": "De vergrendelde map is vergrendeld. Voer je pincode in en sla opnieuw op.",
+    "Sign in with": "Aanmelden met",
+    "Immich account": "Immich-account",
+    "Signed in to Immich as {email}. Your account is used instead of an API key, and the Locked Folder asks only for your PIN.": "Aangemeld bij Immich als {email}. Uw account wordt gebruikt in plaats van een API-sleutel, en de vergrendelde map vraagt alleen om uw pincode.",
+    "Sign in once with your Immich account. Nextcloud keeps the sign-in (encrypted), never your password; Immich lists it among your devices.": "Meld u eenmalig aan met uw Immich-account. Nextcloud bewaart de aanmelding (versleuteld), nooit uw wachtwoord; Immich toont haar bij uw apparaten.",
+    "Open the settings": "Instellingen openen",
+    "Your Immich account was signed out in Immich. Sign in again in the settings, then enter your PIN here.": "Uw Immich-account is in Immich afgemeld. Meld u opnieuw aan in de instellingen en voer dan hier uw pincode in.",
+    "Signed in to Immich. You can close this window.": "Aangemeld bij Immich. U kunt dit venster sluiten."
   },
   "nplurals=2; plural=(n != 1);"
 );

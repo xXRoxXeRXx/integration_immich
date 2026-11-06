@@ -197,7 +197,14 @@
     "This Immich account is not the one of your API key. Close this window and sign in with your own account.": "Esta conta Immich não é a da sua chave de API. Feche esta janela e inicie sessão com a sua própria conta.",
     "The sign-in to Immich failed. Close this window and try again.": "O início de sessão no Immich falhou. Feche esta janela e tente novamente.",
     "{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.": "{count} ficheiro(s) guardado(s); depois, a pasta bloqueada bloqueou-se. Introduza o seu PIN e guarde novamente para guardar o resto.",
-    "The Locked Folder locked itself. Enter your PIN and save again.": "A pasta bloqueada bloqueou-se. Introduza o seu PIN e guarde novamente."
+    "The Locked Folder locked itself. Enter your PIN and save again.": "A pasta bloqueada bloqueou-se. Introduza o seu PIN e guarde novamente.",
+    "Sign in with": "Iniciar sessão com",
+    "Immich account": "Conta Immich",
+    "Signed in to Immich as {email}. Your account is used instead of an API key, and the Locked Folder asks only for your PIN.": "Sessão iniciada no Immich como {email}. A sua conta é usada em vez de uma chave API, e a pasta bloqueada pede apenas o seu PIN.",
+    "Sign in once with your Immich account. Nextcloud keeps the sign-in (encrypted), never your password; Immich lists it among your devices.": "Inicie sessão uma vez com a sua conta Immich. O Nextcloud guarda a sessão (encriptada), nunca a sua palavra-passe; o Immich mostra-a entre os seus dispositivos.",
+    "Open the settings": "Abrir as definições",
+    "Your Immich account was signed out in Immich. Sign in again in the settings, then enter your PIN here.": "A sua conta Immich terminou a sessão no Immich. Inicie sessão novamente nas definições e depois introduza aqui o seu PIN.",
+    "Signed in to Immich. You can close this window.": "Sessão iniciada no Immich. Pode fechar esta janela."
   },
   "pluralForm": "nplurals=2; plural=(n > 1);"
 }

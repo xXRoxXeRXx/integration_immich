@@ -223,11 +223,12 @@ class ImmichServiceTest extends TestCase {
 		$this->assertSame([], $service->getTimelineBucket('2026-10-01T00:00:00.000Z', withPartners: true));
 	}
 
-	private function serviceWithClient(\OCP\Http\Client\IClient $client): ImmichService {
+	/** @param array<string, string> $values further settings (an account's sign-in) */
+	private function serviceWithClient(\OCP\Http\Client\IClient $client, array $values = []): ImmichService {
 		$clientService = $this->createMock(IClientService::class);
 		$clientService->method('newClient')->willReturn($client);
 		$this->config->method('getUserValue')->willReturnCallback(
-			fn(string $uid, string $app, string $key, string $default) => match ($key) {
+			fn(string $uid, string $app, string $key, string $default) => $values[$key] ?? match ($key) {
 				'server_url' => 'https://photos.example.com',
 				'api_key' => 'test-key',
 				default => $default,
@@ -375,5 +376,106 @@ class ImmichServiceTest extends TestCase {
 		$this->expectException(\RuntimeException::class);
 		$this->expectExceptionMessage('HTTP 400');
 		$service->getTimelineBuckets(withPartners: true);
+	}
+
+	private const ACCOUNT_SERVER = 'https://photos.example.com';
+
+	private function account(string $server = self::ACCOUNT_SERVER): array {
+		return ['account_session' => json_encode(['server' => $server, 'email' => 'anna@example.org', 'token' => 'account-token'])];
+	}
+
+	public function testTheAccountsSignInReplacesTheApiKey(): void {
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->expects($this->once())
+			->method('get')
+			->with(
+				$this->anything(),
+				$this->callback(static fn (array $options): bool =>
+					($options['headers']['Authorization'] ?? null) === 'Bearer account-token'
+					&& !isset($options['headers']['x-api-key']))
+			)
+			->willReturn($this->okResponse('[]'));
+		$service = $this->serviceWithClient($client, $this->account());
+
+		$this->assertTrue($service->usesAccount());
+		$this->assertSame('anna@example.org', $service->getAccountEmail());
+		$service->getPartners();
+	}
+
+	public function testTheAccountsSignInCountsOnlyForItsServer(): void {
+		$service = $this->serviceWithClient($this->createMock(\OCP\Http\Client\IClient::class), $this->account('https://other.example.com'));
+
+		$this->assertFalse($service->usesAccount());
+		$this->assertSame('', $service->getAccountEmail());
+	}
+
+	public function testIsConfiguredWithTheAccountAlone(): void {
+		$service = $this->serviceWithClient($this->createMock(\OCP\Http\Client\IClient::class), ['api_key' => ''] + $this->account());
+
+		$this->assertTrue($service->isConfigured());
+	}
+
+	public function testStoreAccountKeepsTheSessionEncryptedForItsServer(): void {
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->expects($this->once())
+			->method('get')
+			->with(
+				'https://new.example.com/api/users/me',
+				$this->callback(static fn (array $options): bool => ($options['headers']['Authorization'] ?? null) === 'Bearer new-token')
+			)
+			->willReturn($this->okResponse('{"id":"u1","email":"anna@example.org"}'));
+		$this->crypto->method('encrypt')->willReturnCallback(fn (string $plain) => 'enc:' . $plain);
+		$saved = [];
+		$this->config->method('setUserValue')->willReturnCallback(function (string $uid, string $app, string $key, string $value) use (&$saved): void {
+			$saved[$key] = $value;
+		});
+		$this->config->expects($this->never())->method('deleteUserValue');
+		$service = $this->serviceWithClient($client);
+
+		$service->storeAccount('https://new.example.com/', 'new-token');
+
+		$this->assertSame('https://new.example.com', $saved['server_url']);
+		$this->assertSame(
+			['server' => 'https://new.example.com', 'email' => 'anna@example.org', 'token' => 'enc:new-token'],
+			json_decode($saved['account_session'], true)
+		);
+	}
+
+	public function testSignOutAccountForgetsItAndSignsItOutOfImmich(): void {
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->expects($this->once())
+			->method('post')
+			->with(
+				'https://photos.example.com/api/auth/logout',
+				$this->callback(static fn (array $options): bool => ($options['headers']['Authorization'] ?? null) === 'Bearer account-token')
+			)
+			->willReturn($this->okResponse('{}'));
+		$this->config->expects($this->once())
+			->method('deleteUserValue')
+			->with('testuser', Application::APP_ID, 'account_session');
+		$service = $this->serviceWithClient($client, $this->account());
+
+		$service->signOutAccount();
+	}
+
+	public function testChildSessionIsMadeFromTheAccountsSignIn(): void {
+		$client = $this->createMock(\OCP\Http\Client\IClient::class);
+		$client->expects($this->once())
+			->method('post')
+			->with(
+				'https://photos.example.com/api/sessions',
+				$this->callback(static fn (array $options): bool =>
+					($options['headers']['Authorization'] ?? null) === 'Bearer account-token'
+					&& json_decode($options['body'], true) === ['deviceOS' => 'integration_immich', 'deviceType' => 'Nextcloud'])
+			)
+			->willReturn($this->okResponse('{"id":"s2","token":"child-token"}'));
+		$service = $this->serviceWithClient($client, $this->account());
+
+		$this->assertSame('child-token', $service->createChildSession());
+	}
+
+	public function testWithServerUrlRefusesAnAddressThatIsNotHttp(): void {
+		$this->expectException(\InvalidArgumentException::class);
+		$this->service->withServerUrl('ftp://photos.example.com');
 	}
 }

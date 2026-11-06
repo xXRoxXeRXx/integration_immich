@@ -29,7 +29,10 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Opens Immich's Locked Folder: the person signs in to Immich (password or OAuth), then unlocks
- * the session with their PIN. API keys cannot do this (Immich allows it only to sessions).
+ * the session with their PIN. API keys cannot do this (Immich allows it only to sessions). Signed
+ * in with their account in the settings instead, the sign-in here is skipped: each browser gets a
+ * session of its own made from the account's, so that the PIN opens the folder in that browser
+ * alone, and signing out of Nextcloud there signs that session out.
  */
 class LockedController extends Controller {
     /** The OAuth answer's parameters passed back to Immich (iss is checked by some providers). */
@@ -62,9 +65,16 @@ class LockedController extends Controller {
         return $this->urlGenerator->linkToRouteAbsolute(Application::APP_ID . '.locked.oauthCallback');
     }
 
-    /** The signed-in session's service, or null when the person has not signed in here. */
-    private function session(): ?ImmichService {
+    /**
+     * The signed-in session's service, or null when the person has not signed in here. With the
+     * account's sign-in, a session is made for this browser when it has none and $make is set.
+     */
+    private function session(bool $make = false): ?ImmichService {
         $token = $this->lockedSession->token($this->immichService->getServerUrl());
+        if ($token === null && $make && $this->immichService->usesAccount()) {
+            $token = $this->immichService->createChildSession();
+            $this->lockedSession->store($token, $this->immichService->getServerUrl());
+        }
         return $token === null ? null : $this->immichService->withSession($token);
     }
 
@@ -124,14 +134,29 @@ class LockedController extends Controller {
                 'passwordLogin' => ($features['passwordLogin'] ?? false) === true,
                 'oauth' => ($features['oauth'] ?? false) === true,
                 'callbackUrl' => $this->callbackUrl(),
+                'account' => $this->immichService->usesAccount(),
                 'signedIn' => false,
                 'pinCode' => true,
                 'unlocked' => false,
                 'expiresAt' => null,
                 'expiresIn' => null,
             ];
-            $session = $this->session();
-            if ($session !== null) {
+            // With the account's sign-in, a browser's session signed out in Immich is made anew once.
+            $attempts = $state['account'] ? 2 : 1;
+            for ($attempt = 0; $attempt < $attempts && !$state['signedIn']; $attempt++) {
+                try {
+                    $session = $this->session(true);
+                } catch (ImmichHttpException $e) {
+                    if ($e->getStatus() !== Http::STATUS_UNAUTHORIZED) {
+                        throw $e;
+                    }
+                    // The account's sign-in itself ended in Immich: the settings sign in again.
+                    $state['accountSignedOut'] = true;
+                    break;
+                }
+                if ($session === null) {
+                    break;
+                }
                 try {
                     $status = $session->getAuthStatus();
                     $state['signedIn'] = true;
@@ -206,7 +231,8 @@ class LockedController extends Controller {
     public function oauthCallback(): TemplateResponse {
         $outcome = 'failed';
         $pending = $this->lockedSession->takeOAuth((string)$this->request->getParam('state', ''));
-        if ($pending !== null && $this->immichService->isConfigured()) {
+        $account = ($pending['purpose'] ?? null) === LockedSession::PURPOSE_ACCOUNT;
+        if ($pending !== null && ($account || $this->immichService->isConfigured())) {
             $query = [];
             foreach (self::OAUTH_PARAMS as $name) {
                 $value = $this->request->getParam($name);
@@ -215,12 +241,19 @@ class LockedController extends Controller {
                 }
             }
             try {
-                $token = $this->immichService->oauthCallback(
+                // The account's sign-in is made on the server given in the settings, not saved yet.
+                $server = $account ? $this->immichService->withServerUrl($pending['server']) : $this->immichService;
+                $token = $server->oauthCallback(
                     $pending['redirectUri'] . '?' . http_build_query($query),
                     (string)$query['state'],
                     $pending['verifier'],
                 );
-                $outcome = $this->keep($token) === null ? 'signed-in' : 'other-account';
+                if ($account) {
+                    $this->immichService->storeAccount($server->getServerUrl(), $token);
+                    $outcome = 'account-signed-in';
+                } else {
+                    $outcome = $this->keep($token) === null ? 'signed-in' : 'other-account';
+                }
             } catch (\Exception $e) {
                 $this->logger->error('Immich OAuth sign-in failed: ' . $e->getMessage(), [
                     'app' => Application::APP_ID,
@@ -230,6 +263,7 @@ class LockedController extends Controller {
         }
         return new TemplateResponse(Application::APP_ID, 'lockedSignIn', [
             'outcome' => $outcome,
+            'account' => $account,
         ], TemplateResponse::RENDER_AS_GUEST);
     }
 
@@ -244,11 +278,11 @@ class LockedController extends Controller {
         if (!preg_match('/^\d{4,6}$/', $pin)) {
             return new JSONResponse(['error' => 'The PIN has 4 to 6 digits'], Http::STATUS_BAD_REQUEST);
         }
-        $session = $this->session();
-        if ($session === null) {
-            return new JSONResponse(['error' => 'Sign in to Immich first', 'signedIn' => false], Http::STATUS_LOCKED);
-        }
         try {
+            $session = $this->session(true);
+            if ($session === null) {
+                return new JSONResponse(['error' => 'Sign in to Immich first', 'signedIn' => false], Http::STATUS_LOCKED);
+            }
             $session->unlockSession($pin);
             return new JSONResponse(['unlocked' => true]);
         } catch (ImmichHttpException $e) {

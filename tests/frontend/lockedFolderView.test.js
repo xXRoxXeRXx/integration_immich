@@ -15,6 +15,7 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock('../../src/services/api.js', () => apiMocks)
 vi.mock('@nextcloud/initial-state', () => ({ loadState: () => ({}) }))
 vi.mock('@nextcloud/l10n', () => ({ translate: (_app, text) => text }))
+vi.mock('@nextcloud/router', () => ({ generateUrl: path => `/index.php${path}` }))
 vi.mock('../../src/services/storage.js', () => ({ appStorage: { getItem: () => null, setItem: vi.fn(), removeItem: vi.fn() } }))
 vi.mock('@nextcloud/vue', () => {
 	const Stub = { template: '<div><slot /><slot name="icon" /><slot name="action" /></div>' }
@@ -107,5 +108,21 @@ describe('Locked Folder view', () => {
 
 		expect(apiMocks.getLockedStatus).toHaveBeenCalledTimes(2)
 		expect(store.lightbox.visible).toBe(false)
+	})
+
+	it('asks only for the PIN when signed in with the account in the settings', async () => {
+		apiMocks.getLockedStatus.mockResolvedValue({ data: { ...locked.data, account: true } })
+		await mountView()
+
+		expect(wrapper.find('.dialog').attributes('data-name')).toBe('Enter your PIN')
+		expect(wrapper.text()).not.toContain('Sign out of Immich')
+	})
+
+	it('sends to the settings when the account was signed out in Immich', async () => {
+		apiMocks.getLockedStatus.mockResolvedValue({ data: { signedIn: false, account: true, accountSignedOut: true } })
+		await mountView()
+
+		expect(wrapper.find('.dialog').exists()).toBe(false)
+		expect(wrapper.text()).toContain('Open the settings')
 	})
 })

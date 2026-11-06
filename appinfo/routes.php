@@ -18,6 +18,12 @@ return [
         ['name' => 'config#getConfig', 'url' => '/api/v1/config', 'verb' => 'GET'],
         ['name' => 'config#me',        'url' => '/api/v1/me',     'verb' => 'GET'],
 
+        // Sign-in with the Immich account instead of an API key
+        ['name' => 'account#features', 'url' => '/api/v1/account/features', 'verb' => 'GET'],
+        ['name' => 'account#login',    'url' => '/api/v1/account/login',    'verb' => 'POST'],
+        ['name' => 'account#oauthStart', 'url' => '/api/v1/account/oauth',  'verb' => 'POST'],
+        ['name' => 'account#signOut',  'url' => '/api/v1/account/signout',  'verb' => 'POST'],
+
         // Assets / Timeline
         ['name' => 'assets#timeline',        'url' => '/api/v1/timeline',                    'verb' => 'GET'],
         ['name' => 'assets#partners',       'url' => '/api/v1/partners',                     'verb' => 'GET'],

@@ -35,6 +35,8 @@ class ConfigController extends Controller {
         return new JSONResponse([
             'server_url' => $this->immichService->getServerUrl(),
             'api_key_set' => $this->immichService->getApiKey() !== '',
+            'account_email' => $this->immichService->getAccountEmail(),
+            'uses_account' => $this->immichService->usesAccount(),
             'include_partner_assets' => $this->immichService->includePartnerAssetsInTimeline(),
         ]);
     }
@@ -59,11 +61,17 @@ class ConfigController extends Controller {
 
         // Validate-first: test the new credentials before writing to config so that
         // a failed validation never overwrites a previously-working configuration.
+        $newKey = $apiKey !== null && $apiKey !== '';
+        $currentUrl = $this->immichService->getServerUrl();
+        $sameUrl = $serverUrl === null || rtrim($serverUrl, '/') === $currentUrl;
         if ($doValidate) {
-            $urlToTest = $serverUrl !== null ? $serverUrl : $this->immichService->getServerUrl();
-            $keyToTest = ($apiKey !== null && $apiKey !== '') ? $apiKey : $this->immichService->getApiKey();
+            $urlToTest = $serverUrl !== null ? $serverUrl : $currentUrl;
+            $keyToTest = $newKey ? $apiKey : $this->immichService->getApiKey();
 
-            $result = $this->immichService->validateConnectionWithCredentials($urlToTest, $keyToTest);
+            // Signed in with the account, its session is tested (it is used instead of the key).
+            $result = !$newKey && $sameUrl && $this->immichService->usesAccount()
+                ? $this->immichService->validateConnection()
+                : $this->immichService->validateConnectionWithCredentials($urlToTest, $keyToTest);
             if (!$result['success']) {
                 $errorMsg = $result['error'] ?? 'unknown';
                 $this->logger->warning('Immich connection validation failed: ' . $errorMsg, [
@@ -88,6 +96,10 @@ class ConfigController extends Controller {
         if ($serverUrl !== null) {
             try {
                 $this->immichService->setServerUrl($serverUrl);
+                // The account's sign-in belongs to the server it was made on.
+                if (!$sameUrl) {
+                    $this->immichService->signOutAccount();
+                }
             } catch (\InvalidArgumentException $e) {
                 return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
             }
