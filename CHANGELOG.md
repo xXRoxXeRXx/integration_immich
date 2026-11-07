@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-07
+
 ### Added
 
 - Archive view with the photos and videos hidden from the timeline; a selection can be archived or unarchived
@@ -14,6 +16,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Locked Folder view: sign in to Immich once (password or single sign-on), then the PIN opens the folder; its photos and videos can be viewed, downloaded, saved to Nextcloud, deleted or moved out. The session stays in the Nextcloud session only and is signed out of Immich with *Sign out of Immich* or the Nextcloud sign-out. When Immich locks the folder again (the PIN's time is up), the view hides its photos and videos and asks for the PIN; an interrupted save into Nextcloud keeps what it saved
 - Polish (`pl`) translation
 - Sign-in with the Immich account (password or single sign-on) as an alternative to the API key: Nextcloud keeps the session, encrypted, never the password, and the Locked Folder then asks only for the PIN, in a session of its own for each browser made from the account's
+
+### Security / Dependencies
+
+- `@babel/core` 8.0.7 → 8.1.0
+- `@nextcloud/dialogs` 7.5.0 → 8.0.0
+- `@nextcloud/files` 4.1.0 → 4.1.1
+- `@nextcloud/vue` 9.13.1 → 9.14.1
+- `fast-uri` 3.1.7 → 3.1.9
+- `fast-xml-parser` 5.10.1 → 5.11.2
+- `follow-redirects` 1.16.1 → 1.16.2
+- `qs` 6.15.3 → 6.17.1
+- `sass` 1.105.2 → 1.107.1
+- `sass-loader` 17.0.1 → 17.1.0
+- `webpack` 5.112.0 → 5.112.2
+- `webpack-dev-server` 6.0.0 → 6.1.0
+
+### Thanks
+
+- Thank you to [@sarumaj](https://github.com/xXRoxXeRXx/integration_immich/commits?author=sarumaj) for the Archive, Locked Folder and Immich-account sign-in features
 
 ## [1.6.0] - 2026-10-24
 
