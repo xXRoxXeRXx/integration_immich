@@ -21,6 +21,8 @@ use Psr\Log\LoggerInterface;
 class ImmichService {
     private const CONFIG_SERVER_URL = 'server_url';
     private const CONFIG_API_KEY = 'api_key';
+    /** The account's sign-in: {server, email, token (encrypted)}, used instead of the API key. */
+    private const CONFIG_ACCOUNT = 'account_session';
     private const CONFIG_INCLUDE_PARTNERS = 'include_partner_assets';
 
     /** Regex for a canonical UUID v4 string. */
@@ -37,6 +39,9 @@ class ImmichService {
 
     /** An Immich session token used instead of the API key (the Locked Folder), or null. */
     private ?string $sessionToken = null;
+
+    /** The server to talk to instead of the configured one (a sign-in before it is saved), or null. */
+    private ?string $serverUrlOverride = null;
 
     /** TTL (seconds) for caching /view/folder/unique-paths per user. */
     private const UNIQUE_PATHS_CACHE_TTL = 300;
@@ -60,6 +65,9 @@ class ImmichService {
     }
 
     public function getServerUrl(): string {
+        if ($this->serverUrlOverride !== null) {
+            return $this->serverUrlOverride;
+        }
         return rtrim(
             $this->config->getUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_SERVER_URL, ''),
             '/'
@@ -94,23 +102,108 @@ class ImmichService {
         return $service;
     }
 
+    /** The same service, talking to another server than the configured one (a sign-in before it is saved). */
+    public function withServerUrl(string $url): static {
+        $this->checkServerUrl($url);
+        $service = clone $this;
+        $service->serverUrlOverride = rtrim($url, '/');
+        return $service;
+    }
+
     /** @return array<string, string> */
     private function authHeaders(): array {
-        if ($this->sessionToken !== null) {
-            return ['Authorization' => 'Bearer ' . $this->sessionToken];
+        $token = $this->sessionToken ?? $this->getAccountToken();
+        if ($token !== '') {
+            return ['Authorization' => 'Bearer ' . $token];
         }
         return ['x-api-key' => $this->getApiKey()];
     }
 
-    public function setServerUrl(string $url): void {
-        $url = rtrim($url, '/');
-        $parsed = parse_url($url);
+    /** The account's sign-in as stored: ['server' => ..., 'email' => ..., 'token' => (encrypted)], or null. */
+    private function storedAccount(): ?array {
+        $stored = json_decode(
+            $this->config->getUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_ACCOUNT, ''),
+            true
+        );
+        return is_array($stored) && is_string($stored['token'] ?? null) ? $stored : null;
+    }
+
+    /**
+     * The session token of the person's Immich account, used instead of the API key; '' when they
+     * have not signed in, or signed in to another server than the configured one.
+     */
+    public function getAccountToken(): string {
+        $stored = $this->storedAccount();
+        if ($stored === null || ($stored['server'] ?? null) !== $this->getServerUrl()) {
+            return '';
+        }
+        try {
+            return $this->crypto->decrypt($stored['token']);
+        } catch (\Exception $e) {
+            return '';
+        }
+    }
+
+    /** Whether requests go with the account's sign-in (rather than the API key). */
+    public function usesAccount(): bool {
+        return $this->getAccountToken() !== '';
+    }
+
+    /** The e-mail address of the signed-in account, or '' when requests go with the API key. */
+    public function getAccountEmail(): string {
+        return $this->usesAccount() ? (string)($this->storedAccount()['email'] ?? '') : '';
+    }
+
+    /**
+     * Keeps a session as the account's sign-in, for the server it was made on (which becomes the
+     * configured server): it is stored encrypted, never the password. An earlier sign-in is
+     * signed out of Immich.
+     */
+    public function storeAccount(string $serverUrl, string $token): void {
+        $serverUrl = rtrim($serverUrl, '/');
+        $me = $this->withServerUrl($serverUrl)->withSession($token)->getMe();
+        $this->signOutAccount();
+        $this->setServerUrl($serverUrl);
+        $this->config->setUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_ACCOUNT, json_encode([
+            'server' => $serverUrl,
+            'email' => (string)($me['email'] ?? ''),
+            'token' => $this->crypto->encrypt($token),
+        ]));
+    }
+
+    /**
+     * Signs the account's sign-in out of Immich, and with it the Locked Folder's sessions made
+     * from it; requests go with the API key again, if there is one.
+     */
+    public function signOutAccount(): void {
+        $stored = $this->storedAccount();
+        if ($stored === null) {
+            return;
+        }
+        $this->config->deleteUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_ACCOUNT);
+        try {
+            $token = $this->crypto->decrypt($stored['token']);
+            $this->withServerUrl((string)($stored['server'] ?? ''))->withSession($token)->logout();
+        } catch (\Exception $e) {
+            $this->logger->warning('Immich sign-out of the account failed: ' . $e->getMessage(), [
+                'app' => Application::APP_ID,
+            ]);
+        }
+    }
+
+    private function checkServerUrl(string $url): void {
+        $parsed = parse_url(rtrim($url, '/'));
         if (!$parsed || !in_array($parsed['scheme'] ?? '', ['http', 'https'], true)) {
             throw new \InvalidArgumentException('Invalid server URL: must use http or https scheme');
         }
         if (empty($parsed['host'])) {
             throw new \InvalidArgumentException('Invalid server URL: missing host');
         }
+    }
+
+    public function setServerUrl(string $url): void {
+        $url = rtrim($url, '/');
+        $this->checkServerUrl($url);
         $this->config->setUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_SERVER_URL, $url);
     }
 
@@ -120,7 +213,7 @@ class ImmichService {
     }
 
     public function isConfigured(): bool {
-        return $this->getServerUrl() !== '' && $this->getApiKey() !== '';
+        return $this->getServerUrl() !== '' && ($this->getApiKey() !== '' || $this->usesAccount());
     }
 
     public function includePartnerAssetsInTimeline(): bool {
@@ -702,6 +795,22 @@ class ImmichService {
 
     public function lockSession(): void {
         $this->request('POST', '/auth/session/lock');
+    }
+
+    /**
+     * A new session of the same account, made from this one without credentials (Immich deletes it
+     * with its parent): the Locked Folder's for one browser, from the account's sign-in.
+     */
+    public function createChildSession(): string {
+        // Listed in Immich's devices as the sign-in it is made from (SESSION_DEVICE) shows.
+        $result = $this->request('POST', '/sessions', [
+            'body' => ['deviceOS' => 'integration_immich', 'deviceType' => 'Nextcloud'],
+        ]);
+        $token = $result['token'] ?? null;
+        if (!is_string($token) || $token === '') {
+            throw new \RuntimeException('Immich did not return a session');
+        }
+        return $token;
     }
 
     /** Ends this session in Immich (it leaves the person's list of devices). */

@@ -250,4 +250,80 @@ class LockedControllerTest extends TestCase {
 
 		$this->assertSame(Http::STATUS_OK, $this->controller->signOut()->getStatus());
 	}
+
+	public function testStatusWithTheAccountMakesASessionForThisBrowser(): void {
+		$this->immichService->method('usesAccount')->willReturn(true);
+		$this->lockedSession->method('token')->willReturn(null);
+		$this->immichService->expects($this->once())->method('createChildSession')->willReturn('child');
+		$this->lockedSession->expects($this->once())->method('store')->with('child', self::SERVER);
+		$this->session->method('getAuthStatus')->willReturn(['pinCode' => true, 'isElevated' => false]);
+
+		$data = $this->controller->status()->getData();
+
+		$this->assertTrue($data['account']);
+		$this->assertTrue($data['signedIn']);
+		$this->assertFalse($data['unlocked']);
+	}
+
+	public function testStatusMakesANewSessionWhenThisBrowsersWasSignedOutInImmich(): void {
+		$this->immichService->method('usesAccount')->willReturn(true);
+		$this->lockedSession->method('token')->willReturnOnConsecutiveCalls('old', null);
+		$this->lockedSession->expects($this->once())->method('clear');
+		$this->immichService->expects($this->once())->method('createChildSession')->willReturn('child');
+		$calls = 0;
+		$this->session->method('getAuthStatus')->willReturnCallback(function () use (&$calls): array {
+			if ($calls++ === 0) {
+				throw new ImmichHttpException(401);
+			}
+			return ['pinCode' => true, 'isElevated' => false];
+		});
+
+		$this->assertTrue($this->controller->status()->getData()['signedIn']);
+	}
+
+	public function testStatusWhenTheAccountWasSignedOutInImmich(): void {
+		$this->immichService->method('usesAccount')->willReturn(true);
+		$this->lockedSession->method('token')->willReturn(null);
+		$this->immichService->method('createChildSession')->willThrowException(new ImmichHttpException(401));
+
+		$data = $this->controller->status()->getData();
+
+		$this->assertFalse($data['signedIn']);
+		$this->assertTrue($data['accountSignedOut']);
+	}
+
+	public function testUnlockWithTheAccountMakesTheSession(): void {
+		$this->immichService->method('usesAccount')->willReturn(true);
+		$this->request->method('getParam')->willReturnCallback(fn (string $name, $default = null) => $name === 'pinCode' ? '1234' : $default);
+		$this->lockedSession->method('token')->willReturn(null);
+		$this->immichService->method('createChildSession')->willReturn('child');
+		$this->session->expects($this->once())->method('unlockSession')->with('1234');
+
+		$this->assertTrue($this->controller->unlock()->getData()['unlocked']);
+	}
+
+	public function testOAuthCallbackForTheAccountStoresItsSignIn(): void {
+		$this->request->method('getParam')->willReturnCallback(fn (string $name, $default = null) => match ($name) {
+			'state' => 'state-1',
+			'code' => 'code-1',
+			default => $default,
+		});
+		$this->lockedSession->method('takeOAuth')->willReturn([
+			'verifier' => 'verifier-1', 'redirectUri' => self::CALLBACK, 'purpose' => 'account', 'server' => 'https://new.example.com',
+		]);
+		$server = $this->createMock(ImmichService::class);
+		$server->method('getServerUrl')->willReturn('https://new.example.com');
+		$server->expects($this->once())
+			->method('oauthCallback')
+			->with(self::CALLBACK . '?code=code-1&state=state-1', 'state-1', 'verifier-1')
+			->willReturn('token');
+		$this->immichService->method('withServerUrl')->with('https://new.example.com')->willReturn($server);
+		$this->immichService->expects($this->once())->method('storeAccount')->with('https://new.example.com', 'token');
+		$this->lockedSession->expects($this->never())->method('store');
+
+		$params = $this->controller->oauthCallback()->getParams();
+
+		$this->assertSame('account-signed-in', $params['outcome']);
+		$this->assertTrue($params['account']);
+	}
 }

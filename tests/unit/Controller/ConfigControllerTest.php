@@ -149,4 +149,47 @@ class ConfigControllerTest extends TestCase {
 		$this->assertEquals(Http::STATUS_BAD_REQUEST, $response->getStatus());
 		$this->assertArrayHasKey('error', $response->getData());
 	}
+
+	public function testGetConfigTellsTheAccountInUse(): void {
+		$this->immichService->method('getServerUrl')->willReturn('https://photos.example.com');
+		$this->immichService->method('getApiKey')->willReturn('');
+		$this->immichService->method('usesAccount')->willReturn(true);
+		$this->immichService->method('getAccountEmail')->willReturn('anna@example.org');
+
+		$data = $this->controller->getConfig()->getData();
+
+		$this->assertTrue($data['uses_account']);
+		$this->assertSame('anna@example.org', $data['account_email']);
+	}
+
+	public function testSetConfigOfAnotherServerSignsTheAccountOut(): void {
+		$this->immichService->method('getServerUrl')->willReturn('https://photos.example.com');
+		$this->request->method('getParam')->willReturnCallback(fn (string $name, $default = null) => $name === 'server_url' ? 'https://new.example.com' : $default);
+		$this->immichService->expects($this->once())->method('setServerUrl')->with('https://new.example.com');
+		$this->immichService->expects($this->once())->method('signOutAccount');
+
+		$this->controller->setConfig();
+	}
+
+	public function testSetConfigOfTheSameServerKeepsTheAccount(): void {
+		$this->immichService->method('getServerUrl')->willReturn('https://photos.example.com');
+		$this->request->method('getParam')->willReturnCallback(fn (string $name, $default = null) => $name === 'server_url' ? 'https://photos.example.com/' : $default);
+		$this->immichService->expects($this->never())->method('signOutAccount');
+
+		$this->controller->setConfig();
+	}
+
+	public function testValidationTestsTheAccountsSignIn(): void {
+		$this->immichService->method('getServerUrl')->willReturn('https://photos.example.com');
+		$this->immichService->method('usesAccount')->willReturn(true);
+		$this->request->method('getParam')->willReturnCallback(fn (string $name, $default = null) => match ($name) {
+			'server_url' => 'https://photos.example.com',
+			'validate' => true,
+			default => $default,
+		});
+		$this->immichService->expects($this->once())->method('validateConnection')->willReturn(['success' => true, 'data' => []]);
+		$this->immichService->expects($this->never())->method('validateConnectionWithCredentials');
+
+		$this->assertTrue($this->controller->setConfig()->getData()['success']);
+	}
 }

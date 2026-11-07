@@ -37,7 +37,10 @@
 			</template>
 			<template #action>
 				<div class="locked-folder__actions">
-					<NcButton v-if="state !== 'no-pin'" variant="primary" @click="openDialog">
+					<NcButton v-if="state === 'account-signed-out'" variant="primary" :href="settingsUrl">
+						{{ t('integration_immich', 'Open the settings') }}
+					</NcButton>
+					<NcButton v-else-if="state !== 'no-pin'" variant="primary" @click="openDialog">
 						<template #icon>
 							<LockOpenIcon :size="20" />
 						</template>
@@ -46,7 +49,8 @@
 					<NcButton v-else variant="primary" @click="refresh">
 						{{ t('integration_immich', 'Check again') }}
 					</NcButton>
-					<NcButton v-if="status.signedIn" variant="tertiary" :disabled="busy" @click="signOut">
+					<!-- The account's sign-in is signed out in the settings. -->
+					<NcButton v-if="status.signedIn && !status.account" variant="tertiary" :disabled="busy" @click="signOut">
 						{{ t('integration_immich', 'Sign out of Immich') }}
 					</NcButton>
 				</div>
@@ -120,6 +124,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { NcButton, NcDialog, NcEmptyContent, NcLoadingIcon, NcNoteCard, NcPasswordField, NcTextField } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
+import { generateUrl } from '@nextcloud/router'
 import { useImmichStore } from '../store/immich.js'
 import { getLockedStatus, lockedLogin, lockedOAuthStart, lockedUnlock, lockedLock, lockedSignOut } from '../services/api.js'
 import { expiryDelay } from '../services/lockedExpiry.js'
@@ -148,17 +153,20 @@ let expiryTimer = null
 // When the expiry check is due, by the browser's clock (only durations are measured with it).
 let expiryDue = 0
 
-// loading | error | signed-out | no-pin | locked | unlocked
+const settingsUrl = generateUrl('/settings/user/integration_immich')
+
+// loading | error | signed-out | account-signed-out | no-pin | locked | unlocked
 const state = computed(() => {
 	if (!loaded.value) return 'loading'
 	if (error.value) return 'error'
-	if (!status.value.signedIn) return 'signed-out'
+	if (!status.value.signedIn) return status.value.accountSignedOut ? 'account-signed-out' : 'signed-out'
 	if (!status.value.pinCode) return 'no-pin'
 	return status.value.unlocked ? 'unlocked' : 'locked'
 })
 
 const description = computed(() => ({
 	'signed-out': t('integration_immich', 'Photos and videos in the Locked Folder are hidden everywhere else. Sign in to Immich and enter your PIN to see them.'),
+	'account-signed-out': t('integration_immich', 'Your Immich account was signed out in Immich. Sign in again in the settings, then enter your PIN here.'),
 	'no-pin': t('integration_immich', 'You have no PIN yet. Set one up in Immich (Account settings, PIN code), then check again.'),
 	locked: t('integration_immich', 'Enter your Immich PIN to see the photos and videos in the Locked Folder.'),
 }[state.value] ?? ''))

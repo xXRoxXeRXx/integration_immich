@@ -198,7 +198,14 @@ OC.L10N.register(
     "This Immich account is not the one of your API key. Close this window and sign in with your own account.": "Esta cuenta de Immich no es la de tu clave de API. Cierra esta ventana e inicia sesión con tu propia cuenta.",
     "The sign-in to Immich failed. Close this window and try again.": "No se pudo iniciar sesión en Immich. Cierra esta ventana e inténtalo de nuevo.",
     "{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.": "{count} archivo(s) guardado(s); después, la carpeta bloqueada se bloqueó. Introduce tu PIN y vuelve a guardar para guardar el resto.",
-    "The Locked Folder locked itself. Enter your PIN and save again.": "La carpeta bloqueada se ha bloqueado. Introduce tu PIN y vuelve a guardar."
+    "The Locked Folder locked itself. Enter your PIN and save again.": "La carpeta bloqueada se ha bloqueado. Introduce tu PIN y vuelve a guardar.",
+    "Sign in with": "Iniciar sesión con",
+    "Immich account": "Cuenta de Immich",
+    "Signed in to Immich as {email}. Your account is used instead of an API key, and the Locked Folder asks only for your PIN.": "Sesión iniciada en Immich como {email}. Se usa su cuenta en lugar de una clave API, y la carpeta bloqueada solo pide su PIN.",
+    "Sign in once with your Immich account. Nextcloud keeps the sign-in (encrypted), never your password; Immich lists it among your devices.": "Inicie sesión una vez con su cuenta de Immich. Nextcloud guarda la sesión (cifrada), nunca su contraseña; Immich la muestra entre sus dispositivos.",
+    "Open the settings": "Abrir la configuración",
+    "Your Immich account was signed out in Immich. Sign in again in the settings, then enter your PIN here.": "Su cuenta de Immich se cerró en Immich. Vuelva a iniciar sesión en la configuración y luego introduzca aquí su PIN.",
+    "Signed in to Immich. You can close this window.": "Sesión iniciada en Immich. Puede cerrar esta ventana."
   },
   "nplurals=2; plural=(n != 1);"
 );

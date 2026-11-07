@@ -209,7 +209,14 @@ OC.L10N.register(
     "Uploading to Immich ({done}/{total})": "Wysyłanie do Immich ({done}/{total})",
     "{count} asset(s) added to album": "Dodano do albumu: {count}",
     "{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.": "Zapisano plików: {count}, po czym folder zablokowany się zablokował. Wpisz swój PIN i zapisz ponownie, aby zapisać resztę.",
-    "The Locked Folder locked itself. Enter your PIN and save again.": "Folder zablokowany się zablokował. Wpisz swój PIN i zapisz ponownie."
+    "The Locked Folder locked itself. Enter your PIN and save again.": "Folder zablokowany się zablokował. Wpisz swój PIN i zapisz ponownie.",
+    "Sign in with": "Zaloguj się przez",
+    "Immich account": "Konto Immich",
+    "Signed in to Immich as {email}. Your account is used instead of an API key, and the Locked Folder asks only for your PIN.": "Zalogowano do Immich jako {email}. Zamiast klucza API używane jest Twoje konto, a folder zablokowany prosi tylko o PIN.",
+    "Sign in once with your Immich account. Nextcloud keeps the sign-in (encrypted), never your password; Immich lists it among your devices.": "Zaloguj się raz swoim kontem Immich. Nextcloud przechowuje logowanie (zaszyfrowane), nigdy hasło; Immich pokazuje je wśród Twoich urządzeń.",
+    "Open the settings": "Otwórz ustawienia",
+    "Your Immich account was signed out in Immich. Sign in again in the settings, then enter your PIN here.": "Twoje konto Immich zostało wylogowane w Immich. Zaloguj się ponownie w ustawieniach, a następnie wpisz tutaj PIN.",
+    "Signed in to Immich. You can close this window.": "Zalogowano do Immich. Możesz zamknąć to okno."
   },
   "nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);"
 );

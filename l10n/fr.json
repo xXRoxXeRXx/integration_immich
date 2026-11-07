@@ -197,7 +197,14 @@
     "This Immich account is not the one of your API key. Close this window and sign in with your own account.": "Ce compte Immich n’est pas celui de votre clé d’API. Fermez cette fenêtre et connectez-vous avec votre propre compte.",
     "The sign-in to Immich failed. Close this window and try again.": "La connexion à Immich a échoué. Fermez cette fenêtre et réessayez.",
     "{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.": "{count} fichier(s) enregistré(s), puis le dossier verrouillé s'est verrouillé. Saisissez votre code PIN et enregistrez à nouveau pour enregistrer le reste.",
-    "The Locked Folder locked itself. Enter your PIN and save again.": "Le dossier verrouillé s'est verrouillé. Saisissez votre code PIN et enregistrez à nouveau."
+    "The Locked Folder locked itself. Enter your PIN and save again.": "Le dossier verrouillé s'est verrouillé. Saisissez votre code PIN et enregistrez à nouveau.",
+    "Sign in with": "Se connecter avec",
+    "Immich account": "Compte Immich",
+    "Signed in to Immich as {email}. Your account is used instead of an API key, and the Locked Folder asks only for your PIN.": "Connecté à Immich en tant que {email}. Votre compte est utilisé à la place d’une clé API, et le dossier verrouillé ne demande que votre code PIN.",
+    "Sign in once with your Immich account. Nextcloud keeps the sign-in (encrypted), never your password; Immich lists it among your devices.": "Connectez-vous une fois avec votre compte Immich. Nextcloud conserve la connexion (chiffrée), jamais votre mot de passe ; Immich l’affiche parmi vos appareils.",
+    "Open the settings": "Ouvrir les paramètres",
+    "Your Immich account was signed out in Immich. Sign in again in the settings, then enter your PIN here.": "Votre compte Immich a été déconnecté dans Immich. Reconnectez-vous dans les paramètres, puis saisissez ici votre code PIN.",
+    "Signed in to Immich. You can close this window.": "Connecté à Immich. Vous pouvez fermer cette fenêtre."
   },
   "pluralForm": "nplurals=2; plural=(n > 1);"
 }

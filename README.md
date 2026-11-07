@@ -51,7 +51,7 @@ Timeline, albums, people, map, explore — all seamlessly integrated.
 | ⬆️ **Upload to Immich** | Send photos and videos from Nextcloud Files to Immich via the file action menu |
 | ☑️ **Multi-select** | Select multiple assets across any view for batch operations |
 | 🌍 **Translations** | German, French, Spanish, Dutch, Portuguese and Polish included |
-| ⚙️ **Admin Settings** | Configure Immich server URL and API key per user |
+| ⚙️ **Admin Settings** | Configure the Immich server URL per user, and sign in with the Immich account or an API key |
 
 ---
 
@@ -88,9 +88,28 @@ Timeline, albums, people, map, explore — all seamlessly integrated.
 
 1. Open **Nextcloud → Personal Settings → Immich Integration**
 2. Enter your **Immich server URL** (e.g. `https://photos.example.com`)
-3. Enter your **API key** — found in Immich under *Account Settings → API Keys*
-4. Click **Test connection** to verify, then **Save**
-5. The **Immich** entry now appears in the Nextcloud top navigation
+3. Choose how to sign in:
+   - **Immich account**: sign in with your e-mail and password, or with single sign-on when
+     Immich uses OAuth. The sign-in saves the server URL too.
+   - **API key**: enter a key from Immich's *Account Settings → API Keys*, then click
+     **Test connection** to verify and **Save**
+4. The **Immich** entry now appears in the Nextcloud top navigation
+
+### 👤 Sign-in with the Immich account
+
+Instead of an API key, the integration can use a sign-in to your Immich account:
+
+- Nextcloud keeps the session's token, encrypted, in your settings; never your password. It
+  shows in Immich's list of devices (*Account Settings → Authorized devices*) as *Nextcloud*.
+- The **Locked Folder** then asks only for your PIN: each browser gets a session of its own made
+  from the account's (`POST /api/sessions`, without credentials), so that the PIN opens the folder
+  in that browser alone, and signing out of Nextcloud there signs that session out.
+- **Sign out of Immich** in the settings signs the account out of Immich, and with it the Locked
+  Folder's sessions made from it. A saved API key is used again afterwards. Saving another server
+  URL signs the account out as well.
+- Single sign-on returns to the same address as the Locked Folder's (see below), so an identity
+  provider that allows that one needs nothing more.
+- No permissions to choose: a session may do what the account may.
 
 ### 🔑 Required Immich API Key Permissions
 
@@ -123,8 +142,9 @@ When creating an API key in Immich (*Account Settings → API Keys → New API k
 ### 🔒 Locked Folder
 
 Immich opens its Locked Folder only to a signed-in session unlocked with the person's PIN, never
-to an API key. The **Locked Folder** view therefore asks once for an Immich sign-in (e-mail and
-password, or single sign-on when Immich uses OAuth), then for the PIN:
+to an API key. With an API key, the **Locked Folder** view therefore asks once for an Immich
+sign-in (e-mail and password, or single sign-on when Immich uses OAuth), then for the PIN (signed
+in with the account in the settings, it asks for the PIN alone):
 
 - The session's token is kept encrypted in the person's Nextcloud session only (never in the
   database). It is used for the Locked Folder alone, and only when it belongs to the same Immich
@@ -138,7 +158,7 @@ password, or single sign-on when Immich uses OAuth), then for the PIN:
 - Putting files into the Locked Folder (the selection's *Move to Locked Folder*, the Files action
   *Add to Immich Locked Folder*) works with the API key alone, without a PIN.
 - **Single sign-on** returns to Nextcloud, so the identity provider must allow this redirect URI
-  for Immich's OAuth client (the dialog shows the exact address):
+  for Immich's OAuth client (the dialog and the settings show the exact address):
   `https://<nextcloud>/apps/integration_immich/api/v1/locked/oauth/callback`
   (with `/index.php` before `/apps` when Nextcloud has no pretty URLs).
 

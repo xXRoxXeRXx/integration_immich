@@ -63,10 +63,19 @@ class LockedSessionTest extends TestCase {
 
 		$this->lockedSession->startOAuth('state-1', 'verifier-1', 'https://cloud.example.com/callback');
 		$this->assertSame(
-			['verifier' => 'verifier-1', 'redirectUri' => 'https://cloud.example.com/callback'],
+			['verifier' => 'verifier-1', 'redirectUri' => 'https://cloud.example.com/callback', 'purpose' => 'locked', 'server' => ''],
 			$this->lockedSession->takeOAuth('state-1')
 		);
 		$this->assertNull($this->lockedSession->takeOAuth('state-1'));
+	}
+
+	public function testOAuthRemembersTheAccountsSignInAndItsServer(): void {
+		$this->lockedSession->startOAuth('state-1', 'verifier-1', 'https://cloud.example.com/callback', LockedSession::PURPOSE_ACCOUNT, 'https://photos.example.com');
+
+		$pending = $this->lockedSession->takeOAuth('state-1');
+
+		$this->assertSame('account', $pending['purpose']);
+		$this->assertSame('https://photos.example.com', $pending['server']);
 	}
 
 	public function testOAuthExpires(): void {

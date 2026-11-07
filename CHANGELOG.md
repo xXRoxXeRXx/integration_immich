@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move a selection into Immich's Locked Folder, and upload into it from Nextcloud Files (*Add to Immich Locked Folder*); putting files in needs no PIN
 - Locked Folder view: sign in to Immich once (password or single sign-on), then the PIN opens the folder; its photos and videos can be viewed, downloaded, saved to Nextcloud, deleted or moved out. The session stays in the Nextcloud session only and is signed out of Immich with *Sign out of Immich* or the Nextcloud sign-out. When Immich locks the folder again (the PIN's time is up), the view hides its photos and videos and asks for the PIN; an interrupted save into Nextcloud keeps what it saved
 - Polish (`pl`) translation
+- Sign-in with the Immich account (password or single sign-on) as an alternative to the API key: Nextcloud keeps the session, encrypted, never the password, and the Locked Folder then asks only for the PIN, in a session of its own for each browser made from the account's
 
 ## [1.6.0] - 2026-10-24
 

@@ -197,7 +197,14 @@
     "This Immich account is not the one of your API key. Close this window and sign in with your own account.": "Dieses Immich-Konto ist nicht das Ihres API-Schlüssels. Schließen Sie dieses Fenster und melden Sie sich mit Ihrem eigenen Konto an.",
     "The sign-in to Immich failed. Close this window and try again.": "Die Anmeldung bei Immich ist fehlgeschlagen. Schließen Sie dieses Fenster und versuchen Sie es erneut.",
     "{count} file(s) saved, then the Locked Folder locked itself. Enter your PIN and save again to save the rest.": "{count} Datei(en) gespeichert, dann hat sich der gesperrte Ordner gesperrt. Geben Sie Ihre PIN ein und speichern Sie erneut, um den Rest zu speichern.",
-    "The Locked Folder locked itself. Enter your PIN and save again.": "Der gesperrte Ordner hat sich gesperrt. Geben Sie Ihre PIN ein und speichern Sie erneut."
+    "The Locked Folder locked itself. Enter your PIN and save again.": "Der gesperrte Ordner hat sich gesperrt. Geben Sie Ihre PIN ein und speichern Sie erneut.",
+    "Sign in with": "Anmelden mit",
+    "Immich account": "Immich-Konto",
+    "Signed in to Immich as {email}. Your account is used instead of an API key, and the Locked Folder asks only for your PIN.": "Bei Immich angemeldet als {email}. Ihr Konto wird statt eines API-Schlüssels verwendet, und der gesperrte Ordner fragt nur nach Ihrer PIN.",
+    "Sign in once with your Immich account. Nextcloud keeps the sign-in (encrypted), never your password; Immich lists it among your devices.": "Melden Sie sich einmal mit Ihrem Immich-Konto an. Nextcloud speichert die Anmeldung (verschlüsselt), nie Ihr Passwort; Immich führt sie unter Ihren Geräten auf.",
+    "Open the settings": "Einstellungen öffnen",
+    "Your Immich account was signed out in Immich. Sign in again in the settings, then enter your PIN here.": "Ihr Immich-Konto wurde in Immich abgemeldet. Melden Sie sich in den Einstellungen erneut an und geben Sie dann hier Ihre PIN ein.",
+    "Signed in to Immich. You can close this window.": "Bei Immich angemeldet. Sie können dieses Fenster schließen."
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }

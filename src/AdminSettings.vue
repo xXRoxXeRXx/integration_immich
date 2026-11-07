@@ -14,12 +14,81 @@
 						placeholder="https://immich.example.com" />
 				</div>
 
-				<div class="field">
+				<!-- Signed in, the account is used: signing out shows the choice again. -->
+				<fieldset v-if="!accountEmail" class="field auth-method">
+					<legend>{{ t('integration_immich', 'Sign in with') }}</legend>
+					<NcCheckboxRadioSwitch v-model="authMethod"
+						type="radio"
+						name="immich-auth-method"
+						value="account">
+						{{ t('integration_immich', 'Immich account') }}
+					</NcCheckboxRadioSwitch>
+					<NcCheckboxRadioSwitch v-model="authMethod"
+						type="radio"
+						name="immich-auth-method"
+						value="api_key">
+						{{ t('integration_immich', 'API key') }}
+					</NcCheckboxRadioSwitch>
+				</fieldset>
+
+				<div v-if="accountEmail" class="field account">
+					<NcNoteCard type="success">
+						{{ t('integration_immich', 'Signed in to Immich as {email}. Your account is used instead of an API key, and the Locked Folder asks only for your PIN.', { email: accountEmail }) }}
+					</NcNoteCard>
+					<NcButton type="secondary" :disabled="accountBusy" @click="signOutAccount">
+						{{ t('integration_immich', 'Sign out of Immich') }}
+					</NcButton>
+				</div>
+
+				<div v-else-if="authMethod === 'account'" class="field account">
+					<p class="account__description">
+						{{ t('integration_immich', 'Sign in once with your Immich account. Nextcloud keeps the sign-in (encrypted), never your password; Immich lists it among your devices.') }}
+					</p>
+					<form v-if="accountFeatures.passwordLogin !== false" class="account__form" @submit.prevent="signInAccount">
+						<NcTextField v-model="accountLoginEmail"
+							type="email"
+							autocomplete="username"
+							:label="t('integration_immich', 'E-mail')" />
+						<NcPasswordField v-model="accountPassword"
+							autocomplete="current-password"
+							:label="t('integration_immich', 'Password')" />
+						<NcButton type="submit"
+							variant="primary"
+							:disabled="accountBusy || !serverUrl || !accountLoginEmail || !accountPassword">
+							<template #icon>
+								<NcLoadingIcon v-if="accountBusy" :size="20" />
+							</template>
+							{{ t('integration_immich', 'Sign in') }}
+						</NcButton>
+					</form>
+					<template v-if="accountFeatures.oauth">
+						<NcButton :variant="accountFeatures.passwordLogin ? 'secondary' : 'primary'"
+							:disabled="accountBusy || !serverUrl"
+							@click="signInAccountWithOAuth">
+							{{ t('integration_immich', 'Sign in with single sign-on') }}
+						</NcButton>
+						<p v-if="waitingForOAuth">
+							{{ t('integration_immich', 'Finish the sign-in in the window that opened.') }}
+						</p>
+						<p class="account__hint">
+							{{ t('integration_immich', 'Single sign-on needs this address among the redirect URIs your identity provider allows for Immich: {url}', { url: accountFeatures.callbackUrl }) }}
+						</p>
+					</template>
+					<NcNoteCard v-if="accountFeatures.passwordLogin === false && !accountFeatures.oauth" type="warning">
+						{{ t('integration_immich', 'Your Immich server offers no sign-in by password or single sign-on.') }}
+					</NcNoteCard>
+				</div>
+
+				<div v-if="authMethod === 'api_key' && !accountEmail" class="field">
 					<NcPasswordField id="immich-api-key"
 						v-model="apiKey"
 						:label="t('integration_immich', 'API key')"
 						:placeholder="apiKeySet ? t('integration_immich', 'API key is set') : t('integration_immich', 'Enter Immich API key')" />
 				</div>
+
+				<NcNoteCard v-if="accountMessage" type="error">
+					{{ accountMessage }}
+				</NcNoteCard>
 
 				<div class="partner-timeline-setting">
 					<NcCheckboxRadioSwitch
@@ -82,7 +151,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { loadState } from '@nextcloud/initial-state'
 import { translate as t } from '@nextcloud/l10n'
 import {
@@ -94,7 +163,11 @@ import {
 	NcLoadingIcon,
 	NcCheckboxRadioSwitch,
 } from '@nextcloud/vue'
-import { getConfig, setConfig } from './services/api.js'
+import { getConfig, setConfig, getAccountFeatures, accountLogin, accountOAuthStart, accountSignOut } from './services/api.js'
+
+// How often the settings ask whether the OAuth window signed in, and for how long.
+const OAUTH_POLL_MS = 1500
+const OAUTH_POLL_LIMIT_MS = 10 * 60 * 1000
 
 const serverUrl = ref('')
 const apiKey = ref('')
@@ -109,13 +182,29 @@ const includePartnerAssets = ref(true)
 const savingPartnerSetting = ref(false)
 const partnerSettingMessage = ref('')
 const partnerSettingMessageType = ref('success')
+// account | api_key: which sign-in the form shows; the account's, when there is one, is used.
+const authMethod = ref('api_key')
+const accountEmail = ref('')
+const accountFeatures = ref({})
+const accountLoginEmail = ref('')
+const accountPassword = ref('')
+const accountBusy = ref(false)
+const accountMessage = ref('')
+const waitingForOAuth = ref(false)
+let oauthTimer = null
+let featuresTimer = null
+
+function applyConfig(config) {
+	serverUrl.value = config.server_url || ''
+	apiKeySet.value = config.api_key_set || false
+	accountEmail.value = config.uses_account ? (config.account_email || '') : ''
+	includePartnerAssets.value = config.include_partner_assets !== false
+	if (config.uses_account) authMethod.value = 'account'
+}
 
 onMounted(() => {
 	try {
-		const state = loadState('integration_immich', 'admin-config')
-		serverUrl.value = state.server_url || ''
-		apiKeySet.value = state.api_key_set || false
-		includePartnerAssets.value = state.include_partner_assets !== false
+		applyConfig(loadState('integration_immich', 'admin-config'))
 	} catch (e) {
 		loadConfig()
 	}
@@ -123,10 +212,7 @@ onMounted(() => {
 
 async function loadConfig() {
 	try {
-		const response = await getConfig()
-		serverUrl.value = response.data.server_url || ''
-		apiKeySet.value = response.data.api_key_set || false
-		includePartnerAssets.value = response.data.include_partner_assets !== false
+		applyConfig((await getConfig()).data)
 	} catch (e) {
 		message.value = t('integration_immich', 'Error loading configuration')
 		messageType.value = 'error'
@@ -158,8 +244,10 @@ async function saveSettings() {
 			config.api_key = apiKey.value
 		}
 		await setConfig(config)
+		if (apiKey.value) apiKeySet.value = true
 		apiKey.value = ''
-		apiKeySet.value = true
+		// Another server ends the account's sign-in, which belongs to the one it was made on.
+		await loadConfig()
 		message.value = t('integration_immich', 'Settings saved')
 		messageType.value = 'success'
 	} catch (e) {
@@ -203,6 +291,107 @@ async function testConnection() {
 		testing.value = false
 	}
 }
+
+// Which sign-ins the server in the form offers, asked again shortly after the address changes.
+async function loadAccountFeatures() {
+	accountFeatures.value = {}
+	if (authMethod.value !== 'account' || accountEmail.value || !serverUrl.value) return
+	try {
+		accountFeatures.value = (await getAccountFeatures(serverUrl.value)).data ?? {}
+	} catch {
+		// Unknown: the password form shows, and its sign-in tells what is wrong.
+	}
+}
+
+watch([serverUrl, authMethod, accountEmail], () => {
+	if (featuresTimer) clearTimeout(featuresTimer)
+	featuresTimer = setTimeout(loadAccountFeatures, 500)
+})
+
+function errorText(e) {
+	return e.response?.data?.error || e.message
+}
+
+async function signInAccount() {
+	accountBusy.value = true
+	accountMessage.value = ''
+	try {
+		await accountLogin(serverUrl.value, accountLoginEmail.value, accountPassword.value)
+		accountPassword.value = ''
+		await loadConfig()
+	} catch (e) {
+		accountMessage.value = errorText(e)
+	} finally {
+		accountBusy.value = false
+	}
+}
+
+function stopOAuthPolling() {
+	if (oauthTimer) clearInterval(oauthTimer)
+	oauthTimer = null
+	waitingForOAuth.value = false
+}
+
+async function signInAccountWithOAuth() {
+	accountMessage.value = ''
+	// Opened in the click itself, else the browser blocks it; the address follows.
+	const popup = window.open('', 'integration_immich_sign_in', 'popup,width=520,height=720')
+	accountBusy.value = true
+	let url
+	try {
+		url = (await accountOAuthStart(serverUrl.value)).data.url
+	} catch (e) {
+		popup?.close()
+		accountMessage.value = errorText(e)
+		return
+	} finally {
+		accountBusy.value = false
+	}
+	if (popup) {
+		popup.location.href = url
+	} else {
+		window.open(url, '_blank', 'noopener')
+	}
+
+	stopOAuthPolling()
+	waitingForOAuth.value = true
+	const started = Date.now()
+	oauthTimer = setInterval(async () => {
+		const closed = !popup || popup.closed
+		try {
+			const config = (await getConfig()).data
+			if (config.uses_account) {
+				stopOAuthPolling()
+				popup?.close()
+				applyConfig(config)
+				return
+			}
+		} catch {
+			// Asked again at the next tick.
+		}
+		if ((closed && popup) || Date.now() - started > OAUTH_POLL_LIMIT_MS) {
+			stopOAuthPolling()
+		}
+	}, OAUTH_POLL_MS)
+}
+
+async function signOutAccount() {
+	accountBusy.value = true
+	accountMessage.value = ''
+	try {
+		await accountSignOut()
+		accountEmail.value = ''
+	} catch (e) {
+		accountMessage.value = errorText(e)
+	} finally {
+		accountBusy.value = false
+	}
+}
+
+onBeforeUnmount(() => {
+	stopOAuthPolling()
+	if (featuresTimer) clearTimeout(featuresTimer)
+})
 </script>
 
 <style scoped>
@@ -221,6 +410,39 @@ async function testConnection() {
 .partner-timeline-setting__description {
 	margin: 4px 0 0 34px;
 	color: var(--color-text-maxcontrast);
+}
+
+.auth-method {
+	border: none;
+	margin: 0 0 16px;
+	padding: 0;
+}
+
+.auth-method legend {
+	font-weight: bold;
+	margin-bottom: 4px;
+}
+
+.account,
+.account__form {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 12px;
+}
+
+.account__form {
+	align-self: stretch;
+}
+
+.account__description,
+.account__hint {
+	color: var(--color-text-maxcontrast);
+}
+
+.account__hint {
+	font-size: var(--font-size-small, 13px);
+	overflow-wrap: anywhere;
 }
 
 .actions {

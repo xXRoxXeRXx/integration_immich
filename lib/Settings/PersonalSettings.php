@@ -27,6 +27,8 @@ class PersonalSettings implements ISettings {
         $this->initialState->provideInitialState('admin-config', [
             'server_url' => $this->immichService->getServerUrl(),
             'api_key_set' => $this->immichService->getApiKey() !== '',
+            'account_email' => $this->immichService->getAccountEmail(),
+            'uses_account' => $this->immichService->usesAccount(),
             'include_partner_assets' => $this->immichService->includePartnerAssetsInTimeline(),
         ]);
 
